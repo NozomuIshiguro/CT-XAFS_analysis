@@ -34,6 +34,11 @@
 			<key>orderHint</key>
 			<integer>2</integer>
 		</dict>
+		<key>Reslice_CTreconst.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>10</integer>
+		</dict>
 		<key>RotationCenterSearch.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
@@ -178,6 +183,11 @@
 			<true/>
 		</dict>
 		<key>2ECC357A1C3A4183002215B2</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>2EEF3C8D1C91250400BB4E0F</key>
 		<dict>
 			<key>primary</key>
 			<true/>
