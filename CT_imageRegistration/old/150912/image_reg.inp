@@ -1,0 +1,23 @@
+#Open CL Platform & Device No
+2
+
+#Input directory path
+/Volumes/MaVis_HDD/150527_CT_fzp/CT_tests/Pt_CTtest06
+
+#Output directory path
+/Volumes/MaVis_HDD/150527_CT_fzp/CT_tests/Pt_CTtest06/mtr
+
+#Output file base name
+mtr
+
+#Energy number range
+1-1
+
+#Reference energy number for image registration
+1
+
+#Angle number range
+1-160
+
+#Registration mode
+-1

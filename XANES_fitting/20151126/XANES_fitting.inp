@@ -1,0 +1,35 @@
+#Open CL Platform & Device No
+2
+
+#Input directory path
+/Volumes/MaVis_HDD/2015A_CTXAFS/04V_ADT15k/mtr
+
+#Output directory path
+/Volumes/MaVis_HDD/2015A_CTXAFS/04V_ADT15k/fit
+
+#Energy data file path
+/Volumes/MaVis_HDD/2015A_CTXAFS/energy.txt
+
+#E0
+11559.0
+
+#Energy range
+11500.0-11620.0
+
+#Angle number range
+1-16
+
+#Fitting parameter name
+bkg,bkgSl,edgeJ,edgeE,edgeSl,wlHgt,wlPkE,whWdt
+
+#Initial fitting parameter
+1.5,-0.001,0.5,3.0,2.05,0.1,6.4,2.5
+
+#Free/fix parameter
+1,1,1,1,0,1,1,0
+
+#Valid parameter lower limit
+-10,-0.5,0.0,0.0,0.0,0.0,0.0,0.0
+
+#Valid parameter upper limit
+5,0.5,1.0,10.0,5.0,1.0,10.0,10.0

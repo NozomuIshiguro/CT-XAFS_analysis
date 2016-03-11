@@ -1,0 +1,35 @@
+#Open CL Platform & Device No
+2
+
+#Input directory path
+/Volumes/MaVis_HDD/150527_CT_fzp/Pt_2DXAFS_10s_300pnts
+
+#Output directory path
+/Volumes/MaVis_HDD/150527_CT_fzp/Pt_2DXAFS_10s_300pnts/mtr
+
+#Output file base name
+mtr
+
+#Energy number range
+1-300
+
+#Reference energy number for image registration
+1
+
+#Loop number range
+1-1
+
+#Reference loop number for image registration
+1
+
+#Registration mode
+2
+
+#Reference mask shape
+0
+
+#Reference mask center coordination
+1024,896
+
+#Reference mask size
+512,512
