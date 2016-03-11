@@ -355,7 +355,6 @@ int reconstRotCntShift(OCL_platform_device plat_dev_list,vector<vector<cl::Kerne
 	}*/
     
     
-    
     return 0;
 }
 
