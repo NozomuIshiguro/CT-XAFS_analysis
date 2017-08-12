@@ -13,7 +13,7 @@
 #include "imageReg.hpp"
 
 int OCL_device_list(vector<OCL_platform_device> *plat_dev_list);
-int readRawFile(string filepath_input,float *binImgf, int startnum, int endnum);
+int readRawFile(string filepath_input,float *binImgf, int startnum, int endnum,int imageSizeM);
 int outputRawFile_stream(string filename,float*data,size_t pnt_size);
 
 int imageRegistlation_2D_ocl(input_parameter inp,

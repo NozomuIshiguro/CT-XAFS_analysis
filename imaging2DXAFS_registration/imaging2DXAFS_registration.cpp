@@ -192,7 +192,7 @@ int imageReg_2D_thread(cl::CommandQueue command_queue, CL_objects CLO,
         string inputfilepath = inp.getInputDir(); //inputDirだが実際はファイルパス
         float* mt_target;
         mt_target=new float[imageSizeM];
-        readRawFile(inputfilepath,mt_target,targetEnergyNo,targetEnergyNo);
+        readRawFile(inputfilepath,mt_target,targetEnergyNo,targetEnergyNo,imageSizeM);
         cl::Kernel kernel_trans = CLO.getKernel("mt_transfer");
         mt_transfer(command_queue,kernel_trans,
                     mt_target_buffer,mt_target_image[0], mt_target_outputImg,
@@ -201,7 +201,7 @@ int imageReg_2D_thread(cl::CommandQueue command_queue, CL_objects CLO,
         // Sample mt data input
         float *mt_sample;
         mt_sample=new float[imageSizeM*dE];
-        readRawFile(inputfilepath,mt_sample,startEnergyNo,endEnergyNo);
+        readRawFile(inputfilepath,mt_sample,startEnergyNo,endEnergyNo,imageSizeM);
         
         //target image reg parameter (p_target_buffer) initialize
         ifstream ini_ifs2(inp.getIniFilePath(),ios::in);
@@ -423,10 +423,8 @@ int imageReg_2D_thread(cl::CommandQueue command_queue, CL_objects CLO,
 
 int imageRegistlation_2D_ocl(input_parameter inp, OCL_platform_device plat_dev_list, regMode regmode)
 {
-    cl_int ret;
     int imageSizeX = inp.getImageSizeX();
     int imageSizeY = inp.getImageSizeY();
-    int imageSizeM = inp.getImageSizeM();
     
     //OpenCL objects class
     vector<CL_objects> CLO;

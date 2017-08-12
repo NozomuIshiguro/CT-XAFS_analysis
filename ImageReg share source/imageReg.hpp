@@ -19,7 +19,6 @@ class regMode{
 public:
     regMode(int regmodeNumber);
     int get_regModeNo();
-    int get_contrastModeNo();
     string ofs_transpara();
     string get_regModeName();
     string get_oss_target();

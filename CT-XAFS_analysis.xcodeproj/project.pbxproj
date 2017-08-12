@@ -136,6 +136,11 @@
 		2E88879A1F3EC8EA00F5688F /* EXAFSextraction.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E8887911F3EC74400F5688F /* EXAFSextraction.cl */; };
 		2E8888111F3EE5B500F5688F /* LevenbergMarquardt.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC95E1F3AF34000B6CD75 /* LevenbergMarquardt.cl */; };
 		2E8888151F3F4EAE00F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
+		2E8888161F3F598D00F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
+		2E8888171F3F598F00F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
+		2E8888181F3F599300F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
+		2E8888191F3F59EF00F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
+		2E88881A1F3F59F100F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
 		2E8C4EC11E5D97CD003ECC51 /* XAFSreconstFitting.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EED26361E5541F3008CFBC5 /* XAFSreconstFitting.cl */; };
 		2E9BFD841C04693F00E08A6C /* XANES_fit.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E57CFF11AD237720086362B /* XANES_fit.cl */; };
 		2E9FAE7B1F1B61A50013001E /* 2D_XANES_fitting_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E4E54071EB36B5C00E990AE /* 2D_XANES_fitting_ocl.cpp */; };
@@ -1180,6 +1185,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2E3C8B0B1C00EBA300E9CC3C /* input_parameter_fitting_class.cpp in Sources */,
+				2E8888191F3F59EF00F5688F /* imageregistration_kernel_src.cl in Sources */,
 				2E1522F51B16B22C00239AA9 /* main.cpp in Sources */,
 				2E1523011B16F6ED00239AA9 /* input_parameter_class.cpp in Sources */,
 				2E1523051B16F87300239AA9 /* imaging2DXAFS_registration.cpp in Sources */,
@@ -1288,6 +1294,7 @@
 				2E02DF351E700C68007FDE9A /* reconstShare.cl in Sources */,
 				2E41B2561C73151000EE4B5E /* CTXAFS_analysis_share.cpp in Sources */,
 				2EEF3CA81C91426800BB4E0F /* rotationCenterSearch_ocl.cpp in Sources */,
+				2E8888181F3F599300F5688F /* imageregistration_kernel_src.cl in Sources */,
 				2E41B25A1C73151000EE4B5E /* input_parameter_fitting_class.cpp in Sources */,
 				2E41B2551C73151000EE4B5E /* readHisRawFile.cpp in Sources */,
 				2E41B25B1C73159100EE4B5E /* OSEM.cl in Sources */,
@@ -1320,6 +1327,7 @@
 				2E48452A1DAB44EE00F859AF /* mask_class.cpp in Sources */,
 				2E48451B1DAB42FB00F859AF /* main.cpp in Sources */,
 				2E4845241DAB44E100F859AF /* OCL_platform_device_class.cpp in Sources */,
+				2E8888161F3F598D00F5688F /* imageregistration_kernel_src.cl in Sources */,
 				2E4845291DAB44EE00F859AF /* RegMode_class.cpp in Sources */,
 				2E4845251DAB44E500F859AF /* input_parameter_class.cpp in Sources */,
 				2E4845261DAB44E500F859AF /* input_parameter_mask_class.cpp in Sources */,
@@ -1334,6 +1342,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2E1F8CA21C5E396B00B44B0C /* fitting_class.cpp in Sources */,
+				2E8888171F3F598F00F5688F /* imageregistration_kernel_src.cl in Sources */,
 				2E1F8CAC1C5E398F00B44B0C /* CTXAFS_analysis_share.cpp in Sources */,
 				2E1F8CA81C5E398500B44B0C /* input_parameter_fitting_class.cpp in Sources */,
 				2E1F8CAB1C5E398D00B44B0C /* OCL_platform_device_class.cpp in Sources */,
@@ -1398,6 +1407,7 @@
 			files = (
 				2ECC2BF81ECEBFB30029EE38 /* OCL_platform_device_class.cpp in Sources */,
 				2ECC2BFB1ECEBFBD0029EE38 /* input_parameter_fitting_class.cpp in Sources */,
+				2E88881A1F3F59F100F5688F /* imageregistration_kernel_src.cl in Sources */,
 				2ECC2BFA1ECEBFBB0029EE38 /* input_parameter_mask_class.cpp in Sources */,
 				2ECC2BFF1ECEBFE10029EE38 /* mask_class.cpp in Sources */,
 				2ECC2BF71ECEBFB00029EE38 /* readHisRawFile.cpp in Sources */,
