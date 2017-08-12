@@ -423,7 +423,7 @@ cl::Program regMode::buildImageRegProgram(cl::Context context, int imageSizeX, i
 		option += "-cl-nv-maxrregcount=64 ";
 		//option += " -cl-nv-verbose -Werror";
 	}
-    
+	option += "-D DIFFSTEP=1 ";
     switch (regModeNo) {
         case 0: //XY
             option += "-D REGMODE=0 -D PARA_NUM=2 -D PARA_NUM_SQ=4";

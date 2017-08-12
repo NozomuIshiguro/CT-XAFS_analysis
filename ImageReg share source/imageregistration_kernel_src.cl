@@ -355,7 +355,7 @@ __kernel void imageReg1(__read_only image2d_array_t mt_t_img,__read_only image2d
     float4 XYZ, XYZ_s, XYZ_t;
     float4 mt_s, mt_t;
     float mt_xp, mt_xm, mt_yp, mt_ym;
-    float diffweight = 3.0f/(float)DIFFSTEP/(DIFFSTEP+1.0f)/(2.0f*DIFFSTEP+1.0f);
+    float diffweight = 3.0f/(float)DIFFSTEP/(DIFFSTEP+1.0f)/(2.0f*DIFFSTEP+1.0f)/(float)mergeN;
     float dfdx, dfdy;
     float mask;
     float J[PARA_NUM];
@@ -465,12 +465,12 @@ __kernel void imageReg1(__read_only image2d_array_t mt_t_img,__read_only image2d
     
     //output dF2, tJJ, tJdF to global memory
     if(local_ID==0){
-        dF2[Z] = dF2_pr*IMAGESIZE_M/dev;
+        dF2[Z] = dF2_pr/dev;
         for(int i=0;i<PARA_NUM;i++){
-            tJdF[Z+i*Zsize] = tJdF_pr[i]*IMAGESIZE_M/dev;
+            tJdF[Z+i*Zsize] = tJdF_pr[i]/dev;
         }
         for(int i=0;i<PARA_NUM*(PARA_NUM+1)/2;i++){
-            tJJ[Z+i*Zsize] = tJJ_pr[i]*IMAGESIZE_M/dev;
+            tJJ[Z+i*Zsize] = tJJ_pr[i]/dev;
         }
     }
     barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);

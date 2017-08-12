@@ -135,6 +135,7 @@
 		2E8887981F3EC7CF00F5688F /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E8887971F3EC7CF00F5688F /* main.cpp */; };
 		2E88879A1F3EC8EA00F5688F /* EXAFSextraction.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E8887911F3EC74400F5688F /* EXAFSextraction.cl */; };
 		2E8888111F3EE5B500F5688F /* LevenbergMarquardt.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC95E1F3AF34000B6CD75 /* LevenbergMarquardt.cl */; };
+		2E8888151F3F4EAE00F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
 		2E8C4EC11E5D97CD003ECC51 /* XAFSreconstFitting.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EED26361E5541F3008CFBC5 /* XAFSreconstFitting.cl */; };
 		2E9BFD841C04693F00E08A6C /* XANES_fit.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E57CFF11AD237720086362B /* XANES_fit.cl */; };
 		2E9FAE7B1F1B61A50013001E /* 2D_XANES_fitting_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E4E54071EB36B5C00E990AE /* 2D_XANES_fitting_ocl.cpp */; };
@@ -1379,6 +1380,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2EB728491F1DD5A3003C0F2F /* CTXAFS_analysis_share.cpp in Sources */,
+				2E8888151F3F4EAE00F5688F /* imageregistration_kernel_src.cl in Sources */,
 				2EB7284C1F1DE05A003C0F2F /* input_parameter_fitting_class.cpp in Sources */,
 				2EB728471F1DD59B003C0F2F /* readHisRawFile.cpp in Sources */,
 				2EB7284A1F1DE053003C0F2F /* input_parameter_class.cpp in Sources */,
