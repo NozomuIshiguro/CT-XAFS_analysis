@@ -10,6 +10,8 @@
 #ifndef CT_XANES_analysis_CT_reconstruction_hpp
 #define CT_XANES_analysis_CT_reconstruction_hpp
 
+#include "OpenCL_analysis.hpp"
+
 #include <time.h>
 #include <string>
 #include <sstream>
@@ -52,7 +54,7 @@ _mkdir((const char*)(c))
 
 #endif
 
-#include "OpenCL_analysis.hpp"
+
 
 void getparameter();
 void getparameter_inp(string inputfile_path);
@@ -65,16 +67,30 @@ void first_image(string fi, float *, int);
 
 int OSEM_ocl(OCL_platform_device plat_dev_list, float *ang, int ss);
 int FBP_ocl(OCL_platform_device plat_dev_list, float *ang);
+int AART_ocl(OCL_platform_device plat_dev_list, float *ang, int ss);
+int FISTA_ocl(OCL_platform_device plat_dev_list, float *ang, int ss);
+int hybrid_ocl(OCL_platform_device plat_dev_list, float *ang, int ss);
 int OSEM_programBuild(cl::Context context,vector<cl::Kernel> *kernels);
 int FBP_programBuild(cl::Context context,vector<cl::Kernel> *kernels);
-int OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,cl::Buffer angle_buffer, int *sub,cl::Image2DArray reconst_img, cl::Image2DArray prj_img,int dN, int offsetN, int it);
+int AART_programBuild(cl::Context context,vector<cl::Kernel> *kernels);
+int FISTA_programBuild(cl::Context context,vector<cl::Kernel> *kernels);
+int OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,cl::Buffer angle_buffer, int *sub,cl::Image2DArray reconst_img, cl::Image2DArray prj_img, int dN, int it, bool prjCorrection);
+int AART_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,cl::Buffer angle_buffer, int *sub,cl::Image2DArray reconst_img, cl::Image2DArray prj_img,int dN,int it);
+int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,cl::Buffer angle_buffer, cl::Buffer L2norm_buffer, int *sub,cl::Image2DArray reconst_img, cl::Image2DArray prj_img,int dN,int it);
 
+int AART_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
+                cl::Buffer angle_buffer, int *sub, vector<float*> imgs, vector<float*> prjs,
+                int startN, int endN, int it, int thread_id);
 int OSEM_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
             cl::Buffer angle_buffer, int *sub, vector<float*> imgs, vector<float*> prjs,
                 int startN, int endN, int it, int thread_id);
 int FBP_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                cl::Buffer angle_buffer,vector<float*> imgs, vector<float*> prjs,
                int startN, int endN,int thread_id);
+int FISTA_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
+                cl::Buffer angle_buffer, cl::Buffer L2norm_buffer, int *sub,
+                vector<float*> imgs, vector<float*> prjs,
+                int startN, int endN, int it, int thread_id);
 
 extern int numParallel;  //OpenCLデバイス当たりの並列数
 
@@ -90,6 +106,9 @@ extern double	g_ini;				/* 初期値 */
 extern int		g_px;				/* カメラピクセルサイズ */
 extern int		g_pa;				/* 投影数 */
 extern int		g_nx;				/* 再構成ピクセルサイズ */
+extern int		g_ny;				/* 再構成ピクセルサイズ */
+extern int		g_ox;				/* 再構成ピクセルサイズ */
+extern int		g_oy;				/* 再構成ピクセルサイズ */
 extern int		g_mode;				/* 再構成法 */
 extern int		g_it;				/* 反復回数 */
 extern int		g_num;			/* レイヤー数 */
@@ -105,4 +124,12 @@ extern time_t	g_t0;					/* 時間 */
 extern string   g_devList;            //OpenCLデバイスリスト
 extern int numParallel; //OpenCLデバイス当たりの並列数
 extern int correctionMode; //投影像補正 0:なし,1:x方向,2:θ方向,3:x+θ方向
+extern float amp; //強度増幅因子
+extern int baseupOrder;//baseup 減少速度次数
+extern bool CSitBool; //圧縮センシング逐次計算
+extern float CSepsilon; //圧縮センシング逐次計算ノイズファクター
+extern float CSalpha; //圧縮センシング逐次計算加算ファクター
+extern int CSit; //圧縮センシング逐次計算回数
+
+
 #endif

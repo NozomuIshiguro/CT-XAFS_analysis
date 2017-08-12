@@ -1,4 +1,4 @@
-//
+﻿//
 //  imageReg.hpp
 //  Image registration share
 //
@@ -12,26 +12,28 @@
 
 class regMode{
     int regModeNo;
-    int cntModeNo;
     string regModeName;
     string oss_target;
     int p_num;
-    int cp_num;
     
 public:
-    regMode(int regmodeNumber,int cntmodeNumber);
+    regMode(int regmodeNumber);
     int get_regModeNo();
     int get_contrastModeNo();
     string ofs_transpara();
     string get_regModeName();
     string get_oss_target();
+    string get_oss_target(float *p_vec);
+    
     string oss_sample(float *transpara,float *transpara_error,
                       int *p_precision,int *p_err_precision);
     int get_p_num();
-    int get_cp_num();
-    cl::Program buildImageRegProgram(cl::Context context);
+
+	void set_pfix(input_parameter inp);
+    cl::Program buildImageRegProgram(cl::Context context, int imageSizeX, int imageSizeY);
     
     float *p_ini;
+    float *p_fix;
 };
 
 class mask{

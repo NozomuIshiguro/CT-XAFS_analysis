@@ -22,7 +22,10 @@ int		g_fst = 2;				/* 初期画像の使用 */
 double	g_ini = 1;				/* 初期値 */
 int		g_px = 2048;				/* カメラピクセルサイズ */
 int		g_pa = 1600;				/* 投影数 */
-int		g_nx = 2048;				/* 再構成ピクセルサイズ */
+int		g_nx = 2048;				/* 再構成ピクセルサイズ X*/
+int		g_ny = 2048;				/* 再構成ピクセルサイズ Y*/
+int		g_ox = 2048;				/* 再構成出力ピクセルサイズ X*/
+int		g_oy = 2048;				/* 再構成出力ピクセルサイズ Y*/
 int		g_mode = 6;				/* 再構成法 */
 int		g_it = 1;				/* 反復回数 */
 int		g_num = 1;			/* レイヤー数 */
@@ -38,6 +41,12 @@ time_t	g_t0;					/* 時間 */
 string   g_devList="1"; //OpenCLデバイスリスト
 int numParallel=10; //OpenCLデバイス当たりの並列数
 int correctionMode = 1; //投影像補正 0:なし,1:x方向,2:θ方向,3:x+θ方向
+float amp = 1.0f; //強度増幅因子
+int baseupOrder =4;//baseup 減少速度次数
+bool CSitBool = false; //圧縮センシング逐次計算
+float CSepsilon = 1.0e-8f; //圧縮センシング逐次計算ノイズファクター
+float CSalpha = 0.1f; //圧縮センシング逐次計算加算ファクター
+int CSit = 5; //圧縮センシング逐次計算回数
 
 mutex m1,m2;
 int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang);
@@ -68,7 +77,7 @@ int main(int argc, const char * argv[]) {
     }
     
     
-    /* Input directory settings*/
+    // Input directory settings
     string buffer;
     buffer = output_flag("-ip", argc, argv);
     if (buffer.length()>0) {
@@ -141,7 +150,7 @@ int main(int argc, const char * argv[]) {
         cout << "target energy No. for rotation center search: "<<endl;
         cout << "   " << inp.getTargetEnergyNo() << endl;
     }
-    if (inp.getTargetEnergyNo()==NAN) {
+    if (inp.getTargetEnergyNo()<0) {
         inp.setTargetEnergyNoFromDialog("target energy No. for rotation center search.\n");
     }
     
@@ -192,6 +201,7 @@ int main(int argc, const char * argv[]) {
     
 	//CT_reconst parameter
 	getparameter_inp(fp_str);
+    g_pa=inp.getEndAngleNo()-inp.getStartAngleNo()+1;
     
     time_t start,end;
     time(&start);

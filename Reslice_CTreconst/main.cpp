@@ -22,7 +22,10 @@ int		g_fst = 2;				/* 初期画像の使用 */
 double	g_ini = 1;				/* 初期値 */
 int		g_px = 2048;				/* カメラピクセルサイズ */
 int		g_pa = 1600;				/* 投影数 */
-int		g_nx = 2048;				/* 再構成ピクセルサイズ */
+int		g_nx = 2048;				/* 再構成ピクセルサイズ X*/
+int		g_ny = 2048;				/* 再構成ピクセルサイズ Y*/
+int		g_ox = 2048;				/* 再構成出力ピクセルサイズ X*/
+int		g_oy = 2048;				/* 再構成出力ピクセルサイズ Y*/
 int		g_mode = 6;				/* 再構成法 */
 int		g_it = 1;				/* 反復回数 */
 int		g_num = 1;			/* レイヤー数 */
@@ -37,9 +40,14 @@ int		g_cover = 2;			/* 非投影領域の推定 */
 time_t	g_t0;					/* 時間 */
 string   g_devList="1"; //OpenCLデバイスリスト
 int numParallel=10; //OpenCLデバイス当たりの並列数
-int correctionMode = 1; //投影像補正 0:なし,1:x方向,2:θ方向,3:x+θ方向
+int correctionMode = 0; //投影像補正 0:なし,1:x方向,2:θ方向,3:x+θ方向
+float amp = 1.0f; //強度増幅因子
+int baseupOrder =4;//baseup 減少速度次数
+bool CSitBool = false; //圧縮センシング逐次計算
+float CSepsilon = 1.0e-8f; //圧縮センシング逐次計算ノイズファクター
+float CSalpha = 0.1f; //圧縮センシング逐次計算加算ファクター
+int CSit = 5; //圧縮センシング逐次計算回数
 
-int CPU();
 int GPU();
 
 vector<thread> input_th, reconst_th, output_th, reslice_th, output_th1, output_th2;
@@ -85,13 +93,13 @@ int main(int argc, const char * argv[]) {
         inp.setFittingParaName(buffer);
     }
     //Input processing energy range from dialog
-    if ((inp.getStartEnergyNo()==NAN)|(inp.getEndEnergyNo()==NAN)) {
+    if ((inp.getStartEnergyNo()<0)|(inp.getEndEnergyNo()<0)) {
         inp.setEnergyNoRangeFromDialog("Set energy num range (ex. 1-100).\n");
     }
     //Input processing parameter name from dialog
-    if ((inp.getStartEnergyNo()==NAN)|(inp.getEndEnergyNo()==NAN)) {
+    if ((inp.getStartEnergyNo()<0)|(inp.getEndEnergyNo()<0)) {
         if (inp.getFittingParaName().size()==0) {
-            inp.setFittingParaNameFromDialog("Set fitting parameter names (ex. a0,a1,.....)");
+            inp.setFittingParaNameFromDialog("Set fitting parameter names (ex. a0,a1,.....)\n");
         }
     }
     

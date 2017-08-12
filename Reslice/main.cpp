@@ -27,7 +27,8 @@ int main(int argc, const char * argv[]) {
     OCL_platform_device plat_dev_list(inp.getPlatDevList(),true);
     cout << endl;
     
-    /* Input directory settings*/
+    
+    // Input directory settings
     string buffer;
     buffer = output_flag("-ip", argc, argv);
     if (buffer.length()>0) {
@@ -36,7 +37,6 @@ int main(int argc, const char * argv[]) {
     if (inp.getInputDir().length()==0) {
         inp.setInputDirFromDialog("Set input mt raw file directory.\n");
     }
-    
     //processing energy No range
     buffer = output_flag("-enr", argc, argv);
     if (buffer.length()>0) {
@@ -47,15 +47,26 @@ int main(int argc, const char * argv[]) {
     if (buffer.length()>0) {
         inp.setFittingParaName(buffer);
     }
-    //Input processing energy range from dialog
-    if ((inp.getStartEnergyNo()==NAN)|(inp.getEndEnergyNo()==NAN)) {
-        inp.setEnergyNoRangeFromDialog("Set energy num range (ex. 1-100).\n");
+    
+    if ((inp.getStartEnergyNo()<0)|(inp.getEndEnergyNo()<0)) {
+		if (inp.getFittingParaName().size() == 0) {
+			//Input processing energy range from dialog
+			inp.setEnergyNoRangeFromDialog("Set energy num range (ex. 1-100).\n");
+			if ((inp.getStartEnergyNo() < 0) | (inp.getEndEnergyNo() < 0)) {
+				//Input processing parameter name from dialog
+				inp.setFittingParaNameFromDialog("Set fitting parameter names (ex. a0,a1,.....)\n");
+			}
+		}
     }
-    //Input processing parameter name from dialog
-    if ((inp.getStartEnergyNo()==NAN)|(inp.getEndEnergyNo()==NAN)) {
-        if (inp.getFittingParaName().size()==0) {
-            inp.setFittingParaNameFromDialog("Set fitting parameter names (ex. a0,a1,.....)");
-        }
+    
+
+    //processing angle No range
+    buffer = output_flag("-ar", argc, argv);
+    if (buffer.length()>0) {
+        inp.setAngleRange(buffer);
+    }
+    if ((inp.getStartAngleNo()<0)|(inp.getEndAngleNo()<0)) {
+        inp.setAngleRangeFromDialog("Set angle num range (ex. 1-1600).\n");
     }
     
     //check if input data exist
@@ -91,9 +102,7 @@ int main(int argc, const char * argv[]) {
     closedir(dir);
     //cout<<fileName_base;
     
-    
-    
-    /*output directory settings*/
+    //output directory settings
     buffer = output_flag("-op", argc, argv);
     if (buffer.length()>0) {
         inp.setOutputDir(buffer);
@@ -104,28 +113,10 @@ int main(int argc, const char * argv[]) {
     MKDIR(inp.getOutputDir().c_str());
     cout <<endl;
     
-    
-    
-    
-    
-    //processing angle No range
-    buffer = output_flag("-ar", argc, argv);
-    if (buffer.length()>0) {
-        inp.setAngleRange(buffer);
-    }
-    if ((inp.getStartAngleNo()==NAN)|(inp.getEndAngleNo()==NAN)) {
-        inp.setAngleRangeFromDialog("Set angle num range (ex. 1-1600).\n");
-    }
-    
-    //image baseup
-    if (inp.getBaseup()==NAN) {
-        inp.setBaseupFromDialog("Set baseup value of image.\n");
-    }
-    
+    inp.adjustLayerRange();
     
     time_t start,end;
     time(&start);
-    
     
     //reslice
     reslice_ocl(inp,plat_dev_list,fileName_base);

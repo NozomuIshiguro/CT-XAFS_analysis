@@ -13,10 +13,10 @@
 #include "imageReg.hpp"
 
 int OCL_device_list(vector<OCL_platform_device> *plat_dev_list);
-int readHisFile_stream(string filename, int startnum, int endnum, float *binImgf,size_t shift);
+int readRawFile(string filepath_input,float *binImgf, int startnum, int endnum);
 int outputRawFile_stream(string filename,float*data,size_t pnt_size);
 
-int imageRegistlation_2D_ocl(string fileName_base, input_parameter inp,
+int imageRegistlation_2D_ocl(input_parameter inp,
                              OCL_platform_device plat_dev_list, regMode regmode);
 
 

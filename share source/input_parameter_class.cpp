@@ -21,16 +21,6 @@ void input_parameter::setRegMode(string inp_str){
     iss >> regMode;
 }
 
-void input_parameter::setCntModeFromDialog(string message){
-    cout << message;
-    cin >> cntMode;
-}
-
-void input_parameter::setCntMode(string inp_str){
-    istringstream iss(inp_str);
-    iss >> cntMode;
-}
-
 string input_parameter::getPlatDevList(){
     return ocl_plat_dev_list;
 }
@@ -62,7 +52,18 @@ string input_parameter::getOutputFileBase(){
 }
 
 
+string input_parameter::getIniFilePath(){
+    return iniFilePath;
+}
 
+void input_parameter::setIniFilePathFromDialog(string message){
+    cout << message;
+    cin >> iniFilePath;
+}
+
+void input_parameter::setIniFilePath(string ini_path){
+    iniFilePath=ini_path;
+}
 
 void input_parameter::setOutputDirFromDialog(string message){
     cout << message;
@@ -154,10 +155,6 @@ int input_parameter::getRegMode(){
     return regMode;
 }
 
-int input_parameter::getCntMode(){
-    return cntMode;
-}
-
 
 int input_parameter::getNumTrial(){
     return num_trial;
@@ -183,14 +180,99 @@ int input_parameter::getNumParallel(){
     return numParallel;
 }
 
+int input_parameter::getScanN(){
+    return scanN;
+}
+
+int input_parameter::getMergeN(){
+    return mergeN;
+}
+
 void input_parameter::setNumParallel(int numParallel_inp){
     numParallel = numParallel_inp;
 }
 
-vector<float> input_parameter::getRegCnt_inipara(){
+vector<float> input_parameter::getReg_inipara(){
     
-    return regCnt_inipara;
+    return reg_inipara;
 }
+
+vector<float> input_parameter::getReg_fixpara() {
+
+	return reg_fixpara;
+}
+
+
+string input_parameter::getRawAngleFilePath(){
+    return rawAngleFilePath;
+}
+
+string input_parameter::getXAFSparameterFilePath(){
+    return XAFSparameterFilePath;
+}
+
+void input_parameter::setRawAngleFilePath(string filepath){
+    rawAngleFilePath=filepath;
+}
+
+void input_parameter::setXAFSparameterFilePath(string filepath){
+    XAFSparameterFilePath=filepath;
+}
+
+bool input_parameter::getSmootingEnable(){
+    return enableSmoothing;
+}
+
+int input_parameter::getImageSizeX(){
+    return imageSizeX;
+}
+
+int input_parameter::getImageSizeY(){
+    return imageSizeY;
+}
+
+int input_parameter::getImageSizeM(){
+    return imageSizeX*imageSizeY;
+}
+
+void input_parameter::setImageSizeX(int size){
+    imageSizeX = size;
+}
+
+void input_parameter::setImageSizeY(int size){
+    imageSizeY = size;
+}
+void input_parameter::adjustLayerRange(){
+    startLayer = min(max(startLayer,1),imageSizeY);
+    endLayer = min(max(startLayer,endLayer),imageSizeY);
+}
+
+void input_parameter::setReg_iniparaFromDialog(string message){
+    cout << message;
+    char *buffer;
+    buffer = new char[buffsize];
+    cin.getline(buffer, buffsize);
+    istringstream iss(buffer);
+    float b;
+    for (iss>>b; !iss.eof(); iss.ignore()>>b) {
+        reg_inipara.push_back(b);
+    }
+    reg_inipara.push_back(b);
+}
+
+void input_parameter::setReg_fixparaFromDialog(string message) {
+	cout << message;
+	char *buffer;
+	buffer = new char[buffsize];
+	cin.getline(buffer, buffsize);
+	istringstream iss(buffer);
+	float b;
+	for (iss >> b; !iss.eof(); iss.ignore() >> b) {
+		reg_fixpara.push_back(b);
+	}
+	reg_fixpara.push_back(b);
+}
+
 
 input_parameter::input_parameter(string inputfile_path){
     
@@ -198,12 +280,16 @@ input_parameter::input_parameter(string inputfile_path){
     data_input_dir="";
     data_output_dir="";
     output_filebase="";
-    startEnergyNo=NAN;
-    endEnergyNo=NAN;
-    startAngleNo=NAN;
-    endAngleNo=NAN;
-    targetEnergyNo=NAN;
-    targetAngleNo=NAN;
+    startEnergyNo=-1;
+    endEnergyNo=-1;
+    startAngleNo=-1;
+    endAngleNo=-1;
+    targetEnergyNo=-1;
+    targetAngleNo=-1;
+    mergeN=1;
+    
+    imageSizeX=2048;
+    imageSizeY=2048;
     
     input_parameter_mask();
     input_parameter_fitting();
@@ -213,11 +299,12 @@ input_parameter::input_parameter(string inputfile_path){
     lamda_t = 0.001f;
     
     regMode = 0;
-    cntMode = 0;
     imgRegOutput = true;
     
-    numParallel=NAN;
+    scanN=30;
+    enableSmoothing=false;
     
+    numParallel=-1;
     ifstream inp_ifs(inputfile_path,ios::in);
     if(inp_ifs) {
         cout<<"input file found."<<endl<<endl;
@@ -225,6 +312,9 @@ input_parameter::input_parameter(string inputfile_path){
 			char *buffer;
 			buffer = new char[buffsize];
             inp_ifs.getline(buffer, buffsize);
+            inputFromFile_mask(buffer,&inp_ifs);
+            inputFromFile_fitting(buffer,&inp_ifs);
+            inputFromFile_reslice(buffer,&inp_ifs);
             if((string)buffer=="#Open CL Platform & Device No"){
                 cout<<buffer<<endl;
                 inp_ifs.getline(buffer, buffsize);
@@ -234,8 +324,7 @@ input_parameter::input_parameter(string inputfile_path){
                 cout<<buffer<<endl;
                 inp_ifs>>numParallel;
                 cout<<"  "<<numParallel<<endl;
-            }
-                else if((string)buffer=="#Input directory path"){
+            }else if((string)buffer=="#Input directory path"){
                 cout<<buffer<<endl;
                 inp_ifs.getline(buffer, buffsize);
                 data_input_dir=buffer;
@@ -245,30 +334,16 @@ input_parameter::input_parameter(string inputfile_path){
                 inp_ifs.getline(buffer, buffsize);
                 data_output_dir=buffer;
                 cout<<"  "<<data_output_dir<<endl;
-            }else if((string)buffer=="#Output directory path for XANES fitting"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                fitting_output_dir=buffer;
-                cout<<"  "<<fitting_output_dir<<endl;
             }else if((string)buffer=="#Output file base name"){
                 cout<<buffer<<endl;
                 inp_ifs.getline(buffer, buffsize);
                 output_filebase=buffer;
                 cout<<"  "<<output_filebase<<endl;
-            }else if((string)buffer=="#Output file base name for XANES fitting"){
+            }else if((string)buffer=="#Initial transform parameter file path for image registration"){
                 cout<<buffer<<endl;
                 inp_ifs.getline(buffer, buffsize);
-                fitting_filebase=buffer;
-                cout<<"  "<<fitting_filebase<<endl;
-            }else if((string)buffer=="#Energy data file path"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                energyFilePath=buffer;
-                cout<<"  "<<energyFilePath<<endl;
-            }else if((string)buffer=="#E0"){
-                cout<<buffer<<endl;
-                inp_ifs>>E0;
-                cout<<"  "<<E0<<endl;
+                iniFilePath=buffer;
+                cout<<"  "<<iniFilePath<<endl;
             }else if((string)buffer=="#Reference energy number for image registration"){
                 cout<<buffer<<endl;
                 inp_ifs>>targetEnergyNo;
@@ -285,10 +360,6 @@ input_parameter::input_parameter(string inputfile_path){
                 cout<<buffer<<endl;
                 inp_ifs>>targetAngleNo; //use targetAngleNo as target loop No.
                 cout<<"  "<<targetAngleNo<<endl;
-            }else if((string)buffer=="#Energy range"){
-                cout<<buffer<<endl;
-                inp_ifs>>startEnergy; inp_ifs.ignore() >> endEnergy;
-                cout<<"  "<<startEnergy<<"-"<<endEnergy<<endl;
             }else if((string)buffer=="#Angle number range"){
                 cout<<buffer<<endl;
                 inp_ifs>>startAngleNo; inp_ifs.ignore() >> endAngleNo;
@@ -302,157 +373,10 @@ input_parameter::input_parameter(string inputfile_path){
                 cout<<buffer<<endl;
                 inp_ifs>>startEnergyNo; inp_ifs.ignore() >> endEnergyNo;
                 cout<<"  "<<startEnergyNo<<"-"<<endEnergyNo<<endl;
-            }else if((string)buffer=="#Fitting parameter name"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                istringstream iss(buffer);
-                cout<<"  ";
-                for (;!iss.eof();) {
-                    iss.get(buffer, buffsize,',');
-                    parameter_name.push_back(buffer);
-                    cout<<buffer;
-                    iss.ignore();
-                    if(iss.eof()) cout<<endl;
-                    else cout<<",";
-                }
-            }else if((string)buffer=="#Processing parameter name"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                istringstream iss(buffer);
-                cout<<"  ";
-                for (;!iss.eof();) {
-                    iss.get(buffer, buffsize,',');
-                    parameter_name.push_back(buffer);
-                    cout<<buffer;
-                    iss.ignore();
-                    if(iss.eof()) cout<<endl;
-                    else cout<<",";
-                }
-            }else if((string)buffer=="#Initial fitting parameter"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                istringstream iss(buffer);
-                float a;
-                cout<<"  ";
-                for (iss>>a; !iss.eof(); iss.ignore()>>a) {
-                    fitting_para.push_back(a);
-                    cout<<a<<",";
-                }
-                fitting_para.push_back(a);
-                cout<<a<<endl;
-            }else if((string)buffer=="#Free/fix parameter"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                istringstream iss(buffer);
-                char b;
-                cout<<"  ";
-                for (iss>>b; !iss.eof(); iss.ignore()>>b) {
-                    free_para.push_back(b);
-                    if(!iss.eof()) cout<<b<<",";
-                    else cout<<b;
-                }
-                
-                while (free_para.size()<fitting_para.size()) {
-                    free_para.push_back(1);
-                    cout<<","<<1;
-                }
-                cout<<endl;
-            }else if((string)buffer=="#Valid parameter lower limit"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-				istringstream iss(buffer);
-                float a;
-                cout<<"  ";
-                for (iss>>a; !iss.eof(); iss.ignore()>>a) {
-                    para_lowerLimit.push_back(a);
-                    cout<<a<<",";
-                }
-                para_lowerLimit.push_back(a);
-                cout<<a;
-                
-                while (para_lowerLimit.size()<fitting_para.size()) {
-					para_lowerLimit.push_back(-INFINITY);
-                    cout<<",-INF";
-                }
-                cout<<endl;
-            }else if((string)buffer=="#Valid parameter upper limit"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                istringstream iss(buffer);
-                float a;
-                cout<<"  ";
-                for (iss>>a; !iss.eof(); iss.ignore()>>a) {
-                    para_upperLimit.push_back(a);
-                    cout<<"  "<<a<<",";
-                }
-                para_upperLimit.push_back(a);
-                cout<<a;
-                
-                while (para_upperLimit.size()<fitting_para.size()) {
-                    para_upperLimit.push_back(INFINITY);
-                    cout<<",INF";
-                }
-                cout<<endl;
             }else if((string)buffer=="#Registration mode"){
                 cout<<buffer<<endl;
                 inp_ifs>>regMode;
                 cout<<"  "<<regMode<<endl;
-            }else if((string)buffer=="#Registration contrast mode"){
-                cout<<buffer<<endl;
-                inp_ifs>>cntMode;
-                cout<<"  "<<cntMode<<endl;
-            }else if((string)buffer=="#Reference mask shape"){
-                cout<<buffer<<endl;
-                inp_ifs>>refMask_shape;
-                cout<<"  "<<refMask_shape<<endl;
-            }else if((string)buffer=="#Reference mask center coordination"){
-                cout<<buffer<<endl;
-                inp_ifs>>refMask_x; inp_ifs.ignore() >> refMask_y;
-                cout<<"  "<<refMask_x<<"-"<<refMask_y<<endl;
-            }else if((string)buffer=="#Reference mask size"){
-                cout<<buffer<<endl;
-                inp_ifs>>refMask_width; inp_ifs.ignore() >> refMask_height;
-                cout<<"  "<<refMask_width<<"-"<<refMask_height<<endl;
-            }else if((string)buffer=="#Reference mask rotation angle"){
-                cout<<buffer<<endl;
-                inp_ifs>>refMask_angle;
-                cout<<"  "<<refMask_angle<<endl;
-            }else if((string)buffer=="#Sample mask shape"){
-                cout<<buffer<<endl;
-                inp_ifs>>sampleMask_shape;
-                cout<<"  "<<sampleMask_shape<<endl;
-            }else if((string)buffer=="#Sample mask center coordination"){
-                cout<<buffer<<endl;
-                inp_ifs>>sampleMask_x; inp_ifs.ignore() >> sampleMask_y;
-                cout<<"  "<<sampleMask_x<<"-"<<sampleMask_y<<endl;
-            }else if((string)buffer=="#Sample mask size"){
-                cout<<buffer<<endl;
-                inp_ifs>>sampleMask_width; inp_ifs.ignore() >> sampleMask_height;
-                cout<<"  "<<sampleMask_width<<"-"<<sampleMask_height<<endl;
-            }else if((string)buffer=="#Sample mask rotation angle"){
-                cout<<buffer<<endl;
-                inp_ifs>>sampleMask_angle;
-                cout<<"  "<<sampleMask_angle<<endl;
-            }else if((string)buffer=="#Image baseup"){
-                cout<<buffer<<endl;
-                inp_ifs>>baseup;
-                cout<<"  "<<baseup<<endl;
-            }else if((string)buffer=="#Z-correction"){
-                cout<<buffer<<endl;
-                inp_ifs>>Z_corr;
-                cout<<"  "<<baseup<<endl;
-            }else if((string)buffer=="#X-correction"){
-                cout<<buffer<<endl;
-                inp_ifs>>X_corr;
-                cout<<"  "<<baseup<<endl;
-            }else if((string)buffer=="#X range of correction evaluation"){
-                cout<<buffer<<endl;
-                inp_ifs>>startX; inp_ifs.ignore() >> endX;
-                cout<<"  "<<startX<<"-"<<endX<<endl;
-            }else if((string)buffer=="#Z range of correction evaluation"){
-                cout<<buffer<<endl;
-                inp_ifs>>startZ; inp_ifs.ignore() >> endZ;
-                cout<<"  "<<startZ<<"-"<<endZ<<endl;
             }else if((string)buffer=="#Number of trial for LM-optimization"){
                 cout<<buffer<<endl;
                 inp_ifs>>num_trial;
@@ -461,39 +385,79 @@ input_parameter::input_parameter(string inputfile_path){
                 cout<<buffer<<endl;
                 inp_ifs>>lamda_t;
                 cout<<"  "<<lamda_t<<endl;
-            }else if((string)buffer=="#Initial transform parameter for image Registration"){
+            }else if((string)buffer=="#Initial transform parameter for image registration"){
                 cout<<buffer<<endl;
                 inp_ifs.getline(buffer, buffsize);
                 istringstream iss(buffer);
                 float a;
                 cout<<"  ";
                 for (iss>>a; !iss.eof(); iss.ignore()>>a) {
-                    regCnt_inipara.push_back(a);
+                    reg_inipara.push_back(a);
                     cout<<a<<",";
                 }
-                regCnt_inipara.push_back(a);
+                reg_inipara.push_back(a);
                 cout<<a<<endl;
-            }else if((string)buffer=="#Target energy number for rotation center search"){
-                cout<<buffer<<endl;
-                inp_ifs>>layerN;
-                cout<<"  "<<layerN<<endl;
-            }else if((string)buffer=="#Start shift for rotation center search"){
-                cout<<buffer<<endl;
-                inp_ifs>>rotCenterShiftStart;
-                cout<<"  "<<rotCenterShiftStart<<endl;
-            }else if((string)buffer=="#Number of shift step for rotation center search"){
-                cout<<buffer<<endl;
-                inp_ifs>>rotCenterShiftN;
-                cout<<"  "<<rotCenterShiftN<<endl;
-            }else if((string)buffer=="#Shift step for rotation center search"){
-                cout<<buffer<<endl;
-                inp_ifs>>rotCenterShiftStep;
-                cout<<"  "<<rotCenterShiftStep<<endl;
-            }else if ((string)buffer == "#Target layer number for rotation center search") {
+            }else if ((string)buffer == "#Free/fix parameter for image registration") {
+				cout << buffer << endl;
+				inp_ifs.getline(buffer, buffsize);
+				istringstream iss(buffer);
+				float a;
+				cout << "  ";
+				for (iss >> a; !iss.eof(); iss.ignore() >> a) {
+					reg_fixpara.push_back(a);
+					cout << a << ",";
+				}
+				reg_fixpara.push_back(a);
+				cout << a << endl;
+			}
+			else if ((string)buffer == "#Number of scan for I0 and dark image") {
                 cout << buffer << endl;
-                inp_ifs >> layerN;
-                cout << "  " << layerN << endl;
+                inp_ifs >> scanN;
+                cout << "  " << scanN << endl;
+
+            }else if ((string)buffer == "#Number of scan for I0 and dark image") {
+                cout << buffer << endl;
+                inp_ifs >> scanN;
+                cout << "  " << scanN << endl;
+            }else if((string)buffer=="#Raw angle data file path"){
+                cout<<buffer<<endl;
+                inp_ifs.getline(buffer, buffsize);
+                rawAngleFilePath=buffer;
+                cout<<"  "<<rawAngleFilePath<<endl;
+            }else if((string)buffer=="#XAFS parameter file path"){
+                cout<<buffer<<endl;
+                inp_ifs.getline(buffer, buffsize);
+                XAFSparameterFilePath=buffer;
+                cout<<"  "<<XAFSparameterFilePath<<endl;
+            }else if((string)buffer=="#Output smoothed energy data file path"){
+                cout<<buffer<<endl;
+                inp_ifs.getline(buffer, buffsize);
+                energyFilePath=buffer;
+                cout<<"  "<<energyFilePath<<endl;
+            }else if((string)buffer=="#Enable/disable smoothing"){
+                cout<<buffer<<endl;
+                int a;
+                inp_ifs>>a;
+                if(a==1){
+                    enableSmoothing=true;
+                }else{
+                    enableSmoothing=false;
+                }
+            }else if((string)buffer=="#Number of scans for dark/I0 images"){
+                cout<<buffer<<endl;
+                inp_ifs>>scanN;
+                cout<<"  "<<scanN<<endl;
+            }else if((string)buffer=="#Image pixel size"){
+                cout<<buffer<<endl;
+                inp_ifs>>imageSizeX; inp_ifs.ignore() >> imageSizeY;
+                cout<<"  "<<imageSizeX<<"x"<<imageSizeY<<endl;
+                endLayer=imageSizeY;
+            }else if((string)buffer=="#Image binning size"){
+                cout<<buffer<<endl;
+                inp_ifs>>mergeN;
+                cout<<"  "<<mergeN<<endl;
             }
+            
         }
         inp_ifs.close();
     }

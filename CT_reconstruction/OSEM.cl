@@ -1,4 +1,6 @@
+﻿#ifndef PI
 #define PI 3.14159265358979323846
+#endif
 
 #ifndef IMAGESIZE_X
 #define IMAGESIZE_X 2048
@@ -6,6 +8,10 @@
 
 #ifndef IMAGESIZE_Y
 #define IMAGESIZE_Y 2048
+#endif
+
+#ifndef DEPTHSIZE
+#define DEPTHSIZE 2048
 #endif
 
 #ifndef IMAGESIZE_M
@@ -24,150 +30,75 @@
 #define SS 16
 #endif
 
-__constant sampler_t s_linear = CLK_FILTER_LINEAR|CLK_NORMALIZED_COORDS_FALSE|CLK_ADDRESS_CLAMP;
-__constant sampler_t s_nearest = CLK_FILTER_NEAREST|CLK_NORMALIZED_COORDS_FALSE|CLK_ADDRESS_CLAMP;
+extern __constant sampler_t s_linear;
+extern __constant sampler_t s_nearest;
 
+
+//projection of trial image and calculate ratio to projected image data
 __kernel void OSEM1(__read_only image2d_array_t reconst_img,
                     __read_only image2d_array_t prj_img, __write_only image2d_array_t rprj_img,
                     __constant float *angle, int sub){
     
-    const size_t local_ID = get_local_id(0);
-    const size_t localsize = get_local_size(0);
-    const size_t group_ID = get_group_id(0);
+    const int X = get_global_id(0);
+    const int Z = get_global_id(2);
+    const int th = sub + get_global_id(1)*SS;
     
-    float4 xy;
-    int4 X_th;
-    int X,Y;
-    float aprj, rprj, bprj, img;
-    
-    xy.z=group_ID;
-    
+    float4 xyz;
+    xyz.z=Z;
+    int4 XthZ= (int4)(X,th,Z,0);
+    int Y;
+    float prj=0.0f, rprj;
+    float angle_pr;
     //projection from assumed image & calculate ratio
-    for(int i=0;i<PRJ_IMAGESIZE/localsize;i++){
-        X=local_ID+i*localsize;
-        for(int th=sub;th<PRJ_ANGLESIZE;th+=SS){
-            aprj=0.0;
-            X_th = (int4)(X,th,group_ID,0);
-            for(int j=0; j<PRJ_IMAGESIZE; j++){
-                Y=j;
+    // reconst_img: lambda(k)
+    // prj_img:     y_i
+    // rprj_img:    y(k) = C x lambda(k) => y'(k) = y_i / y(k)
+    for(Y=0; Y < DEPTHSIZE; Y++){
+        angle_pr = angle[th]*PI/180;
+        xyz.x =  (X-PRJ_IMAGESIZE/2)*cos(angle_pr)+(Y-DEPTHSIZE/2)*sin(angle_pr) + IMAGESIZE_X/2;
+        xyz.y = -(X-PRJ_IMAGESIZE/2)*sin(angle_pr)+(Y-DEPTHSIZE/2)*cos(angle_pr) + IMAGESIZE_Y/2;
                 
-                xy.x =  (X-PRJ_IMAGESIZE/2)*cos(angle[th]*PI/180)+(Y-PRJ_IMAGESIZE/2)*sin(angle[th]*PI/180) + IMAGESIZE_X/2;
-                xy.y = -(X-PRJ_IMAGESIZE/2)*sin(angle[th]*PI/180)+(Y-PRJ_IMAGESIZE/2)*cos(angle[th]*PI/180) + IMAGESIZE_Y/2;
-                
-                aprj += read_imagef(reconst_img,s_linear,xy).x;
-            }
-            
-            rprj = read_imagef(prj_img,s_linear,X_th).x;
-            rprj = (aprj<0.0001) ? rprj:rprj/aprj;
-            write_imagef(rprj_img, X_th, (float4)(rprj,0,0,1.0));
-        }
+        prj += read_imagef(reconst_img,s_linear,xyz).x;
     }
+            
+    rprj = read_imagef(prj_img,s_linear,XthZ).x;
+    rprj = (prj<0.0001f) ? rprj:rprj/prj;
+    write_imagef(rprj_img, XthZ, (float4)(rprj,0.0f,0.0f,1.0f));
 }
 
+
+//back-projection of projection ratio
 __kernel void OSEM2(__read_only image2d_array_t reconst_img,
                     __write_only image2d_array_t reconst_dest_img,
                     __read_only image2d_array_t rprj_img,
                     __constant float *angle, int sub){
     
-    const size_t local_ID = get_local_id(0);
-    const size_t localsize = get_local_size(0);
-    const size_t group_ID = get_group_id(0);
+    const int X = get_global_id(0);
+    const int Y = get_global_id(1);
+    const int Z = get_global_id(2);
     
-    float4 X_th;
-    int X,Y;
-    float4 xy_f;
-    int4 xy_i;
-    float aprj, rprj, bprj;
+    float4 XthZ;
+    XthZ.z = Z;
+    float bprj=0.0f;
     float img;
     
-    X_th.z = group_ID;
-    
     //back projection from ratio
-    for(int i=0;i<IMAGESIZE_X/localsize;i++){
-        X=local_ID+i*localsize;
-        for(int j=0; j<IMAGESIZE_Y; j++){
-            Y=j;
-            xy_f = (float4)(X,Y,group_ID,0);
-            xy_i = (int4)(X,Y,group_ID,0);
-            bprj=0.0;
-            for(int th=sub;th<PRJ_ANGLESIZE;th+=SS){
-                X_th.x =  (X-IMAGESIZE_X/2)*cos(angle[th]*PI/180)-(Y-IMAGESIZE_Y/2)*sin(angle[th]*PI/180) + PRJ_IMAGESIZE/2;
-                X_th.y = th;
+    // reconst_img:         lambda(k)
+    // rprj_img:            y'(k)
+    // bprj:                lambda' = y'(k) x C_pinv
+    // reconst_dest_img:    lambda(k+1) = lambda' x lambda(k)
+    float4 xyz_f = (float4)(X,Y,Z,0.0f);
+    int4 xyz_i = (int4)(X,Y,Z,0);
+    float angle_pr;
+    for(int th=sub;th<PRJ_ANGLESIZE;th+=SS){
+        angle_pr = angle[th]*PI/180;
+        XthZ.x =  (X-IMAGESIZE_X/2)*cos(angle_pr)-(Y-IMAGESIZE_Y/2)*sin(angle_pr) + PRJ_IMAGESIZE/2;
+        XthZ.y = th;
                 
-                bprj += read_imagef(rprj_img,s_nearest,X_th).x;
-            }
-            
-            //update assumed img
-            img = read_imagef(reconst_img,s_nearest,xy_f).x*bprj*SS/PRJ_ANGLESIZE;
-            write_imagef(reconst_dest_img, xy_i, (float4)(img,0,0,1.0));
-        }
+        bprj += read_imagef(rprj_img,s_nearest,XthZ).x;
     }
-}
-
-__kernel void OSEM3(__write_only image2d_array_t reconst_img,
-                    __read_only image2d_array_t reconst_dest_img){
-    
-    const size_t local_ID = get_local_id(0);
-    const size_t localsize = get_local_size(0);
-    const size_t group_ID = get_group_id(0);
-    
-    int X,Y;
-    float4 xy_f;
-    int4 xy_i;
-    float4 img;
-    
-    
-    //back projection from ratio
-    for(int i=0;i<IMAGESIZE_X/localsize;i++){
-        X=local_ID+i*localsize;
-        for(int j=0; j<IMAGESIZE_Y; j++){
-            Y=j;
-            xy_f = (float4)(X,Y,group_ID,0);
-            xy_i = (int4)(X,Y,group_ID,0);
             
-            //update assumed img
-            img = read_imagef(reconst_dest_img,s_nearest,xy_f);
-            write_imagef(reconst_img, xy_i, img);
-        }
-    }
-}
-
-__kernel void sinogramCorrection(__read_only image2d_array_t prj_img_src, __write_only image2d_array_t prj_img_dst, __constant float *angle, int mode){
-    
-    const size_t local_ID = get_local_id(0);
-    const size_t localsize = get_local_size(0);
-    const size_t group_ID = get_group_id(0);
-    
-    int X,Y;
-    float4 xy_f;
-    int4 xy_i;
-    float4 img;
-    
-    for(int i=0;i<IMAGESIZE_X/localsize;i++){
-        X=local_ID+i*localsize;
-        for(int j=0; j<PRJ_ANGLESIZE; j++){
-            Y=j;
-            xy_f = (float4)(X,Y,group_ID,0);
-            xy_i = (int4)(X,Y,group_ID,0);
-            
-            //update assumed img
-            img = read_imagef(prj_img_src,s_nearest,xy_f);
-            float theta = 2.0f*fabs((float)X-IMAGESIZE_X/2.0f)/IMAGESIZE_X;
-            switch(mode){
-                case 3: //intensity correction for x + theta
-                    img.x *= cos(asin(theta))*cos(angle[Y]/180*PI);
-                    break;
-                case 2: //intensity correction for theta
-                    img.x *= cos(angle[Y]/180*PI);
-                    break;
-                case 1: //intensity correction for x
-                    img.x *= cos(asin(theta));
-                    break;
-                default:
-                    break;
-            }
-            write_imagef(prj_img_dst, xy_i, img);
-        }
-    }
-    
+    //update assumed img
+    img = read_imagef(reconst_img,s_nearest,xyz_f).x*bprj*SS/PRJ_ANGLESIZE;
+    write_imagef(reconst_dest_img, xyz_i, (float4)(img,0.0f,0.0f,1.0f));
 }

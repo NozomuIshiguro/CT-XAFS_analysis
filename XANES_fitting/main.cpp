@@ -1,4 +1,4 @@
-//
+﻿//
 //  main.cpp
 //  XANES_fitting
 //
@@ -7,7 +7,6 @@
 //
 
 #include "XANES_fitting.hpp"
-#include "atan_lor_linear_fitting.hpp"
 
 mutex m1,m2;
 vector<thread> input_th,fitting_th, output_th_fit;
@@ -28,7 +27,6 @@ int main(int argc, const char * argv[]) {
     OCL_platform_device plat_dev_list(inp.getPlatDevList(),true);
     cout << endl;
     
-    
     // Input directory settings
     string buffer;
     buffer = output_flag("-ip", argc, argv);
@@ -36,11 +34,10 @@ int main(int argc, const char * argv[]) {
         inp.setInputDir(buffer);
     }
     if (inp.getInputDir().length()==0) {
-        inp.setInputDirFromDialog("Set input mt raw file directory.");
+        inp.setInputDirFromDialog("Set input mt raw file directory.\n");
     }
     string fileName_base = inp.getInputDir();
     fileName_base += "/001";
-    
     DIR *dir;
     struct dirent *dp;
     dir=opendir(fileName_base.c_str());
@@ -76,9 +73,10 @@ int main(int argc, const char * argv[]) {
     }
     if (inp.getFittingOutputDir().length()==0) {
         if (inp.getOutputDir().length() == 0) {
-            inp.setFittingOutputDirFromDialog("Set output file directory.");
+            inp.setFittingOutputDirFromDialog("Set output file directory.\n");
         }
     }
+	//cout << inp.getFittingOutputDir() << endl;
     MKDIR(inp.getFittingOutputDir().c_str());
     cout <<endl;
     
@@ -89,7 +87,7 @@ int main(int argc, const char * argv[]) {
         inp.setEnergyFilePath(buffer);
     }
     if (inp.getEnergyFilePath().length()==0) {
-        inp.setEnergyFilePathFromDialog("Set energy file path.");
+        inp.setEnergyFilePathFromDialog("Set energy file path.\n");
     }
     ifstream energy_ifs(inp.getEnergyFilePath(),ios::in);
     if(!energy_ifs) {
@@ -104,7 +102,7 @@ int main(int argc, const char * argv[]) {
         inp.setE0(buffer);
     }
     if (inp.getE0()==NAN) {
-        inp.setE0FromDialog("Set E0 /eV (ex. 11559).");
+        inp.setE0FromDialog("Set E0 /eV (ex. 11559).\n");
     }else{
         cout << "E0 = ";
         cout << inp.getE0()<<" eV."<<endl;
@@ -118,7 +116,7 @@ int main(int argc, const char * argv[]) {
         inp.setEnergyRange(buffer);
     }
     if ((inp.getStartEnergy()==NAN)|(inp.getEndEnergy()==NAN)) {
-        inp.setEnergyRangeFromDialog("Set fitting energy range /eV (ex. 11540.0-11600.0).");
+        inp.setEnergyRangeFromDialog("Set fitting energy range /eV (ex. 11540.0-11600.0).\n");
     }
     cout<<endl;
     
@@ -128,8 +126,8 @@ int main(int argc, const char * argv[]) {
     if (buffer.length()>0) {
         inp.setAngleRange(buffer);
     }
-    if ((inp.getStartAngleNo()==NAN)|(inp.getEndAngleNo()==NAN)) {
-        inp.setAngleRangeFromDialog("Set angle num range (ex. 1-1600).");
+    if ((inp.getStartAngleNo()<0)|(inp.getEndAngleNo()<0)) {
+        inp.setAngleRangeFromDialog("Set angle num range (ex. 1-1600)\n.");
     }
     cout <<endl;
     
@@ -140,7 +138,7 @@ int main(int argc, const char * argv[]) {
         inp.setFittingPara(buffer);
     }
     if (inp.getFittingPara().size()==0) {
-        inp.setFittingParaFromDialog("Set Initial fitting parameters (ex. 1.1,0.2,.....)");
+        inp.setFittingParaFromDialog("Set Initial fitting parameters (ex. 1.1,0.2,.....)\n");
         cout<<endl;
     }
     
@@ -151,7 +149,7 @@ int main(int argc, const char * argv[]) {
         inp.setFreeFixPara(buffer);
     }
     if (inp.getFreeFixPara().size()==0) {
-        inp.setFreeFixParaFromDialog("Set Free(1)/Fix(0) of fitting parameters (ex. 1,1,0,.....)");
+        inp.setFreeFixParaFromDialog("Set Free(1)/Fix(0) of fitting parameters (ex. 1,1,0,.....)\n");
         cout<<endl;
     }
     
@@ -162,10 +160,10 @@ int main(int argc, const char * argv[]) {
         inp.setValidParaLimit(buffer);
     }
     if (inp.getFreeFixPara().size()==0) {
-        inp.setValidParaLowerLimitFromDialog("Set valid parameter lower limit (ex. 0,-1.0,0,.....)");
+        inp.setValidParaLowerLimitFromDialog("Set valid parameter lower limit (ex. 0,-1.0,0,.....)\n");
         cout<<endl;
         
-        inp.setValidParaLowerLimitFromDialog("Set valid parameter upper limit (ex. 1.0,1.0,10.0,.....)");
+        inp.setValidParaLowerLimitFromDialog("Set valid parameter upper limit (ex. 1.0,1.0,10.0,.....)\n");
         cout<<endl;
     }
     
@@ -176,11 +174,10 @@ int main(int argc, const char * argv[]) {
         inp.setFittingParaName(buffer);
     }
     if (inp.getFittingParaName().size()==0) {
-        inp.setFittingParaNameFromDialog("Set fitting parameter names (ex. a0,a1,.....)");
+        inp.setFittingParaNameFromDialog("Set fitting parameter names (ex. a0,a1,.....)\n");
     }
     
-    fitting_eq fiteq(inp, atanlorlinear_preprocessor1,atanlorlinear_preprocessor2);
-    
+    fitting_eq fiteq(inp);
     
     time_t start,end;
     time(&start);

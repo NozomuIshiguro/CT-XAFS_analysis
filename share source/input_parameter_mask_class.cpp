@@ -69,17 +69,17 @@ input_parameter_mask::input_parameter_mask(){
     
     
     refMask_shape=-1;
-    refMask_x=IMAGE_SIZE_X/2;
-    refMask_y=IMAGE_SIZE_Y/2;
-    refMask_width=IMAGE_SIZE_X;
-    refMask_height=IMAGE_SIZE_Y;
+    refMask_x=1024;
+    refMask_y=1024;
+    refMask_width=2048;
+    refMask_height=2048;
     refMask_angle=0.0f;
     
     sampleMask_shape=-1;
-    sampleMask_x=IMAGE_SIZE_X/2;
-    sampleMask_y=IMAGE_SIZE_Y/2;
-    sampleMask_width=IMAGE_SIZE_X;
-    sampleMask_height=IMAGE_SIZE_Y;
+    sampleMask_x=1024;
+    sampleMask_y=1024;
+    sampleMask_width=2048;
+    sampleMask_height=2048;
     sampleMask_angle=0.0f;
 
 }
@@ -95,40 +95,44 @@ input_parameter_mask::input_parameter_mask(string inputfile_path){
             char *buffer;
             buffer = new char[buffsize];
             inp_ifs.getline(buffer, buffsize);
-            if((string)buffer=="#Reference mask shape"){
-                cout<<buffer<<endl;
-                inp_ifs>>refMask_shape;
-                cout<<"  "<<refMask_shape<<endl;
-            }else if((string)buffer=="#Reference mask center coordination"){
-                cout<<buffer<<endl;
-                inp_ifs>>refMask_x; inp_ifs.ignore() >> refMask_y;
-                cout<<"  "<<refMask_x<<"-"<<refMask_y<<endl;
-            }else if((string)buffer=="#Reference mask size"){
-                cout<<buffer<<endl;
-                inp_ifs>>refMask_width; inp_ifs.ignore() >> refMask_height;
-                cout<<"  "<<refMask_width<<"-"<<refMask_height<<endl;
-            }else if((string)buffer=="#Reference mask rotation angle"){
-                cout<<buffer<<endl;
-                inp_ifs>>refMask_angle;
-                cout<<"  "<<refMask_angle<<endl;
-            }else if((string)buffer=="#Sample mask shape"){
-                cout<<buffer<<endl;
-                inp_ifs>>sampleMask_shape;
-                cout<<"  "<<sampleMask_shape<<endl;
-            }else if((string)buffer=="#Sample mask center coordination"){
-                cout<<buffer<<endl;
-                inp_ifs>>sampleMask_x; inp_ifs.ignore() >> sampleMask_y;
-                cout<<"  "<<sampleMask_x<<"-"<<sampleMask_y<<endl;
-            }else if((string)buffer=="#Sample mask size"){
-                cout<<buffer<<endl;
-                inp_ifs>>sampleMask_width; inp_ifs.ignore() >> sampleMask_height;
-                cout<<"  "<<sampleMask_width<<"-"<<sampleMask_height<<endl;
-            }else if((string)buffer=="#Sample mask rotation angle"){
-                cout<<buffer<<endl;
-                inp_ifs>>sampleMask_angle;
-                cout<<"  "<<sampleMask_angle<<endl;
-            }
+            inputFromFile_mask(buffer,&inp_ifs);
         }
         inp_ifs.close();
+    }
+}
+
+void input_parameter_mask::inputFromFile_mask(char* buffer,ifstream *inp_ifs){
+    if((string)buffer=="#Reference mask shape"){
+        cout<<buffer<<endl;
+        *inp_ifs>>refMask_shape;
+        cout<<"  "<<refMask_shape<<endl;
+    }else if((string)buffer=="#Reference mask center coordination"){
+        cout<<buffer<<endl;
+        *inp_ifs>>refMask_x; (*inp_ifs).ignore() >> refMask_y;
+        cout<<"  "<<refMask_x<<","<<refMask_y<<endl;
+    }else if((string)buffer=="#Reference mask size"){
+        cout<<buffer<<endl;
+        *inp_ifs>>refMask_width; (*inp_ifs).ignore() >> refMask_height;
+        cout<<"  "<<refMask_width<<","<<refMask_height<<endl;
+    }else if((string)buffer=="#Reference mask rotation angle"){
+        cout<<buffer<<endl;
+        *inp_ifs>>refMask_angle;
+        cout<<"  "<<refMask_angle<<endl;
+    }else if((string)buffer=="#Sample mask shape"){
+        cout<<buffer<<endl;
+        *inp_ifs>>sampleMask_shape;
+        cout<<"  "<<sampleMask_shape<<endl;
+    }else if((string)buffer=="#Sample mask center coordination"){
+        cout<<buffer<<endl;
+        *inp_ifs>>sampleMask_x; (*inp_ifs).ignore() >> sampleMask_y;
+        cout<<"  "<<sampleMask_x<<","<<sampleMask_y<<endl;
+    }else if((string)buffer=="#Sample mask size"){
+        cout<<buffer<<endl;
+        *inp_ifs>>sampleMask_width; (*inp_ifs).ignore() >> sampleMask_height;
+        cout<<"  "<<sampleMask_width<<","<<sampleMask_height<<endl;
+    }else if((string)buffer=="#Sample mask rotation angle"){
+        cout<<buffer<<endl;
+        *inp_ifs>>sampleMask_angle;
+        cout<<"  "<<sampleMask_angle<<endl;
     }
 }

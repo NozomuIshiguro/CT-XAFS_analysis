@@ -21,6 +21,8 @@ static int dummy() {
 	return 0;
 }
 
+
+//フィッティングパラメータ毎に実行
 int reslice_CTreconst_execute(OCL_platform_device plat_dev_list,
                               vector<cl::Kernel>kernels_reslice,
                               vector<vector<cl::Kernel>>kernels_reconst,
@@ -34,7 +36,7 @@ int reslice_CTreconst_execute(OCL_platform_device plat_dev_list,
     int endAngleNo   = inp.getEndAngleNo();
     
     //input raw mt/fit files
-    cout << "Input data of " << subDir_str << "...";
+    cout << "Input data of " << subDir_str << "..."<<endl<<endl;
     vector<float*> mt_img_vec;
     for (int i=0; i<num_angle; i++) {
         mt_img_vec.push_back(new float[IMAGE_SIZE_M]);
@@ -56,7 +58,7 @@ int reslice_CTreconst_execute(OCL_platform_device plat_dev_list,
     
     //reslice
 	//plat_dev_list.queue(0, 0).finish();
-    cout << "Reslicing data of " << subDir_str << "...";
+    cout << "Reslicing data of " << subDir_str << "..."<<endl<<endl;
     vector<float*> prj_img_vec;
     for (int i=0; i<IMAGE_SIZE_Y; i++) {
         prj_img_vec.push_back(new float[IMAGE_SIZE_X*num_angle]);
@@ -79,16 +81,16 @@ int reslice_CTreconst_execute(OCL_platform_device plat_dev_list,
 	MKDIR(g_d2.c_str());
     //reconstruction
     cout << "Reconstructing CT images of "<<subDir_str<<"..."<<endl << endl;
-    for (int N = g_st-1; N < g_st-1 + g_num;) {
+    for (int N = g_st; N < g_st + g_num;) {
         for (int j=0; j<plat_dev_list.contextsize(); j++) {
             if (reconst_th[j].joinable()) {
 				reconst_th[j].join();
                 int startN = N;
-                int endN = min(N+dN[j],g_st-2 + g_num);
+                int endN = min(N+dN[j]-1,g_st-2 + g_num);
                 vector<float*> reconst_img_vec;
                 for (int i=0; i<endN-startN+1; i++) {
                     reconst_img_vec.push_back(new float[IMAGE_SIZE_M]);
-					first_image(g_f4, reconst_img_vec[i], g_nx*g_nx);
+					first_image(g_f4, reconst_img_vec[i], g_ox*g_ox);
                 }
                 switch (g_mode){
                     case 1: //add (加算型) algebraic reconstruction technique 法
@@ -111,14 +113,14 @@ int reslice_CTreconst_execute(OCL_platform_device plat_dev_list,
                     case 6:  //ordered subset EM (OS-EM)法
 						reconst_th[j] = thread(OSEM_thread,plat_dev_list.queue(j,0),kernels_reconst[j],angle_buffers[j],sub,move(reconst_img_vec), prj_img_vec,startN, endN, g_it, j);
                         break;
-                    case 7: //filter back-projection法
+                    case 7: //filter back-projection (FBP)法 
 						reconst_th[j] = thread(FBP_thread,plat_dev_list.queue(j,0),kernels_reconst[j],angle_buffers[j],move(reconst_img_vec),prj_img_vec,startN, endN, j);
                         break;
                     default:
                         break;
                 }
                 N+=dN[j];
-                if (N >= g_st-1 + g_num) break;
+                if (N >= g_st + g_num) break;
                 
             } else this_thread::sleep_for(chrono::seconds(1));
         }
@@ -141,7 +143,8 @@ int reslice_CTreconst_ocl(input_parameter inp,string fileName_base, float *ang){
     
     //program build (mt conversion, reslice)
     vector<cl::Kernel> kernels_reslice;
-    reslice_programBuild(plat_dev_list.context(0),&kernels_reslice,inp.getStartAngleNo(),inp.getEndAngleNo());//reslice:2,xprojection:3,zcorrection:4
+    reslice_programBuild(plat_dev_list.context(0),&kernels_reslice,inp.getStartAngleNo(),inp.getEndAngleNo(),inp);
+    //reslice:2,xprojection:3,zcorrection:4
     //0:reslice, 1:xProjection, 2:zCorrection
     
     //program build (reconst)
@@ -151,16 +154,16 @@ int reslice_CTreconst_ocl(input_parameter inp,string fileName_base, float *ang){
         vector<cl::Kernel> kernels_plat;
         switch (g_mode){
             case 1: //add (加算型) algebraic reconstruction technique 法
-                //AART(g_img, g_prj, g_px, g_pa, g_nx, g_ang, g_it, N, g_wt1);
+                AART_programBuild(plat_dev_list.context(i), &kernels_plat);
                 break;
             case 2: //multiply (乗算型) algebraic reconstruction technique 法
                 OSEM_programBuild(plat_dev_list.context(i), &kernels_plat);//OSEM1:0,OSEM2:1,:2
                 break;
             case 3: //add (加算型) simultaneous reconstruction technique 法
-                //ASIRT(g_img, g_prj, g_px, g_pa, g_nx, g_ang, g_it, N, g_wt2);
+                AART_programBuild(plat_dev_list.context(i), &kernels_plat);
                 break;
             case 4: //multiply(乗算型) simultaneous reconstruction technique 法
-                //MSIRT(g_img, g_prj, g_px, g_pa, g_nx, g_ang, g_it, N);
+                OSEM_programBuild(plat_dev_list.context(i), &kernels_plat);
                 break;
             case 5: //maximum likelihood-expection maximumization (ML-EM)法
                 OSEM_programBuild(plat_dev_list.context(i), &kernels_plat);//OSEM1:0,OSEM2:1,:2
@@ -170,6 +173,10 @@ int reslice_CTreconst_ocl(input_parameter inp,string fileName_base, float *ang){
                 break;
             case 7: //filter back-projection法
                 FBP_programBuild(plat_dev_list.context(i), &kernels_plat);
+                break;
+            case 8: //filter back-projection法
+                FBP_programBuild(plat_dev_list.context(i), &kernels_plat);
+                OSEM_programBuild(plat_dev_list.context(i), &kernels_plat);//OSEM1:0,OSEM2:1,:2
                 break;
             default:
                 break;
@@ -210,16 +217,17 @@ int reslice_CTreconst_ocl(input_parameter inp,string fileName_base, float *ang){
 	int ss = 0;
 	switch (g_mode) {
 	case 1: //add (加算型) algebraic reconstruction technique 法
-		break;
+		cout << "Processing by AART method" << endl << endl;
+        break;
 	case 2: //multiply (乗算型) algebraic reconstruction technique 法												  
-		cout << "Processing by M-ART method" << endl << endl;
+		cout << "Processing by MART method" << endl << endl;
 		ss = g_pa; //OS-EMのg_ss=g_paと同等
 		break;
 	case 3: //add (加算型) simultaneous reconstruction technique 法
-			//ASIRT(g_img, g_prj, g_px, g_pa, g_nx, g_ang, g_it, N, g_wt2);
+		cout << "Processing by ASIRT method" << endl << endl;
 		break;
 	case 4: //multiply(乗算型) simultaneous reconstruction technique 法
-			//MSIRT(g_img, g_prj, g_px, g_pa, g_nx, g_ang, g_it, N);
+		cout << "Processing by MSIRT method" << endl << endl;
 		break;
 	case 5: //maximum likelihood-expection maximumization (ML-EM)法
 		cout << "Processing by ML-EM method" << endl << endl;													  
@@ -229,9 +237,12 @@ int reslice_CTreconst_ocl(input_parameter inp,string fileName_base, float *ang){
 		cout << "Processing by OS-EM method" << endl << endl;
 		ss = g_ss;
 		break;
-	case 7: //filter back-projection法
+	case 7: //filtered back-projection法
 		cout << "Processing by FBP method" << endl << endl;
 		break;
+    case 8: //FBP-OS-EM hybrid法
+        cout << "Processing by FBP-OS-EM hybrid method" << endl << endl;
+        break;
 	default:
 		break;
 	}
@@ -269,14 +280,16 @@ int reslice_CTreconst_ocl(input_parameter inp,string fileName_base, float *ang){
         int startEnergyNo=inp.getStartEnergyNo();
         int endEnergyNo=inp.getEndEnergyNo();
         for (int i=startEnergyNo; i<=endEnergyNo;i++) {
-            reslice_CTreconst_execute(plat_dev_list,kernels_reslice,kernels_reconst,angle_buffers,sub,inp,EnumTagString(i,"",""),fileName_base,dN);
+            reslice_CTreconst_execute(plat_dev_list,kernels_reslice,kernels_reconst,
+                                      angle_buffers,sub,inp,EnumTagString(i,"",""),fileName_base,dN);
 		}
     }
     // fitting 名前ごとに実行
     else if (inp.getFittingParaName().size()>0) {
         for (int i=0; i<inp.getFittingParaName().size();i++) {
             string paraname = inp.getFittingParaName()[i];
-            reslice_CTreconst_execute(plat_dev_list,kernels_reslice,kernels_reconst,angle_buffers,sub,inp,paraname,fileName_base,dN);
+            reslice_CTreconst_execute(plat_dev_list,kernels_reslice,kernels_reconst,
+                                      angle_buffers,sub,inp,paraname,fileName_base,dN);
 		}
     }
 

@@ -30,195 +30,198 @@ float* fitting_eq::fit_para(){
     return fitting_para;
 }
 
+float* fitting_eq::lowerLimit(){
+    
+    return para_lowerlimit;
+}
+
+float* fitting_eq::upperLimit(){
+    
+    return para_upperlimit;
+}
+
+float* fitting_eq::paraAttenuator() {
+
+	return paraAtten;
+}
+
 char* fitting_eq::freefix_para(){
     
     return free_para;
 }
 
-fitting_eq::fitting_eq(input_parameter inp, string OCL_preprocessor1,string OCL_preprocessor2){
-    param_size = inp.getFittingPara().size();
+void fitting_eq::setInitialParameter(vector<float> iniPara){
+    
+    for (int i=0; i<param_size; i++) {
+        fitting_para[i]=iniPara[i];
+    }
+}
+
+void fitting_eq::setFreeFixParameter(vector<char> freefixPara){
+    for (int i=0; i<param_size; i++) {
+        free_para[i]=freefixPara[i];
+    }
+}
+
+
+void fitting_eq::setFittingEquation(vector<string> fittingFuncList){
+    //input function mode list
+    numFunc = (int)(fittingFuncList.size());
+    param_size = 0;
+    for (int i=0; i<numFunc; i++) {
+        if(fittingFuncList[i]=="line"){
+            funcmode.push_back(0);
+            param_size += 2;
+        }else if(fittingFuncList[i]=="Gaussian"){
+            funcmode.push_back(1);
+            param_size += 3;
+        }else if(fittingFuncList[i]=="Lorentzian"){
+            funcmode.push_back(2);
+            param_size += 3;
+        }else if(fittingFuncList[i]=="atanE"){
+            funcmode.push_back(3);
+            param_size += 3;
+        }else if(fittingFuncList[i]=="erfE"){
+            funcmode.push_back(4);
+            param_size += 3;
+        }else if(fittingFuncList[i]=="stdXANES"){
+            funcmode.push_back(5);
+            param_size += 2;
+        }else if(fittingFuncList[i]=="Victoreen"){
+            funcmode.push_back(6);
+            param_size += 4;
+        }else if(fittingFuncList[i]=="McMaster"){
+            funcmode.push_back(7);
+            param_size += 3;
+        }else if(fittingFuncList[i]=="3rdPolynomical"){
+            funcmode.push_back(8);
+            param_size += 4;
+        }
+    }
+    
     fitting_para = new float[param_size];
     free_para = new char[param_size];
     para_lowerlimit = new float[param_size];
     para_upperlimit = new float[param_size];
+    paraAtten = new float[param_size];
+  
+}
+
+
+fitting_eq::fitting_eq(){
+    numLCF=0;
+    param_size=0;
+    numFunc=0;
+}
+
+fitting_eq::fitting_eq(input_parameter inp){
+    //input function mode list
+    setFittingEquation(inp.funcNameList);
+    //param_size = inp.numParameter;//getFittingPara().size();
+
     free_param_size=0;
     for (int i=0; i<param_size; i++) {
         fitting_para[i] = inp.getFittingPara()[i];
-        free_para[i] = inp.getFreeFixPara()[i];
+        free_para[i] = (inp.getFreeFixPara()[i]) ? '1':'0';
         para_lowerlimit[i]= inp.getParaLowerLimit()[i];
         para_upperlimit[i]=inp.getParaUpperLimit()[i];
-        char buffer=inp.getFreeFixPara()[i];
-        if (atoi(&buffer)==1) {
+		if (inp.getParaAttenuator().size() != 0) {
+			paraAtten[i] = inp.getParaAttenuator()[i];
+		}
+        if (inp.getFreeFixPara()[i]) {
             free_param_size++;
         }
         //cout<<free_param_size<<endl;
     }
-    kernel_preprocessor_str1 = OCL_preprocessor1;
-    kernel_preprocessor_str2 = OCL_preprocessor2;
     parameter_name = inp.getFittingParaName();
+	//cout << free_param_size << endl;
     
-    freefitting_para = new float[free_param_size];
+	freefitting_para = new float[free_param_size];
 	freepara_lowerlimit = new float[free_param_size];
 	freepara_upperlimit = new float[free_param_size];
+
     int t=0;
     for (int i=0; i<param_size; i++) {
-        char buffer=free_para[i];
+        //char buffer=free_para[i];
 		//cout << buffer << endl;
 		//cout << atoi(&buffer) << endl;
-        if(atoi(&buffer)==1) {
+        //if(atoi(&buffer)==1) {
+		if (free_para[i] == '1') {
             freefitting_para[t]=fitting_para[i];
             freepara_lowerlimit[t]=para_lowerlimit[i];
             freepara_upperlimit[t]=para_upperlimit[i];
 			t++;
         }
     }
-}
-
-fitting_eq::fitting_eq(string OCL_preprocessor1,string OCL_preprocessor2){
-
-    kernel_preprocessor_str1 = OCL_preprocessor1;
-    kernel_preprocessor_str2 = OCL_preprocessor2;
-
-}
-
-
-string fitting_eq::preprocessor_str(){
     
-    //初期値を文字列ベクトルにする。置換する パラメータ（固定するパラメータ）として使用
-    vector<string> replaced_str;
     for (int i=0; i<param_size; i++) {
-        ostringstream OSS2;
-        OSS2<<fitting_para[i];
-        replaced_str.push_back(OSS2.str());
-        OSS2.flush();
-		//cout << replaced_str[i] << endl;
-    }
-    
-
-	//ターゲットとなる文字列("((float*)(fp))[i]")を文字列ベクトルにする
-    vector<string> target_str;
-    for (int i=0; i<param_size; i++) {
-        ostringstream OSS2;
-        OSS2<<"((float*)(fp))["<<i<<"]";
-        target_str.push_back(OSS2.str());
-        OSS2.flush();
-        //cout << target_str[i] << endl;
-    }
-    string fit_jacobian_str1=kernel_preprocessor_str1;
-    int t=0;
-    for (int i=0; i+t<param_size;) {
-        //cout << (int)free_para[i + t] << endl;
-        if ((int)free_para[i + t] == (int)'0'){
-            //固定するtarget_str[i]="((float*)(fp))[i]"をreplaced_str[i+t](初期値)に置換
-            //cout << i + t << endl;
-            for (size_t a=fit_jacobian_str1.find(target_str[i],0);
-                 a!=string::npos;
-                 a = fit_jacobian_str1.find(target_str[i],a)) {
-                
-                fit_jacobian_str1.replace(a, target_str[i].length(), replaced_str[i+t]);
-            }
-            //cout << fit_jacobian_str << endl;
-            
-            //　j>iのtarget_str[j]="((float*)(fp))[j]"をtarget_str[j-1]="((float*)(fp))[j]" に置換
-            for (int j=i+1; j+t<param_size; j++) {
-                for (size_t a=fit_jacobian_str1.find(target_str[j],0);
-                     a!=string::npos;
-                     a=fit_jacobian_str1.find(target_str[j],a)) {
-                    
-                    fit_jacobian_str1.replace(a, target_str[j].length(), target_str[j-1]);
-                }
-            }
-            //cout << fit_jacobian_str << endl;
-            t++;
-        }
-        else{
-            i++;
+        //char buffer=free_para[i];
+		//cout << para_lowerlimit[i] << "," << para_upperlimit[i] << endl;
+		//cout << isnan(para_lowerlimit[i]) << "," << isnan(para_upperlimit[i]) << endl;
+        //bool b1 = (atoi(&buffer)==1);
+		bool b1 = (free_para[i] == '1');
+		bool b2 = (isnan(para_lowerlimit[i])==0);
+        bool b3 = (isinf(para_lowerlimit[i])==0);
+        bool b4 = (isnan(para_upperlimit[i])==0);
+        bool b5 = (isinf(para_upperlimit[i])==0);
+        if(b1 && b2 && b3) {
+            vector<float> Cm(param_size,0.0f);
+            Cm[i]=-1.0f;
+            C_matrix.push_back(Cm);
+            D_vector.push_back(-para_lowerlimit[i]);
+		}
+        if(b1 && b4 && b5) {
+            vector<float> Cm(param_size,0.0f);
+            Cm[i]=1.0f;
+            C_matrix.push_back(Cm);
+            D_vector.push_back(para_upperlimit[i]);
         }
     }
-    
-    //ターゲットとなる文字列("((float*)(fp))[i]")を文字列ベクトルにする
-    for (int i=0; i<param_size; i++) {
-        ostringstream OSS2;
-        OSS2<<"((float*)(fp))["<<i<<"]";
-        target_str[i]=(OSS2.str());
-        OSS2.flush();
-		//cout << target_str[i] << endl;
-    }
-    string fit_jacobian_str2=kernel_preprocessor_str2;
-    t=0;
-    for (int i=0; i+t<param_size;) {
-		//cout << (int)free_para[i + t] << endl;
-		if ((int)free_para[i + t] == (int)'0'){
-			//固定するtarget_str[i]="((float*)(fp))[i]"をreplaced_str[i+t](初期値)に置換
-			//cout << i + t << endl;
-			for (size_t a=fit_jacobian_str2.find(target_str[i],0);
-                a!=string::npos;
-                a = fit_jacobian_str2.find(target_str[i],a)) {
-                
-                fit_jacobian_str2.replace(a, target_str[i].length(), replaced_str[i+t]);
-            }
-			//cout << fit_jacobian_str << endl;
-
-			//　j>iのtarget_str[j]="((float*)(fp))[j]"をtarget_str[j-1]="((float*)(fp))[j]" に置換
-            for (int j=i+1; j+t<param_size; j++) {
-                for (size_t a=fit_jacobian_str2.find(target_str[j],0);
-                     a!=string::npos;
-                     a=fit_jacobian_str2.find(target_str[j],a)) {
-                    
-                    fit_jacobian_str2.replace(a, target_str[j].length(), target_str[j-1]);
-                }
-            }
-			//cout << fit_jacobian_str << endl;
-            t++;
+	cout << "C matrix | D vector" << endl;
+	for (int i = 0; i < C_matrix.size(); i++) {
+		for (int j = 0; j < C_matrix[i].size(); j++) {
+			cout << C_matrix[i][j] << " ";
 		}
-		else{
-			i++;
-		}
-    }
-	//cout << fit_jacobian_str << endl;
+		cout << "| " << D_vector[i] << endl;
+	}
+    cout<<endl;
+    constrain_size = D_vector.size();
     
     
-	//ヤコビアンの削除
-    //replacement of jacobian part
-	//ターゲットとなる文字列("((float*)(j))[i]")を文字列ベクトルにする
-    for (int i=0; i<param_size; i++) {
-        ostringstream OSS2;
-        OSS2<<"((float*)(j))["<<i<<"]";
-        target_str[i]=OSS2.str();
-        //cout<<target_str[i]<<endl;
-        OSS2.flush();
-    }
-    
-    t=0;
-    for (int i=0; i+t<param_size;) {
-        if((int)free_para[i+t]==(int)'0'){
-			//cout << i + t << endl;
-            //固定するtarget_str[i]="((float*)(j))[i]"のある行を削除
-			size_t a=fit_jacobian_str2.find(target_str[i],0);
-            //cout<<"a_"<<i<<":"<<a<<endl;
-            size_t b=fit_jacobian_str2.find(";",a);
-            //cout<<"b_"<<i<<":"<<b<<endl;
-            fit_jacobian_str2.erase(a,b-a+3);
-			//cout << fit_jacobian_str << endl;
+    //input LCF standard
+    numLCF=inp.numLCF;
+    //energy file input & processing
+    for (int i=0; i<numLCF; i++) {
+		cout << "Data input of standard XANES spectrum(" << i + 1 << ")" << endl;
+		ifstream energy_ifs(inp.LCFstd_paths[i],ios::in);
+        vector<float> energy, mt;
+        LCFstd_size.push_back(0);
+		int j = 0;
+        do {
+			string a,b;
+			energy_ifs >> a >> b;
 
-			//　j>iのtarget_str[j]="((float*)(j))[j]"をtarget_str[j-1]="((float*)(j))[j]" に置換
-			for (int j = i + 1; j + t<param_size; j++) {
-				for (size_t a = fit_jacobian_str2.find(target_str[j], 0);
-					a != string::npos;
-					a = fit_jacobian_str2.find(target_str[j], a)) {
-
-					fit_jacobian_str2.replace(a, target_str[j].length(), target_str[j - 1]);
-				}
+            if (energy_ifs.eof()) break;
+			float aa, bb;
+			try {
+				aa = stof(a);
+				bb = stof(b);
+			}catch(invalid_argument ret){ //ヘッダータグが存在する場合に入力エラーになる際への対応
+				continue;
 			}
-			//cout << fit_jacobian_str << endl;
-            t++;
-		}
-		else{
-			i++;
-		}
+            energy.push_back(aa);
+            mt.push_back(bb);
+            cout<<j+1<<": "<<aa<<","<<bb<<endl;
+            LCFstd_size[i]++;
+            j++;
+        } while (!energy_ifs.eof());
+        energy_ifs.close();
+        cout<<endl;
+
+        
+        LCFstd_E.push_back(energy);
+        LCFstd_mt.push_back(mt);
     }
-    
-    ostringstream OSS;
-    OSS<<fit_jacobian_str1<<fit_jacobian_str2;
-    return OSS.str();
 }
+
+

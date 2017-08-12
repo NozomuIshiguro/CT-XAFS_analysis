@@ -9,11 +9,11 @@
 #include "OpenCL_analysis.hpp"
 #include "imageReg.hpp"
 #include "imageregistration_kernel_src_cl.hpp"
+#include "LevenbergMarquardt_cl.hpp"
 
 
-regMode::regMode(int regmodeNumber,int cntmodeNumber){
+regMode::regMode(int regmodeNumber){
     regModeNo=regmodeNumber;
-    cntModeNo=cntmodeNumber;
     
     switch (regModeNo) {
         case 0: //xy shift
@@ -53,40 +53,16 @@ regMode::regMode(int regmodeNumber,int cntmodeNumber){
             break;
     }
     
-    //cout<<cntModeNo<<endl;
-    switch (cntModeNo) {
-        case 0: //no contrast factor
-            cp_num=0;
-            break;
-        case 1: //contrast(exp(g)) + bkg(const)
-            if(p_num>1) {
-                oss_target +="    contrast factor   : contrast(log)=0, darkness=0\n\n";
-                cp_num=2;
-            }
-            break;
-        case 2: //contrast(exp(g)) + bkg(s*x+t*y+const: 1st order plane)
-            if(p_num>1) {
-                oss_target +="    contrast factor   : contrast(log)=0, darkness=0, drk_x=0, drk_y=0\n\n";
-                cp_num=4;
-            }
-            break;
-        default:
-            cp_num=0;
-            break;
-    }
-    p_ini = new float[p_num+cp_num];
-    for (int i=0; i<p_num+cp_num; i++) {
+    p_ini = new float[p_num];
+    p_fix = new float[p_num];
+    for (int i=0; i<p_num; i++) {
         p_ini[i]=0.0f;
+        p_fix[i]=1.0f;
     }
-    //cout<<p_num<<endl;
 }
 
 int regMode::get_regModeNo(){
     return regModeNo;
-}
-
-int regMode::get_contrastModeNo(){
-    return cntModeNo;
 }
 
 string regMode::ofs_transpara(){
@@ -120,28 +96,14 @@ string regMode::ofs_transpara(){
             oss<<"";
             break;
     }
-    
-    switch (cntModeNo) {
-        case 0: //no contrast factor
-            oss<<endl;
-            break;
-        case 1: //contrast(exp(g)) + bkg(const)
-            oss<< "contrast(log)\tcontrast(log) error\tdarkness\tdarkness error"<<endl;
-            break;
-        case 2: //contrast(exp(g)) + bkg(s*x+t*y+const: 1st order plane)
-            oss<< "contrast(log)\tcontrast(log) error\tdarkness\tdarkness error\t";
-            oss<< "drk_x\tdrk_x error\tdrk_y\tdrk_y error"<<endl;
-            break;
-        default:
-            oss<<endl;
-            break;
-    }
     return oss.str();
 }
 
 string regMode::get_regModeName(){
     return regModeName;
 }
+
+
 string regMode::get_oss_target(){
     ostringstream oss;
     switch (regModeNo) {
@@ -187,25 +149,57 @@ string regMode::get_oss_target(){
             oss<<"";
             break;
     }
+    oss<<endl;
     
-    switch (cntModeNo) {
-        case 0: //no contrast factor
+    return oss.str();
+    
+    //return oss_target;
+}
+
+
+string regMode::get_oss_target(float *p_vec){
+    ostringstream oss;
+    switch (regModeNo) {
+        case 0: //xy shift
+            oss<<"    registration shift: dx=";
+            oss<<p_vec[0]<<", dy=";
+            oss<<p_vec[1]<<endl;
             break;
-        case 1: //contrast(exp(g)) + bkg(const)
             
-            oss<<"    contrast factor: contrast(log)=";
-            oss<<p_ini[p_num]<<", darkness=";
-            oss<<p_ini[p_num+1]<<endl;
+        case 1: //rotation+xy shift
+            oss<<"    registration shift: dx=";
+            oss<<p_vec[0]<<", dy=";
+            oss<<p_vec[1]<<", d(theta)=";
+            oss<<p_vec[2]<<endl;
             break;
-        case 2: //contrast(exp(g)) + bkg(s*x+t*y+const: 1st order plane)
-            oss<<"    contrast factor: contrast(log)=";
-            oss<<p_ini[p_num]<<", darkness=";
-            oss<<p_ini[p_num+1]<<", drk_x=";
-            oss<<p_ini[p_num+2]<<", drk_y=";
-            oss<<p_ini[p_num+3]<<endl;
+            
+        case 2: //scale+xy shift
+            oss<<"    registration shift: dx=";
+            oss<<p_vec[0]<<", dy=";
+            oss<<p_vec[1]<<", scale(log)=";
+            oss<<p_vec[2]<<endl;
             break;
+            
+        case 3: //scale+rotation+xy shift
+            oss<<"    registration shift: dx=";
+            oss<<p_vec[0]<<", dy=";
+            oss<<p_vec[1]<<", d(theta)=";
+            oss<<p_vec[2]<<", scale(log)=";
+            oss<<p_vec[3]<<endl;
+            break;
+            
+        case 4: //affine+xy shift
+            oss<<"    registration shift: dx=";
+            oss<<p_vec[0]<<", dy=";
+            oss<<p_vec[1]+1<<", a11=";
+            oss<<p_vec[2]<<", a12=";
+            oss<<p_vec[3]<<", a21=";
+            oss<<p_vec[4]<<", a22=";
+            oss<<p_vec[5]+1<<endl;
+            break;
+            
         default:
-            oss<<endl;
+            oss<<"";
             break;
     }
     oss<<endl;
@@ -213,6 +207,14 @@ string regMode::get_oss_target(){
     
     //return oss_target;
 }
+
+void regMode::set_pfix(input_parameter inp) {
+
+	for (int i = 0; i < p_num; i++) {
+		p_fix[i] = inp.getReg_fixpara()[i];
+	}
+}
+
 string regMode::oss_sample(float *p,float *p_error,
                            int *p_precision, int *p_err_precision){
     ostringstream oss;
@@ -220,136 +222,169 @@ string regMode::oss_sample(float *p,float *p_error,
         case 0: //xy shift
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
-            oss<<p[0]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[0])<<", dy=";
+            oss<<p[0];
+            if(p_fix[0]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[0]);
+            }
+            oss<<", dy=";
             oss.precision(p_precision[1]);
-            oss<<p[1]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[1])<<endl;
+            oss<<p[1];
+            if(p_fix[1]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[1]);
+            }
+            oss<<endl;
             break;
         
         case 1: //rotation+xy shift
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
-            oss<<p[0]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[0])<<", dy=";
+            oss<<p[0];
+            if(p_fix[0]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[0]);
+            }
+            oss<<", dy=";
             oss.precision(p_precision[1]);
-            oss<<p[1]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[1])<<", d(theta)=";
+            oss<<p[1];
+            if(p_fix[1]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[1]);
+            }
+            oss<<", d(theta)=";
             oss.precision(p_precision[2]);
-            oss<<p[2]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[2])<<endl;
+            oss<<p[2];
+            if(p_fix[2]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[2]);
+            }
+            oss<<endl;
             break;
         
         case 2: //scale+xy shift
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
-            oss<<p[0]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[0])<<", dy=";
+            oss<<p[0];
+            if(p_fix[0]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[0]);
+            }
+            oss<<", dy=";
             oss.precision(p_precision[1]);
-            oss<<p[1]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[1])<<", scale(log)=";
+            oss<<p[1];
+            if(p_fix[1]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[1]);
+            }
+            oss<<", scale(log)=";
             oss.precision(p_precision[2]);
-            oss<<p[2]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[2])<<endl;
+            oss<<p[2];
+            if(p_fix[2]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[2]);
+            }
+            oss<<endl;
             break;
         
         case 3: //scale+rotation+xy shift
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
-            oss<<p[0]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[0])<<", dy=";
+            oss<<p[0];
+            if(p_fix[0]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[0]);
+            }
+            oss<<", dy=";
             oss.precision(p_precision[1]);
-            oss<<p[1]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[1])<<", d(theta)=";
+            oss<<p[1];
+            if(p_fix[1]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[1]);
+            }
+            oss<<", d(theta)=";
             oss.precision(p_precision[2]);
-            oss<<p[2]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[2])<<", scale(log)=";
+            oss<<p[2];
+            if(p_fix[2]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[2]);
+            }
+            oss<<", scale(log)=";
             oss.precision(p_precision[3]);
-            oss<<p[3]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[3])<<endl;
+            oss<<p[3];
+            if(p_fix[3]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[3]);
+            }
+            oss<<endl;
             break;
         
         case 4: //affine+xy shift
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
-            oss<<p[0]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[0])<<", dy=";
+            oss<<p[0];
+            if(p_fix[0]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[0]);
+            }
+            oss<<", dy=";
             oss.precision(p_precision[1]);
-            oss<<p[1]+1<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[1])<<", a11=";
+            oss<<p[1];
+            if(p_fix[1]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[1]);
+            }
+            oss<<", a11=";
             oss.precision(p_precision[2]);
-            oss<<p[2]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[2])<<", a12=";
+            oss<<p[2]+1;
+            if(p_fix[2]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[2]);
+            }
+            oss<<", a12=";
             oss.precision(p_precision[3]);
-            oss<<p[3]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[3])<<", a21=";
+            oss<<p[3];
+            if(p_fix[3]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[3]);
+            }
+            oss<<", a21=";
             oss.precision(p_precision[4]);
-            oss<<p[4]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[4])<<", a22=";
+            oss<<p[4];
+            if(p_fix[4]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[4]);
+            }
+            oss<<", a22=";
             oss.precision(p_precision[5]);
-            oss<<p[5]+1<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[5])<<endl;
+            oss<<p[5]+1;
+            if(p_fix[5]>0.0f){
+                oss<<" +/- ";
+                oss.precision(1);
+                oss<<abs(p_error[5]);
+            }
+            oss<<endl;
             break;
         
         default:
             oss<<"";
-            break;
-    }
-    
-    switch (cntModeNo) {
-        case 0: //no contrast factor
-            break;
-        case 1: //contrast(exp(g)) + bkg(const)
-            
-            oss<<"    contrast factor: contrast(log)=";
-            oss.precision(p_precision[p_num]);
-            oss<<p[p_num]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[p_num])<<", darkness=";
-            oss.precision(p_precision[p_num+1]);
-            oss<<p[p_num+1]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[p_num+1])<<endl;
-            break;
-        case 2: //contrast(exp(g)) + bkg(s*x+t*y+const: 1st order plane)
-            oss<<"    contrast factor: contrast(log)=";
-            oss.precision(p_precision[p_num]);
-            oss<<p[p_num]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[p_num])<<", darkness=";
-            oss.precision(p_precision[p_num+1]);
-            oss<<p[p_num+1]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[p_num+1])<<", drk_x=";
-            oss.precision(p_precision[p_num+2]);
-            oss<<p[p_num+2]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[p_num+2])<<", drk_y=";
-            oss.precision(p_precision[p_num+3]);
-            oss<<p[p_num+3]<<" +/- ";
-            oss.precision(1);
-            oss<<abs(p_error[p_num+3])<<endl;
-            break;
-        default:
-            oss<<endl;
             break;
     }
     oss<<endl;
@@ -360,12 +395,8 @@ int regMode::get_p_num(){
     return p_num;
 }
 
-int regMode::get_cp_num(){
-    return cp_num;
-}
 
-cl::Program regMode::buildImageRegProgram(cl::Context context){
-    cl_int ret;
+cl::Program regMode::buildImageRegProgram(cl::Context context, int imageSizeX, int imageSizeY){
     
     
     //kernel source from cl file
@@ -380,57 +411,62 @@ cl::Program regMode::buildImageRegProgram(cl::Context context){
     //cout<<kernel_src<<endl;
     
     
-    string kernel_code="";
+    string option="-cl-fp32-correctly-rounded-divide-sqrt -cl-single-precision-constant ";
+#if DEBUG
+    option+="-D DEBUG ";
+#endif
+    string GPUvendor = context.getInfo<CL_CONTEXT_DEVICES>()[0].getInfo<CL_DEVICE_VENDOR>();
+    if(GPUvendor == "nvidia"){
+        option += "-cl-nv-maxrregcount=64 ";
+        //option += " -cl-nv-verbose -Werror";
+    }else if (GPUvendor.find("NVIDIA")==0) {
+		option += "-cl-nv-maxrregcount=64 ";
+		//option += " -cl-nv-verbose -Werror";
+	}
+    
     switch (regModeNo) {
         case 0: //XY
-            kernel_code += "#define REGMODE 0\n\n";
+            option += "-D REGMODE=0 -D PARA_NUM=2 -D PARA_NUM_SQ=4";
             break;
             
         case 1: //XY+rotation
-            kernel_code += "#define REGMODE 1\n\n";
+            option += "-D REGMODE=1 -D PARA_NUM=3 -D PARA_NUM_SQ=9";
             break;
             
         case 2: //XY+scale
-            kernel_code += "#define REGMODE 2\n\n";
+            option += "-D REGMODE=2 -D PARA_NUM=3 -D PARA_NUM_SQ=9";
             break;
             
         case 3: //XY+rotation+scale
-            kernel_code += "#define REGMODE 3\n\n";
+            option += "-D REGMODE=3 -D PARA_NUM=4 -D PARA_NUM_SQ=16";
             break;
             
         case 4: //XY+affine
-            kernel_code += "#define REGMODE 4\n\n";
+            option += "-D REGMODE=4 -D PARA_NUM=6 -D PARA_NUM_SQ=36";
             break;
             
         default:
             break;
     }
-    switch (cntModeNo) {
-        case 0: //no contrast factor
-            kernel_code += "#define CNTMODE 0\n\n";
-            break;
-            
-        case 1: //contrast(exp(g)) + bkg(const)
-            kernel_code += "#define CNTMODE 1\n\n";
-            break;
-            
-        case 2: //contrast(exp(g)) + bkg(s*x+t*y+const: 1st order plane)
-            kernel_code += "#define CNTMODE 2\n\n";
-            break;
-            
-        default:
-            break;
-    }
-    kernel_code += kernel_src;
-    //cout << kernel_code<<endl;
-    size_t kernel_code_size = kernel_code.length();
-    cl::Program::Sources source(1,std::make_pair(kernel_code.c_str(),kernel_code_size));
-    cl::Program program(context, source,&ret);
+    
+    ostringstream oss;
+    oss << " -D IMAGESIZE_X="<<imageSizeX;
+    oss << " -D IMAGESIZE_Y="<<imageSizeY;
+    oss << " -D IMAGESIZE_M="<<imageSizeX*imageSizeY;
+    option += oss.str();
+    
+    cl::Program::Sources source;
+#if defined (OCL120)
+    source.push_back(std::make_pair(kernel_src.c_str(),kernel_src.length()));
+    source.push_back(std::make_pair(kernel_LM_src.c_str(),kernel_LM_src.length()));
+#else
+    source.push_back(kernel_src);
+    source.push_back(kernel_LM_src);
+#endif
+    cl::Program program(context, source);
     //cout << kernel_code<<endl;
     //kernel build
-    string option = "-cl-nv-maxrregcount=64";
-    //option += " -cl-nv-verbose -Werror";
-    ret=program.build(option.c_str());
+    program.build(option.c_str());
 	string logstr=program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(context.getInfo<CL_CONTEXT_DEVICES>()[0]);
 	cout << logstr << endl;
     return program;

@@ -40,6 +40,30 @@ string LnumTagString(int LoopNo,string preStr, string postStr){
     return LnumTag;
 }
 
+string numTagString(int tagNum, string preStr, string postStr, int degit) {
+
+	string tagStr,zeroStr;
+	
+	int tagDegit = 0;
+	int degitNum = 1;
+	do {
+		degitNum *= 10;
+		tagDegit++;
+	} while (tagNum >= degitNum);
+
+	if (tagDegit >= degit) {
+		tagStr = preStr + IntToString(tagNum) + postStr;
+	} else {
+		zeroStr = "";
+		for (int j = 0; j < degit-tagDegit; j++) {
+			zeroStr += "0";
+		}
+		tagStr = preStr + zeroStr + IntToString(tagNum) + postStr;
+	}
+
+	return tagStr;
+}
+
 string EnumTagString(int EnergyNo,string preStr, string postStr){
     
     string EnumTag;
@@ -66,5 +90,31 @@ string AnumTagString(int angleNo,string preStr, string postStr){
         angleNumTag = preStr+IntToString(angleNo)+postStr;
     }
     return angleNumTag;
+}
+
+CL_objects::CL_objects(){
+    
+}
+
+cl::Kernel CL_objects::getKernel(string kernelName){
+    
+	int i;
+    for (i=0; i<kernels.size(); i++) {
+        string name = kernels[i].getInfo<CL_KERNEL_FUNCTION_NAME>();
+		//cout << name << endl;
+		//cout << name.find(kernelName) << endl;
+		if (name.find(kernelName)==0) {
+			//cout << name << endl;
+			return kernels[i];
+			break;
+		}
+    }
+    
+    return kernels[i-1];
+}
+
+
+void CL_objects::addKernel(cl::Program program, string kernelName){
+    kernels.push_back(cl::Kernel(program,kernelName.c_str()));
 }
 

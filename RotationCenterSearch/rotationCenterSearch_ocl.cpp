@@ -28,23 +28,24 @@ int his_data_input(OCL_platform_device plat_dev_list,
     int EndAngleNo = inp.getEndAngleNo();
     const int dA=EndAngleNo-startAngleNo+1;
     const int di=inp.getNumParallel();
+    int scanN=inp.getScanN();
     
     // dark data input
     cout << "Reading dark file...";
     unsigned short *dark_img;
-    dark_img = new unsigned short[(IMAGE_SIZE_M+32)*30];
+    dark_img = new unsigned short[(IMAGE_SIZE_M+32)*scanN];
     string fileName_dark = fileName_base+ "dark.his";
-    readHisFile_stream(fileName_dark,1,30,dark_img);
+    readHisFile_stream(fileName_dark,1,scanN,dark_img);
 	cout << "done." << endl << endl;
     
 
     // I0 target data input
 	cout << "Reading I0 file...";
     unsigned short *I0_img_target;
-    I0_img_target = new unsigned short[(IMAGE_SIZE_M+32)*30];
+    I0_img_target = new unsigned short[(IMAGE_SIZE_M+32)*scanN];
     string fileName_I0_target;
     fileName_I0_target =  EnumTagString(targetEnergyNo,fileName_base,"_I0.his");
-    readHisFile_stream(fileName_I0_target,1,30,I0_img_target);
+    readHisFile_stream(fileName_I0_target,1,scanN,I0_img_target);
 	cout << "done." << endl << endl;
     
    
@@ -66,12 +67,12 @@ int his_data_input(OCL_platform_device plat_dev_list,
     
     //transfer and merge rawhis data to dark_buffer
 	cout << "Merging dark...";
-    mergeRawhisBuffers(queue, kernels[0], cl::NDRange(IMAGE_SIZE_X,IMAGE_SIZE_Y,1),cl::NDRange(maxWorkSize,1,1), dark_img, dark_buffer,30);
+    mergeRawhisBuffers(queue, kernels[0], cl::NDRange(IMAGE_SIZE_X,IMAGE_SIZE_Y,1),cl::NDRange(maxWorkSize,1,1), dark_img, dark_buffer,scanN);
 	cout << "done." << endl << endl;
     
     //transfer and merge rawhis data to I0_target_buffer
 	cout << "Merging I0...";
-    mergeRawhisBuffers(queue, kernels[0],cl::NDRange(IMAGE_SIZE_X,IMAGE_SIZE_Y,1),cl::NDRange(maxWorkSize,1,1), I0_img_target, I0_target_buffer,30);
+    mergeRawhisBuffers(queue, kernels[0],cl::NDRange(IMAGE_SIZE_X,IMAGE_SIZE_Y,1),cl::NDRange(maxWorkSize,1,1), I0_img_target, I0_target_buffer,scanN);
 	cout << "done." << endl << endl;
 
     //transfer and merge rawhis data to It_target_buffer
@@ -121,12 +122,12 @@ int rotCenterShift(OCL_platform_device plat_dev_list,cl::Kernel kernel,
 	region[2] = 1;
     
     queue.enqueueWriteImage(prj_input_img, CL_TRUE, origin, region, IMAGE_SIZE_X*sizeof(float), 0, prj_img_vec[inp.getLayerN()-1],NULL,NULL);
-    
+	kernel.setArg(0, prj_input_img);
+	kernel.setArg(1, prj_output_img);
     for (int i=0; i<inp.getRotCenterShiftN(); i++) {
         float rotCenterShift = inp.getRotCenterShiftStart()+inp.getRotCenterShiftStep()*i;
-        kernel.setArg(0, prj_input_img);
-        kernel.setArg(1, prj_output_img);
-        kernel.setArg(2, rotCenterShift);
+		//cout << rotCenterShift << endl;
+        kernel.setArg(2, (cl_float)rotCenterShift);
         queue.enqueueNDRangeKernel(kernel, NULL, global_item_size, local_item_size, NULL, NULL);
         queue.finish();
         
@@ -140,7 +141,6 @@ int rotCntSrc_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     cl_int ret;
     
     //OpenCL Program
-    string kernel_code = "";
     //kernel program source
     /*ifstream ifs("./rotCenterSearch.cl", ios::in);
      if(!ifs) {
@@ -151,10 +151,12 @@ int rotCntSrc_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
      istreambuf_iterator<char> last;
      string kernel_src(it,last);
      ifs.close();*/
-    kernel_code += kernel_src_rcs;
     //cout << kernel_code<<endl;
-    size_t kernel_code_size = kernel_code.length();
-    cl::Program::Sources source(1,std::make_pair(kernel_code.c_str(),kernel_code_size));
+#if defined (OCL120)
+    cl::Program::Sources source(1,std::make_pair(kernel_src_rcs.c_str(),kernel_src_rcs.length()));
+#else
+    cl::Program::Sources source(1,kernel_src_rcs);
+#endif
     cl::Program program(context, source,&ret);
     //kernel build
     ret=program.build();
@@ -162,10 +164,55 @@ int rotCntSrc_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     kernels[0].push_back(cl::Kernel::Kernel(program,"rotCenterShift", &ret));//0
     kernels[0].push_back(cl::Kernel::Kernel(program,"imgAVG", &ret));//1
     kernels[0].push_back(cl::Kernel::Kernel(program,"imgSTDEV", &ret));//2
-    kernels[0].push_back(cl::Kernel::Kernel(program,"setMask", &ret));//2
+    kernels[0].push_back(cl::Kernel::Kernel(program,"setMask", &ret));//3
+    kernels[0].push_back(cl::Kernel::Kernel(program,"imgFocusIndex", &ret));//4
     
     return 0;
 }
+
+int imgFocusIndex_estimation(cl::Context context,cl::CommandQueue queue,
+                        cl::Kernel kernel_Findex,cl::Kernel kernel_mask,
+                        cl::Image2DArray reconst_img, float* Findex,
+                        int dN, int offsetN, input_parameter inp,float ang_ini,float ang_fin){
+    
+    cl::Device device = queue.getInfo<CL_QUEUE_DEVICE>();
+    string devicename = device.getInfo<CL_DEVICE_NAME>();
+    size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), IMAGE_SIZE_X);
+    
+    cl::ImageFormat format(CL_R, CL_FLOAT);
+    cl::Buffer imgFindex_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dN, 0, NULL);
+    cl::Image2DArray mask_img(context, CL_MEM_READ_WRITE, format, dN, g_nx, g_nx, 0, 0, NULL, NULL);
+    
+    
+    
+    //kernel dimension declaration
+    const cl::NDRange global_item_size(WorkGroupSize*dN,1,1);
+    const cl::NDRange local_item_size(WorkGroupSize,1,1);
+    
+    
+    //kernel set arg
+    kernel_mask.setArg(0, mask_img);
+    kernel_mask.setArg(1, (cl_int)offsetN);
+    kernel_mask.setArg(2, (cl_float)inp.getRotCenterShiftStart());
+    kernel_mask.setArg(3, (cl_float)inp.getRotCenterShiftStep());
+    kernel_mask.setArg(4, (cl_float)ang_ini);
+    kernel_mask.setArg(5, (cl_float)ang_fin);
+    queue.enqueueNDRangeKernel(kernel_mask, NULL, global_item_size, local_item_size, NULL, NULL);
+    
+    kernel_Findex.setArg(0, reconst_img);
+    kernel_Findex.setArg(1, mask_img);
+    kernel_Findex.setArg(2, cl::Local(sizeof(cl_float2)*WorkGroupSize));
+    kernel_Findex.setArg(3, imgFindex_buff);
+    queue.enqueueNDRangeKernel(kernel_Findex, NULL, global_item_size, local_item_size, NULL, NULL);
+    
+    
+    //read stdev data from GPU
+    queue.enqueueReadBuffer(imgFindex_buff, CL_TRUE, 0, sizeof(cl_float)*dN, &Findex[offsetN], NULL, NULL);
+    queue.finish();
+    
+    return 0;
+}
+
 
 int imgSTDEV_estimation(cl::Context context,cl::CommandQueue queue,
                         cl::Kernel kernel_avg,cl::Kernel kernel_stdev,cl::Kernel kernel_mask,
@@ -221,7 +268,7 @@ int imgSTDEV_estimation(cl::Context context,cl::CommandQueue queue,
 int reconstRotCntShift_thread(cl::CommandQueue queue, vector<cl::Kernel> kernels,
 	cl::Buffer angle_buffer, cl::Image2DArray reconst_img,cl::Image2DArray prj_img, 
 	vector<float*> reconst_img_vec, vector<float*> prj_img_vec,
-	int *sub, float* stdev, int offsetN, int di,input_parameter inp,float ang_ini,float ang_fin) {
+	int *sub, float* Findex, int offsetN, int di,input_parameter inp,float ang_ini,float ang_fin) {
 
 	cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
 
@@ -229,29 +276,27 @@ int reconstRotCntShift_thread(cl::CommandQueue queue, vector<cl::Kernel> kernels
 	cl::size_t<3> origin;
 	cl::size_t<3> region_img;
 	cl::size_t<3> region_prj;
-	origin[0] = 0;
-	origin[1] = 0;
-	region_img[0] = g_nx;
-	region_img[1] = g_nx;
+	origin[0] = (g_nx - g_ox) / 2;
+	origin[1] = (g_ny - g_oy) / 2;
+	region_img[0] = g_ox;
+	region_img[1] = g_oy;
 	region_img[2] = 1;
 	region_prj[0] = g_px;
 	region_prj[1] = g_pa;
 	region_prj[2] = 1;
 
 	//write memory objects to GPUs
-	cl_float4 ini;
-	ini.x = g_ini;
-	ini.y = 0.0f;
-	ini.z = 0.0f;
-	ini.w = 0.0f;
+	cl_float4 ini={(cl_float)g_ini,0.0f,0.0f,0.0f};
 	for (int i = 0; i<di; i++) {
 		origin[2] = i;
 		queue.enqueueFillImage(reconst_img,ini, origin, region_img, NULL, NULL);
 		//queue.enqueueWriteImage(reconst_img, CL_TRUE, origin, region_img, sizeof(cl_float)*g_nx, 0, reconst_img_vec[i+offsetN], NULL, NULL);
 		queue.enqueueWriteImage(prj_img, CL_TRUE, origin, region_prj, sizeof(cl_float)*g_px, 0, prj_img_vec[i+offsetN], NULL, NULL);
 	}
-	OSEM_execution(queue, kernels, angle_buffer, sub, reconst_img, prj_img, di, offsetN, 1);
-	imgSTDEV_estimation(context, queue, kernels[4], kernels[5], kernels[6], reconst_img, stdev, di, offsetN,inp,ang_ini,ang_fin);
+	//OSEM_execution(queue, kernels, angle_buffer, sub, reconst_img, prj_img, di, offsetN, 1);
+	OSEM_execution(queue, kernels, angle_buffer, sub, reconst_img, prj_img, di, 1, true);
+	//imgSTDEV_estimation(context, queue, kernels[5], kernels[6], kernels[7], reconst_img, stdev, di, offsetN,inp,ang_ini,ang_fin);
+    imgFocusIndex_estimation(context, queue, kernels[9], kernels[8], reconst_img, Findex, di, offsetN,inp,ang_ini,ang_fin);
 
 	//read memory objects from GPUs
 	for (int i = 0; i<di; i++) {
@@ -371,15 +416,17 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
     vector<cl::Kernel> kernels;
     kernels.push_back(cl::Kernel(program,"merge_rawhisdata", &ret));//0
     kernels.push_back(cl::Kernel(program,"mt_conversion", &ret));//1
-    reslice_programBuild(plat_dev_list.context(0),&kernels,inp.getStartAngleNo(),inp.getEndAngleNo());//reslice:2,xprojection:3,zcorrection:4
+    reslice_programBuild(plat_dev_list.context(0),&kernels,inp.getStartAngleNo(),inp.getEndAngleNo(),inp);//reslice:2,xprojection:3,zcorrection:4
     
     
     //program build (reconst)
 	vector<vector<cl::Kernel>> kernels_reconst;
 	for (int i = 0; i < plat_dev_list.contextsize(); i++) {
 		vector<cl::Kernel> kernels_plat;
-		OSEM_programBuild(plat_dev_list.context(i), &kernels_plat);//OSEM1:0,OSEM2:1,OSEM3:2
-		rotCntSrc_programBuild(plat_dev_list.context(i), &kernels_plat);//rotCenterShift:3,imgAVG:4,imgSTDEV:5
+		OSEM_programBuild(plat_dev_list.context(i), &kernels_plat);
+        //OSEM1:0,OSEM2:1,OSEM3:2,partialDerivativeOfGradiant:3,FISTA2:4
+		rotCntSrc_programBuild(plat_dev_list.context(i), &kernels_plat);
+        //rotCenterShift:5,imgAVG:6,imgSTDEV:7,setMask:8,imgFocusIndex:9
 
 		kernels_reconst.push_back(kernels_plat);
 	}
@@ -421,7 +468,7 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
     for (int i=0; i<inp.getRotCenterShiftN(); i++) {
         prjshift_img_vec.push_back(new float[IMAGE_SIZE_X*num_angle]);
     }
-    rotCenterShift(plat_dev_list,kernels_reconst[0][3],prj_img_vec,prjshift_img_vec,inp);
+    rotCenterShift(plat_dev_list,kernels_reconst[0][5],prj_img_vec,prjshift_img_vec,inp);
     for (int i=0; i<IMAGE_SIZE_Y; i++) {
         delete [] prj_img_vec[i];
     }
@@ -438,9 +485,9 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
     for (int i=0; i<inp.getRotCenterShiftN(); i++) {
         reconst_img_vec.push_back(new float[IMAGE_SIZE_M]);
     }
-    float* stdev;
-    stdev = new float[inp.getRotCenterShiftN()];
-    reconstRotCntShift(plat_dev_list,kernels_reconst,reconst_img_vec,prjshift_img_vec,inp,g_ss,ang,stdev);
+    float* Findex;
+    Findex = new float[inp.getRotCenterShiftN()];
+    reconstRotCntShift(plat_dev_list,kernels_reconst,reconst_img_vec,prjshift_img_vec,inp,g_ss,ang,Findex);
 	cout << "done." << endl << endl;
 	for (int i=0; i<inp.getRotCenterShiftN(); i++) {
         delete [] prjshift_img_vec[i];
@@ -450,15 +497,15 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
 
     //output
     cout<<"Output...";
-	float max = 0.0f;
-	int max_i = 0;
+	float min = FLT_MAX;
+	int min_i = 0;
     for (int i=0; i<inp.getRotCenterShiftN(); i++) {
 		string fileName_output = inp.getOutputDir() + "/" + AnumTagString(i + 1, inp.getOutputFileBase(), ".raw");
 		outputRawFile_stream(fileName_output, reconst_img_vec[i], IMAGE_SIZE_M);
 
-		if (max < stdev[i]) {
-			max = stdev[i];
-			max_i = i;
+		if (min > Findex[i]) {
+			min = Findex[i];
+			min_i = i;
 		}
     }
 	for (int i = 0; i<inp.getRotCenterShiftN(); i++) {
@@ -469,20 +516,20 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
 	cout << "Result" << endl;
 	string fileName_result= inp.getOutputDir() + "/result.dat";
 	ofstream ofs(fileName_result, ios::out | ios::trunc);
-	ofs << "Rotation center shift\tSTDEV\tfilename"<<endl;
+	ofs << "Rotation center shift\tFocus Index\tfilename"<<endl;
 	for (int i = 0; i < inp.getRotCenterShiftN(); i++) {
-		cout << inp.getRotCenterShiftStart() + inp.getRotCenterShiftStep()*i << " " << stdev[i] << "	";
+		cout << inp.getRotCenterShiftStart() + inp.getRotCenterShiftStep()*i << " " << Findex[i] << "	";
 		cout <<"("<< AnumTagString(i + 1, inp.getOutputFileBase(), ".raw)") << endl;
 		ofs << inp.getRotCenterShiftStart() + inp.getRotCenterShiftStep()*i << "\t";
-		ofs << stdev[i] << "\t";
+		ofs << Findex[i] << "\t";
 		ofs << AnumTagString(i + 1, inp.getOutputFileBase(), ".raw") << endl;
 	}
 	ofs.close();
 	cout << endl;
 
-	float rotCntShift = inp.getRotCenterShiftStart() + max_i*inp.getRotCenterShiftStep();
+	float rotCntShift = inp.getRotCenterShiftStart() + min_i*inp.getRotCenterShiftStep();
 	cout << "Estimated rotation center shift is " << rotCntShift;
-	cout << "("+ AnumTagString(max_i + 1, inp.getOutputFileBase(), ".raw)") << endl << endl;
+	cout << "("+ AnumTagString(min_i + 1, inp.getOutputFileBase(), ".raw)") << endl << endl;
 	
     return 0;
 }

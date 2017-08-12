@@ -25,255 +25,163 @@
 #define ZP_SIZE 4096
 #endif
 
+extern __constant sampler_t s_linear;
+extern __constant sampler_t s_nearest;
 
-__constant sampler_t s_linear = CLK_FILTER_LINEAR|CLK_NORMALIZED_COORDS_FALSE|CLK_ADDRESS_CLAMP;
 
-inline void zeroPadding(__read_only image2d_array_t prj_img, __local float *prz, int th,
-                        const size_t local_ID, const size_t localsize, const size_t group_ID){
+
+//1. calc spinfactor
+__kernel void spinFactor(__global float2 *W){
+    int ID = get_global_id(0);
+    float d = 2.0*PI/ZP_SIZE;
     
-    int X;
-    float4 X_th;
-    X_th.y=th;
-    X_th.z=group_ID;
-    
-    //prz initialization
-    for(int i=0;i<ZP_SIZE/localsize;i++){
-        X=local_ID+i*localsize;
-        prz[X]=0;
-    }
-    
-    for(int i=0;i<PRJ_IMAGESIZE/localsize;i++){
-        X=local_ID+i*localsize;
-        X_th.x=X;
-        
-        prz[X-PRJ_IMAGESIZE/2+ZP_SIZE/2]=read_imagef(prj_img,s_linear,X_th).x;
-    }
-    
+    float2 ang =  (float2)(d*ID,d*ID+PI_2);
+    W[ID]=cos(ang);  //(cos(ang),-sin(ang))
 }
 
-inline void spinFact(__local float2 *W,const size_t local_ID, const size_t localsize){
-    int X;
-    float d = 2*PI/ZP_SIZE;
-    float2 ang;
+
+//2. zero padding
+__kernel void zeroPadding(__read_only image2d_array_t prj_img, global float2 *xc){
     
-    //prz initialization
-    for(int i=0;i<ZP_SIZE/2/localsize;i++){
-        X=local_ID+i*localsize;
-        ang =  (float2)(d*i,d*i+PI_2);
-        
-        W[X]=cos(ang);  //(cos(ang),-sin(ang))
-    }
+    const int X = get_global_id(0);
+    const int th = get_global_id(1);
+    const int Z = get_global_id(2);
+    const size_t imgOffset = th*ZP_SIZE+Z*ZP_SIZE*PRJ_ANGLESIZE;
+    
+    //zero padding and swap data
+    float4 XthZ_f =(float4)(X,th,Z,0.0f);
+    int Xcnt = X - PRJ_IMAGESIZE / 2 + ZP_SIZE / 2;
+    int Xswap = (Xcnt < ZP_SIZE / 2) ? (Xcnt + ZP_SIZE / 2) : (Xcnt - ZP_SIZE / 2);
+    float prj = read_imagef(prj_img, s_linear, XthZ_f).x;
+    xc[Xswap + imgOffset] = (float2)(prj, 0.0f);
 }
 
-inline void bitReverse(__local float2 *xc,const size_t local_ID, const size_t localsize,
-                       const uint iter){
+//3. bit reverse
+__kernel void bitReverse(__global float2 *xc_src, __global float2 *xc_dest, const uint iter){
     
-    uint X1, X2;
-    float2 val;
+    const uint X1 = get_global_id(0);;
+    const int th = get_global_id(1);
+    const int Z = get_global_id(2);
+    const size_t imgOffset = th*ZP_SIZE+Z*ZP_SIZE*PRJ_ANGLESIZE;
+    uint X2;
     
-    for(int i=0;i<ZP_SIZE/2/localsize;i++){
-        X1=local_ID+i*localsize;
-        X2 = X1;
+    X2 = X1;
         
-        X2 = (X2 & 0x55555555) << 1  | (X2 & 0xAAAAAAAA) >> 1;
-        X2 = (X2 & 0x33333333) << 2  | (X2 & 0xCCCCCCCC) >> 2;
-        X2 = (X2 & 0x0F0F0F0F) << 4  | (X2 & 0xF0F0F0F0) >> 4;
-        X2 = (X2 & 0x00FF00FF) << 8  | (X2 & 0xFF00FF00) >> 8;
-        X2 = (X2 & 0x0000FFFF) << 16 | (X2 & 0xFFFF0000) >> 16;
+    X2 = (X2 & 0x55555555) << 1  | (X2 & 0xAAAAAAAA) >> 1;
+    X2 = (X2 & 0x33333333) << 2  | (X2 & 0xCCCCCCCC) >> 2;
+    X2 = (X2 & 0x0F0F0F0F) << 4  | (X2 & 0xF0F0F0F0) >> 4;
+    X2 = (X2 & 0x00FF00FF) << 8  | (X2 & 0xFF00FF00) >> 8;
+    X2 = (X2 & 0x0000FFFF) << 16 | (X2 & 0xFFFF0000) >> 16;
         
-        X2 >>= (32-iter);
+    X2 >>= (32-iter);
         
-        val = xc[X1];
-        //barrier(CLK_LOCAL_MEM_FENCE);
-        xc[X1] = xc[X2];
-        xc[X2] = val;
-    }
+    xc_dest[X2+imgOffset] = xc_src[X1+imgOffset];
 }
 
-inline void Butterfly(__local float2 *xc,__local float2 *W,
-                      const size_t local_ID, const size_t localsize,uint iter,int2 flag){
+// 4. butterfly
+__kernel void butterfly(__global float2 *xc, __constant float2 *W, uint flag, int iter){
+    const int X = get_global_id(0);
+    const int th = get_global_id(1);
+    const int Z = get_global_id(2);
+    const size_t imgOffset = th*ZP_SIZE+Z*ZP_SIZE*PRJ_ANGLESIZE;
     
-    int X;
     uint bf_size, bf_GpDist, bf_GpNum, bf_GpBase, bf_GpOffset, a, b, l;
-    float2 xc_a, xc_b, xc_bxx, xc_byy, Wab_xy, Wab_yx, res_a, res_b;
-    
-    for(int j=0;j<iter;j++){
-        for (int i=0;i<ZP_SIZE/2/localsize;i++) {
-            X=local_ID+i*localsize;
-            
-            bf_size     = 1 << (iter-1);
-            bf_GpDist   = 1 << iter;
-            bf_GpNum    = ZP_SIZE >> iter;
-            bf_GpBase   = (X >> (iter-1))*bf_GpDist;
-            bf_GpOffset = X & (bf_size-1);
-            
-            a = bf_GpBase + bf_GpOffset;
-            b = a + bf_size;
-            l = bf_GpNum*bf_GpOffset;
-            
-            xc_a = xc[a];
-            xc_b = xc[b];
-            
-            xc_bxx = xc_b.xx;
-            xc_byy = xc_b.yy;
-            
-            //FFT(flag=(1,1)):(cos(2*pi/N*l),-sin(2*pi/N*l))
-            //IFFT(flag=(1,-1)):(cos(2*pi/N*l),sin(2*pi/N*l))
-            Wab_xy = W[l]*flag;
-            Wab_yx = Wab_xy.yx;
-            
-            res_a = xc_a + xc_bxx*Wab_xy + xc_byy*Wab_yx;
-            res_b = xc_a - xc_bxx*Wab_xy - xc_byy*Wab_yx;
-            
-            xc[a] = res_a;
-            xc[b] = res_b;
-            
-            barrier(CLK_LOCAL_MEM_FENCE);
-        }
-    }
-}
+	float2 xa, xb, xbxx, xbyy, Wab, Wayx, Wbyx, res_a, res_b;
 
-inline void Normalization(__local float2 *xc,const size_t local_ID, const size_t localsize){
-    int X;
-    
-    for (int i=0;i<ZP_SIZE/localsize;i++) {
-        X=local_ID+i*localsize;
-        
-        xc[X] /= ZP_SIZE;
-    }
+
+    bf_size = 1 << (iter - 1);
+    bf_GpDist = 1 << iter;
+    bf_GpNum = ZP_SIZE >> iter;
+    bf_GpBase = (X >> (iter - 1))*bf_GpDist;
+    bf_GpOffset = X & (bf_size - 1);
+
+    a = bf_GpBase + bf_GpOffset;
+    b = a + bf_size;
+    l = bf_GpNum*bf_GpOffset;
+
+    xa = xc[a + imgOffset];
+    xb = xc[b + imgOffset];
+
+    xbxx = xb.xx;
+    xbyy = xb.yy;
+
+    //FFT(flag=0x00000000)
+    //IFFT(flag=0x80000000)
+    Wab = as_float2(as_uint2(W[l]) ^ (uint2)(0x0, flag));
+    Wayx = as_float2(as_uint2(Wab.yx) ^ (uint2)(0x80000000, 0x0));
+    Wbyx = as_float2(as_uint2(Wab.yx) ^ (uint2)(0x0, 0x80000000));
+
+    res_a = xa + xbxx*Wab + xbyy*Wayx;
+    res_b = xa - xbxx*Wab + xbyy*Wbyx;
+            
+    xc[a+imgOffset] = res_a;
+    xc[b+imgOffset] = res_b;
 }
 
 
-inline void FFT(__local float2 *xc,__local float2 *W,
-                const size_t local_ID, const size_t localsize,uint iter){
+
+//5. filtering process
+__kernel void filtering(__global float2 *xc){
+    const int X = get_global_id(0);
+    const int th = get_global_id(1);
+    const int Z = get_global_id(2);
+    const size_t imgOffset = th*ZP_SIZE+Z*ZP_SIZE*PRJ_ANGLESIZE;
     
-    //bit reverse
-    bitReverse(xc,local_ID,localsize,iter);
-    
-    //butterfly calculation
-    Butterfly(xc,W,local_ID,localsize,iter,(int2)(1,1));
-    
+    //filter
+    const float	h = PI/ZP_SIZE;
+    xc[X+imgOffset] *= (X<ZP_SIZE/2) ? (X*h):((ZP_SIZE-X)*h);
 }
 
-inline void IFFT(__local float2 *xc,__local float2 *W,
-                 const size_t local_ID, const size_t localsize,uint iter){
-    
-    //bit reverse
-    bitReverse(xc,local_ID,localsize,iter);
-    
-    //butterfly calculation
-    Butterfly(xc,W,local_ID,localsize,iter,(int2)(1,-1));
-    
-    //normalization
-    Normalization(xc,local_ID,localsize);
-}
 
-inline void Filter(__local float2 *xc,const size_t local_ID, const size_t localsize){
-    
-    float	h = PI/ZP_SIZE;
-    int X;
-    
-    for (int i=0;i<ZP_SIZE/2/localsize;i++){
-        X=local_ID+i*localsize;
+//6.normalization for IFFT
+__kernel void normalization(__global float2 *xc){
+    const int X = get_global_id(0);
+    const int th = get_global_id(1);
+    const int Z = get_global_id(2);
+    const size_t imgOffset = th*ZP_SIZE+Z*ZP_SIZE*PRJ_ANGLESIZE;
         
-        xc[X] *= (X * h);
-        xc[X+ZP_SIZE/2] *= ((ZP_SIZE/2-X) * h);
-    }
+    xc[X+imgOffset] /= ZP_SIZE;
 }
 
 
-inline void write_bprj(__write_only image2d_array_t bprj_img, __local float *prz, int th,
-                        const size_t local_ID, const size_t localsize, const size_t group_ID){
+//7. swap data and output to image object
+__kernel void outputImage(__global float2 *xc, __write_only image2d_array_t fprj_img){
+    const int X = get_global_id(0);
+    const int th = get_global_id(1);
+    const int Z = get_global_id(2);
+	const size_t imgOffset = th*ZP_SIZE + Z*ZP_SIZE*PRJ_ANGLESIZE;
     
-    int X;
-    int4 X_th;
-    X_th.y=th;
-    X_th.z=group_ID;
-    float bprj;
-    
-    //prz initialization
-    for(int i=0;i<ZP_SIZE/localsize;i++){
-        X=local_ID+i*localsize;
-        prz[X]=0;
-    }
-    
-    for(int i=0;i<IMAGESIZE_X/localsize;i++){
-        X=local_ID+i*localsize;
-        X_th.x=X;
-        
-        bprj=prz[X-PRJ_IMAGESIZE/2+ZP_SIZE/2];
-        write_imagef(bprj_img, X_th, (float4)(bprj,0,0,1.0));
-    }
-    
+    int4 XthZ_i = (int4)(X,th,Z,0);
+    int Xcnt = X - PRJ_IMAGESIZE / 2 + ZP_SIZE / 2;
+    int Xswap = (Xcnt < ZP_SIZE / 2) ? (Xcnt + ZP_SIZE / 2) : (Xcnt - ZP_SIZE / 2);
+    float fprj = xc[Xswap+imgOffset].x;
+    write_imagef(fprj_img, XthZ_i, (float4)(fprj,0.0f,0.0f,1.0f));
 }
 
 
-__kernel void FBP1(__read_only image2d_array_t prj_img,__write_only image2d_array_t bprj_img,
-                   __local float *prz,__local float2 *xc,__local float2 *W){
+//8. back projection of filtered image
+__kernel void backProjectionFBP(__read_only image2d_array_t fprj_img,
+                                __write_only image2d_array_t reconst_img,
+                                __constant float *angle){
     
-    const size_t local_ID = get_local_id(0);
-    const size_t localsize = get_local_size(0);
-    const size_t group_ID = get_group_id(0);
+    const int X = get_global_id(0);
+    const int Y = get_global_id(1);
+    const int Z = get_global_id(2);
     
-    int X;
-    uint iter = 32 - clz(ZP_SIZE);
-    
-    //initialize FFT parameters
-    spinFact(W,local_ID,localsize);
-    
-    for(int th=0;th<PRJ_ANGLESIZE;th++){
-        zeroPadding(prj_img,prz,th,local_ID,localsize,group_ID);
-        
-        for (int i=0;i<ZP_SIZE/2/localsize;i++) {
-            X=local_ID+i*localsize;
+    float bprj=0.0f;
+    int4 xyz_i = (int4)(X,Y,Z,0);
+    float4 XthZ;
+    XthZ.z = Z;
+	int i, th;
+	float angle_pr;
+    float radius = sqrt((X-IMAGESIZE_X*0.5f)*(X-IMAGESIZE_X*0.5f)+(Y-IMAGESIZE_Y*0.5f)*(Y-IMAGESIZE_Y*0.5f));
+    for(th=0;th<PRJ_ANGLESIZE;th++){
+        angle_pr = angle[th]*PI/180.0f;
+        XthZ.x =  (X-IMAGESIZE_X*0.5f)*cos(angle_pr)-(Y-IMAGESIZE_Y*0.5f)*sin(angle_pr) + PRJ_IMAGESIZE*0.5f;
             
-            xc[X] = (float2)(prz[X+ZP_SIZE/2],0);
-            xc[X+ZP_SIZE/2] = (float2)(prz[X],0);
-        }
-        
-        FFT(xc,W,local_ID,localsize,iter);
-        Filter(xc,local_ID,localsize);
-        IFFT(xc,W,local_ID,localsize,iter);
-        
-        for (int i=0;i<ZP_SIZE/2/localsize;i++) {
-            X=local_ID+i*localsize;
-            
-            prz[X-ZP_SIZE/2+PRJ_IMAGESIZE/2] = xc[X+ZP_SIZE/2].x;
-            prz[X+PRJ_IMAGESIZE/2] = xc[X].x;
-        }
-        
-        write_bprj(bprj_img,prz,th,local_ID,localsize,group_ID);
+        XthZ.y = th;
+        bprj += (radius<IMAGESIZE_X*0.5f) ? read_imagef(fprj_img,s_linear,XthZ).x:0.0f;
     }
-}
-
-__kernel void FBP2(__read_only image2d_array_t bprj_img,
-                   __write_only image2d_array_t reconst_img,
-                   __constant float *angle){
-    
-    const size_t local_ID = get_local_id(0);
-    const size_t localsize = get_local_size(0);
-    const size_t group_ID = get_group_id(0);
-    
-    float bprj;
-    int X,Y;
-    int4 xy_i;
-    float4 X_th;
-    X_th.z = group_ID;
-    
-    for(int i=0;i<IMAGESIZE_X/localsize;i++){
-        X=local_ID+i*localsize;
-        for(int j=0; j<IMAGESIZE_Y; j++){
-            Y=j;
-            xy_i = (int4)(X,Y,group_ID,0);
-            bprj=0.0;
-            for(int th=0;th<PRJ_ANGLESIZE;th++){
-                X_th.x =  (X-IMAGESIZE_X/2)*cos(angle[th]*PI/180)-(Y-IMAGESIZE_Y/2)*sin(angle[th]*PI/180) + PRJ_IMAGESIZE/2;
-                X_th.y = th;
-                
-                bprj += read_imagef(bprj_img,s_linear,X_th).x;
-            }
-            
-            write_imagef(reconst_img, xy_i, (float4)(bprj,0,0,1.0));
-        }
-    }
+    bprj /= PRJ_ANGLESIZE*2.0f;
+    write_imagef(reconst_img, xyz_i, (float4)(bprj,0.0f,0.0f,1.0f));
 }

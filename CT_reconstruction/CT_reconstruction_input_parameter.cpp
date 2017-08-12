@@ -34,6 +34,7 @@ string menu[] = {
     " ゼロパディングサイズ(FBP)                 ",
     //	" 非投影領域の推定 1:Yes 2:No              ",
     " 投影像補正(OSEM) 0:なし 1: x方向のみ 2:θ方向のみ 3:x,θ方向両方",
+    " 再構成像強度増幅因子",
 };
 
 void getparameter_inp(string inputfile_path){
@@ -111,7 +112,26 @@ void getparameter_inp(string inputfile_path){
             }else if((string)buffer=="#再構成画像サイズ"){
 				cout << buffer << endl;
 				inp_ifs>>g_nx;
-				cout << g_nx << endl << endl;
+                g_ny = g_nx;
+                g_ox = g_nx;
+                g_oy = g_nx;
+				cout << g_nx <<" x "<< g_ny << endl << endl;
+            }else if((string)buffer=="#再構成画像サイズ X"){
+                cout << buffer << endl;
+                inp_ifs>>g_nx;
+                cout << g_nx << endl << endl;
+            }else if((string)buffer=="#再構成画像サイズ Y"){
+                cout << buffer << endl;
+                inp_ifs>>g_ny;
+                cout << g_ny << endl << endl;
+            }else if((string)buffer=="#出力画像サイズ X"){
+                cout << buffer << endl;
+                inp_ifs>>g_ox;
+                cout << g_ox << endl << endl;
+            }else if((string)buffer=="#出力画像サイズ Y"){
+                cout << buffer << endl;
+                inp_ifs>>g_oy;
+                cout << g_oy << endl << endl;
             }else if((string)buffer=="#再構成法"){
 				cout << buffer << endl;
 				inp_ifs>>g_mode;
@@ -120,7 +140,11 @@ void getparameter_inp(string inputfile_path){
 				cout << buffer << endl;
 				inp_ifs>>g_it;
 				cout << g_it << endl << endl;
-            }else if((string)buffer=="#サブセット(OSEM)"){
+            }else if ((string)buffer == "#AARTファクター") {
+				cout << buffer << endl;
+				inp_ifs >> g_wt1;
+				cout << CSit << endl << endl;
+			}else if((string)buffer=="#サブセット(OSEM)"){
 				cout << buffer << endl;
 				inp_ifs>>g_ss;
 				cout << g_ss << endl << endl;
@@ -132,7 +156,35 @@ void getparameter_inp(string inputfile_path){
                 cout << buffer << endl;
                 inp_ifs>>correctionMode;
                 cout << correctionMode << endl << endl;
+            }else if((string)buffer=="#再構成像強度増幅因子"){
+                cout << buffer << endl;
+                inp_ifs>>amp;
+                cout << amp << endl << endl;
+            }else if((string)buffer=="#Base up 減少速度次数 (Hybrid)"){
+                cout << buffer << endl;
+                inp_ifs>>baseupOrder;
+                cout << baseupOrder << endl << endl;
+            }else if((string)buffer=="#逐次圧縮センシング計算 (FBP適応外)"){
+                cout << buffer << endl;
+                int dummy;
+                inp_ifs>>dummy;
+                CSitBool= (dummy==1) ? true:false;
+                cout << boolalpha <<CSitBool << endl << endl;
+            }else if((string)buffer=="#逐次圧縮センシング計算ノイズファクター"){
+                cout << buffer << endl;
+                inp_ifs>>CSepsilon;
+                cout << CSepsilon << endl << endl;
+            }else if((string)buffer=="#逐次圧縮センシング計算加算ファクター"){
+                cout << buffer << endl;
+                inp_ifs>>CSalpha;
+                cout << CSalpha << endl << endl;
+            }else if((string)buffer=="#逐次圧縮センシング計算回数"){
+                cout << buffer << endl;
+                inp_ifs>>CSit;
+                cout << CSit << endl << endl;
             }
+            
+
         };
         inp_ifs.close();
     }else {
@@ -193,7 +245,10 @@ void getparameter(){
     if (((string)dat).length()>0)  g_pa = atoi(dat);
     cout << " "<<menu[i++]<<" ["<<g_nx<<"] :";     /* 再構成ピクセルサイズ */
     cin.getline(dat, 256);
-    if (((string)dat).length()>0)  g_nx = atoi(dat);
+    if (((string)dat).length()>0)  {
+        g_nx = atoi(dat);
+        g_ny = atoi(dat);
+    }
     //	cout << " "<<menu[i++]<<" ["<<g_x<<"] :";  /* 回転中心のずれ */
     //	cin.getline(dat, 256);
     //  if (((string)dat).length()>0)  g_x = atoi(dat);

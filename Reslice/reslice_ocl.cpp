@@ -19,19 +19,23 @@ int reslice_mtImg(OCL_platform_device plat_dev_list,cl::Kernel kernel,
     string devicename = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_NAME>();
     size_t globalMemSize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
     
+    int imageSizeX = inp.getImageSizeX();
+    int imageSizeY = inp.getImageSizeY();
+    int64_t imageSizeM = inp.getImageSizeM();
+    
     
     int num_angle=inp.getEndAngleNo()-inp.getStartAngleNo()+1;
     int iter=1;
-    size_t memobj = sizeof(float)*((int64_t)IMAGE_SIZE_M*(num_angle/iter+1)+num_angle*2);
+    size_t memobj = sizeof(float)*((int64_t)imageSizeM*(num_angle/iter+1)+num_angle*2);
     while (memobj>globalMemSize) {
         iter*=2;
-        memobj = sizeof(float)*((int64_t)IMAGE_SIZE_M*(num_angle/iter+1)+num_angle*2);
+        memobj = sizeof(float)*((int64_t)imageSizeM*(num_angle/iter+1)+num_angle*2);
     }
     
     
     cl::ImageFormat format(CL_R, CL_FLOAT);
-    cl::Image2D mt_img(context, CL_MEM_READ_WRITE,format,IMAGE_SIZE_X, IMAGE_SIZE_Y, 0, NULL, NULL);
-    cl::Image2DArray prj_img(context, CL_MEM_READ_WRITE,format,IMAGE_SIZE_Y,IMAGE_SIZE_X, num_angle/iter, 0, 0, NULL, NULL);
+    cl::Image2D mt_img(context, CL_MEM_READ_WRITE,format,imageSizeX, imageSizeY, 0, NULL, NULL);
+    cl::Image2DArray prj_img(context, CL_MEM_READ_WRITE,format,imageSizeY,imageSizeX, num_angle/iter, 0, 0, NULL, NULL);
     cl::Buffer xshift_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*num_angle, 0, NULL);
     cl::Buffer zshift_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*num_angle, 0, NULL);
     queue.enqueueFillBuffer(xshift_buff, (cl_float)0.0, 0, sizeof(float)*num_angle);
@@ -39,7 +43,8 @@ int reslice_mtImg(OCL_platform_device plat_dev_list,cl::Kernel kernel,
     
     
     reslice(queue,kernel,num_angle,iter,0,mt_img_vec,prj_img_vec,
-            xshift_buff,zshift_buff);
+            xshift_buff,zshift_buff,
+            imageSizeX,imageSizeY);
     
     
     return 0;
@@ -47,14 +52,14 @@ int reslice_mtImg(OCL_platform_device plat_dev_list,cl::Kernel kernel,
 
 int prj_output_thread(int startZ,int EndZ,string subDir_str,int num_angle,
                       string output_dir,string fileName_base,
-                      vector<float*> prj_vec){
+                      vector<float*> prj_vec, int prjImageSize){
     
     //output resliced data
     ostringstream oss;
     for (int i=startZ; i<=EndZ; i++) {
         string fileName_output= output_dir+"/"+subDir_str+"/"+AnumTagString(i,fileName_base,".raw");
         oss << "output file: " << fileName_output << "\n";
-        outputRawFile_stream(fileName_output,prj_vec[i-startZ],(size_t)(IMAGE_SIZE_X*num_angle));
+        outputRawFile_stream(fileName_output,prj_vec[i-startZ],(size_t)(prjImageSize*num_angle));
     }
     oss <<endl;
     cout << oss.str();
@@ -84,7 +89,8 @@ int xyshift_output_thread(int num_angle,string output_dir,float *xshift, float *
 int Z_Correction(cl::CommandQueue command_queue,
                  cl::Kernel kernel_xproj,cl::Kernel kernel_zcorr,
                  int num_angle,int startX, int endX, int startZ, int endZ,
-                 vector<float*> mt_vec,cl::Buffer zshift_buff){
+                 vector<float*> mt_vec,cl::Buffer zshift_buff,
+                 int imageSizeX, int imageSizeY){
     
     cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
     size_t maxWorkGroupSize = command_queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
@@ -96,24 +102,24 @@ int Z_Correction(cl::CommandQueue command_queue,
     origin[0] = 0;
     origin[1] = 0;
     origin[2] = 0;
-    region_mt[0] = IMAGE_SIZE_X;
-    region_mt[1] = IMAGE_SIZE_Y;
+    region_mt[0] = imageSizeX;
+    region_mt[1] = imageSizeY;
     region_mt[2] = 1;
-    region_xprj[0] = IMAGE_SIZE_X;
+    region_xprj[0] = imageSizeX;
     region_xprj[1] = num_angle;
     region_xprj[2] = 1;
     
     //image object declaration
-    cl::Image2D mt_img(context, CL_MEM_READ_WRITE,format,IMAGE_SIZE_X, IMAGE_SIZE_Y, 0,NULL, NULL);
-    cl::Buffer xprj_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_Y*num_angle, 0, NULL);
-    cl::Image2D xprj_img(context, CL_MEM_READ_WRITE,format,IMAGE_SIZE_X,num_angle, 0, NULL, NULL);
+    cl::Image2D mt_img(context, CL_MEM_READ_WRITE,format,imageSizeX, imageSizeY, 0,NULL, NULL);
+    cl::Buffer xprj_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeY*num_angle, 0, NULL);
+    cl::Image2D xprj_img(context, CL_MEM_READ_WRITE,format,imageSizeX,num_angle, 0, NULL, NULL);
     
-    const cl::NDRange local_item_size_xprj(maxWorkGroupSize,1,1);
-    const cl::NDRange global_item_size_xprj(IMAGE_SIZE_Y,1,1);
+    const cl::NDRange local_item_size_xprj(min(imageSizeY,(int)maxWorkGroupSize),1,1);
+    const cl::NDRange global_item_size_xprj(imageSizeY,1,1);
     
     //write input mt_img object
     for (int i=0; i<num_angle; i++) {
-        command_queue.enqueueWriteImage(mt_img, CL_TRUE, origin, region_mt, IMAGE_SIZE_X*sizeof(float), 0, mt_vec[i], NULL, NULL);
+        command_queue.enqueueWriteImage(mt_img, CL_TRUE, origin, region_mt, imageSizeX*sizeof(float), 0, mt_vec[i], NULL, NULL);
         
         //xprojection
         kernel_xproj.setArg(0, mt_img);
@@ -133,7 +139,7 @@ int Z_Correction(cl::CommandQueue command_queue,
     
     kernel_zcorr.setArg(0, xprj_img);
     kernel_zcorr.setArg(1, zshift_buff);
-    kernel_zcorr.setArg(2, cl::Local(sizeof(cl_float)*IMAGE_SIZE_Y)); //target_xproj
+    kernel_zcorr.setArg(2, cl::Local(sizeof(cl_float)*imageSizeY)); //target_xproj
     kernel_zcorr.setArg(3, cl::Local(sizeof(cl_float)*maxWorkGroupSize)); //loc_mem
     kernel_zcorr.setArg(4, startZ);
     kernel_zcorr.setArg(5, endZ);
@@ -143,38 +149,40 @@ int Z_Correction(cl::CommandQueue command_queue,
     return 0;
 }
 
+
 int reslice(cl::CommandQueue command_queue, cl::Kernel kernel,
             int num_angle,int iter,float baseup,
             vector<float*> mt_vec, vector<float*> prj_vec,
-            cl::Buffer xshift_buff,cl::Buffer zshift_buff){
+            cl::Buffer xshift_buff,cl::Buffer zshift_buff,
+            int imageSizeX,int imageSizeY){
     
     cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
     size_t maxWorkGroupSize = command_queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
     
     cl::ImageFormat format(CL_R, CL_FLOAT);
-    const cl::NDRange local_item_size(maxWorkGroupSize,1,1);
-    const cl::NDRange global_item_size(IMAGE_SIZE_X,IMAGE_SIZE_Y,1);
+    const cl::NDRange local_item_size(min(imageSizeX,(int)maxWorkGroupSize),1,1);
+    const cl::NDRange global_item_size(imageSizeX,imageSizeY,1);
     cl::size_t<3> origin;
     cl::size_t<3> region_mt;
     cl::size_t<3> region_prj;
     origin[0] = 0;
     origin[1] = 0;
-    region_mt[0] = IMAGE_SIZE_X;
-    region_mt[1] = IMAGE_SIZE_Y;
+    region_mt[0] = imageSizeX;
+    region_mt[1] = imageSizeY;
     region_mt[2] = 1;
-    region_prj[0] = IMAGE_SIZE_X;
+    region_prj[0] = imageSizeX;
     region_prj[1] = num_angle/iter;
     region_prj[2] = 1;
     
     //image object declaration
-    cl::Image2D mt_img(context, CL_MEM_READ_WRITE,format,IMAGE_SIZE_X, IMAGE_SIZE_Y, 0, NULL, NULL);
-    cl::Image2DArray prj_img(context, CL_MEM_READ_WRITE,format,IMAGE_SIZE_Y,IMAGE_SIZE_X, num_angle/iter, 0, 0, NULL, NULL);
+    cl::Image2D mt_img(context, CL_MEM_READ_WRITE,format,imageSizeX, imageSizeY, 0, NULL, NULL);
+    cl::Image2DArray prj_img(context, CL_MEM_READ_WRITE,format,imageSizeY,imageSizeX, num_angle/iter, 0, 0, NULL, NULL);
     
     for (int j=0; j<num_angle; j+=num_angle/iter) {
         //write input mt_img object
         origin[2] = 0;
         for (int i=0; i<num_angle/iter; i++) {
-            command_queue.enqueueWriteImage(mt_img, CL_TRUE, origin, region_mt, IMAGE_SIZE_X*sizeof(cl_float), 0, mt_vec[i+j], NULL, NULL);
+            command_queue.enqueueWriteImage(mt_img, CL_TRUE, origin, region_mt, imageSizeX*sizeof(cl_float), 0, mt_vec[i+j], NULL, NULL);
         
             //reslice
             kernel.setArg(0, mt_img);
@@ -189,9 +197,9 @@ int reslice(cl::CommandQueue command_queue, cl::Kernel kernel,
             command_queue.finish();
         }
         
-        for (int i = 0; i < IMAGE_SIZE_Y; i++) {
+        for (int i = 0; i < imageSizeY; i++) {
             origin[2]=i;
-            command_queue.enqueueReadImage(prj_img, CL_TRUE, origin, region_prj, IMAGE_SIZE_X*sizeof(cl_float), 0, prj_vec[i]+j*IMAGE_SIZE_X, NULL, NULL);
+            command_queue.enqueueReadImage(prj_img, CL_TRUE, origin, region_prj, imageSizeX*sizeof(cl_float), 0, prj_vec[i]+j*imageSizeX, NULL, NULL);
         }
     }
     
@@ -202,11 +210,18 @@ int reslice(cl::CommandQueue command_queue, cl::Kernel kernel,
 
 int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                    int startAngleNo, int EndAngleNo,string subDir_str,float baseup,
-                   string output_dir,string fileName_base_o,
-                   int startX, int endX, int startZ, int endZ,
-                   bool Zcorr, bool Xcorr,
+                   input_parameter inp,string fileName_base_o,
                    vector<float*> mt_vec, int thread_id)
 {
+    string output_dir = inp.getOutputDir();
+    int startX=inp.getStartX();
+    int endX=inp.getEndX();
+    int startZ=inp.getStartZ();
+    int endZ=inp.getEndZ();
+    int imageSizeX = inp.getImageSizeX();
+    int imageSizeY = inp.getImageSizeY();
+    int64_t imageSizeM = inp.getImageSizeM();
+    
     try {
         cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
         string devicename = command_queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_NAME>();
@@ -215,10 +230,10 @@ int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         
         int num_angle = EndAngleNo - startAngleNo + 1;
         int iter=1;
-        size_t memobj = sizeof(cl_float)*((int64_t)IMAGE_SIZE_M*(num_angle/iter+1)+num_angle*2);
+        size_t memobj = sizeof(cl_float)*((int64_t)imageSizeM*(num_angle/iter+1)+num_angle*2);
         while (memobj>globalMemSize) {
             iter*=2;
-            memobj = sizeof(cl_float)*((int64_t)IMAGE_SIZE_M*(num_angle/iter+1)+num_angle*2);
+            memobj = sizeof(cl_float)*((int64_t)imageSizeM*(num_angle/iter+1)+num_angle*2);
         }
         
         
@@ -236,16 +251,18 @@ int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         xshift = new float[num_angle];
         zshift = new float[num_angle];
         //reserve pointer for resliced projection
-        for (int i = 0; i < IMAGE_SIZE_Y; i++) {
-            prj_vec.push_back(new float[IMAGE_SIZE_X*num_angle]);
+        for (int i = 0; i < imageSizeY; i++) {
+            prj_vec.push_back(new float[imageSizeX*num_angle]);
         }
         
         
         //zcorrection
-        if(Zcorr){
+        if(inp.getZcorr()){
             cout<< "Device: "<< devicename<<endl;
             cout<< "   Z-correction"<<endl<<endl;
-            Z_Correction(command_queue,kernel[1],kernel[2],num_angle,startX,endX,startZ,endZ,mt_vec, zshift_buff);
+            Z_Correction(command_queue,kernel[1],kernel[2],num_angle,
+                         startX,endX,startZ,endZ,mt_vec, zshift_buff,
+                         imageSizeX,imageSizeY);
         }
         
         
@@ -260,7 +277,9 @@ int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         //reslice
         cout<< "Device: "<< devicename<<endl;
         cout<< "    reslice to sinogram"<<endl<<endl;
-        reslice(command_queue, kernel[0],num_angle,iter,baseup,mt_vec,prj_vec,xshift_buff,zshift_buff);
+        reslice(command_queue, kernel[0],num_angle,iter,baseup,mt_vec,prj_vec,
+                xshift_buff,zshift_buff,
+                imageSizeX,imageSizeY);
         
         
         //delete input mt_vec
@@ -269,14 +288,16 @@ int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         }
         
         //output
-        if (Zcorr||Xcorr) {
+        if (inp.getZcorr()||inp.getXcorr()) {
             output_th1[thread_id].join();
             output_th1[thread_id]=thread(xyshift_output_thread,num_angle,output_dir,
                                    move(xshift), move(zshift));
         }
         output_th2[thread_id].join();
-        output_th2[thread_id]=thread(prj_output_thread,1,IMAGE_SIZE_Y, subDir_str, num_angle,
-                                    output_dir,fileName_base_o,move(prj_vec));
+        output_th2[thread_id]=thread(prj_output_thread,
+                                     inp.getStartLayer(),inp.getEndLayer(),
+                                     subDir_str, num_angle,
+                                     output_dir,fileName_base_o,move(prj_vec),imageSizeX);
         
         
     } catch (cl::Error ret) {
@@ -288,32 +309,30 @@ int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
 
 int data_input_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                       int startAngleNo, int endAngleNo,string subDir_str,float baseup,
-                      string input_dir, string output_dir,
-                      string fileName_base_i,string fileName_base_o,
-                      int startX, int endX, int startZ, int endZ,
-                      bool Zcorr, bool Xcorr,int thread_id){
+                      input_parameter inp,string fileName_base_i,string fileName_base_o,
+                      int thread_id){
     
+    int imageSizeM = inp.getImageSizeM();
     
     vector<float*> mt_vec;
     for (int i=startAngleNo; i<=endAngleNo; i++) {
-        mt_vec.push_back(new float[IMAGE_SIZE_M]);
+        mt_vec.push_back(new float[inp.getImageSizeM()]);
     }
     
     
     //input mt data
+    string input_dir =inp.getInputDir();
     for (int i=startAngleNo; i<=endAngleNo; i++) {
         string filepath_input = input_dir+"/"+subDir_str+fileName_base_i+AnumTagString(i, "", ".raw");
         //cout<<filepath_input;
-        readRawFile(filepath_input,mt_vec[i-startAngleNo]);
+        readRawFile(filepath_input,mt_vec[i-startAngleNo],imageSizeM);
     }
     
     
     reslice_th[thread_id].join();
     reslice_th[thread_id] = thread(reslice_thread,command_queue,kernel,
                                    startAngleNo,endAngleNo,subDir_str,baseup,
-                                   output_dir,fileName_base_o,
-                                   startX,endX,startZ,endZ,
-                                   Zcorr,Xcorr,move(mt_vec),thread_id);
+                                   inp,fileName_base_o,move(mt_vec),thread_id);
     return 0;
 }
 
@@ -323,11 +342,10 @@ static int dummy(){
 }
 
 int reslice_programBuild(cl::Context context,vector<cl::Kernel> *kernels,
-                        int startAngleNo, int endAngleNo){
+                        int startAngleNo, int endAngleNo, input_parameter inp){
     cl_int ret;
     
     //OpenCL Program
-    string kernel_code = "";
     //kernel program source
     /*ifstream ifs("../reslice.cl", ios::in);
      if(!ifs) {
@@ -339,17 +357,22 @@ int reslice_programBuild(cl::Context context,vector<cl::Kernel> *kernels,
      string kernel_src_reslice(it,last);
      ifs.close();*/
     ostringstream oss;
-    oss<<"#define PRJ_ANGLESIZE "<<endAngleNo-startAngleNo+1<<endl<<endl;
-    oss<<"#define NUM_TRIAL "<<20<<endl<<endl;
-    oss<<"#define LAMBDA "<<0.001f<<endl<<endl;
-    kernel_code += oss.str();
-    kernel_code += kernel_src_reslice;
+    oss<<"-D PRJ_ANGLESIZE="<<endAngleNo-startAngleNo+1<<" ";
+    oss<<"-D NUM_TRIAL="<<20<<" ";
+    oss<<"-D LAMBDA="<<0.001f<<" ";
+    oss<<"-D IMAGESIZE_X="<<inp.getImageSizeX()<<" ";
+    oss<<"-D IMAGESIZE_Y="<<inp.getImageSizeY()<<" ";
+    oss<<"-D IMAGESIZE_M="<<inp.getImageSizeM()<<" ";
+    string option = oss.str();
     //cout << kernel_code<<endl;
-    size_t kernel_code_size = kernel_code.length();
-    cl::Program::Sources source(1,std::make_pair(kernel_code.c_str(),kernel_code_size));
+#if defined (OCL120)
+    cl::Program::Sources source(1,std::make_pair(kernel_src_reslice.c_str(),kernel_src_reslice.length()));
+#else
+    cl::Program::Sources source(1,kernel_src_reslice);
+#endif
     cl::Program program(context, source,&ret);
     //kernel build
-    ret=program.build();
+    ret=program.build(option.c_str());
     //cout<<ret<<endl;
     kernels[0].push_back(cl::Kernel::Kernel(program,"reslice", &ret));//0
     kernels[0].push_back(cl::Kernel::Kernel(program,"xprojection", &ret));//1
@@ -372,7 +395,7 @@ int reslice_ocl(input_parameter inp,OCL_platform_device plat_dev_list,string fil
     vector<vector<cl::Kernel>> kernels;
     for (int i=0; i<plat_dev_list.contextsize(); i++) {
         vector<cl::Kernel> kernels_plat;
-        reslice_programBuild(plat_dev_list.context(i),&kernels_plat,startAngleNo,endAngleNo);
+        reslice_programBuild(plat_dev_list.context(i),&kernels_plat,startAngleNo,endAngleNo,inp);
         kernels.push_back(kernels_plat);
     }
     
@@ -419,11 +442,7 @@ int reslice_ocl(input_parameter inp,OCL_platform_device plat_dev_list,string fil
                                         plat_dev_list.queue(j, 0),kernels[j],
                                          startAngleNo,endAngleNo,
                                          EnumTagString(i,"",""),baseup,
-                                         inp.getInputDir(),inp.getOutputDir(),
-                                         fileName_base_i,fileName_base_o,
-                                         inp.getStartX(),inp.getEndX(),
-                                         inp.getStartZ(),inp.getEndZ(),
-                                         inp.getZcorr(),inp.getXcorr(),j);
+                                         inp,fileName_base_i,fileName_base_o,j);
                     i++;
                     if (i > endEnergyNo) break;
                 } else{
@@ -449,11 +468,7 @@ int reslice_ocl(input_parameter inp,OCL_platform_device plat_dev_list,string fil
                                          plat_dev_list.queue(j, 0),kernels[j],
                                          startAngleNo,endAngleNo,
                                          paraname[i],baseup,
-                                         inp.getInputDir(),inp.getOutputDir(),
-                                         fileName_base_i,fileName_base_o,
-                                         inp.getStartX(),inp.getEndX(),
-                                         inp.getStartZ(),inp.getEndZ(),
-                                         inp.getZcorr(),inp.getXcorr(),j);
+                                         inp,fileName_base_i,fileName_base_o,j);
                     i++;
                     if (i >= inp.getFittingParaName().size()) break;
                 } else{

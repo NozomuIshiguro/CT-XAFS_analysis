@@ -1,4 +1,4 @@
-﻿//
+//
 //  main.cpp
 //  CT_imageReg_XANESfitting
 //
@@ -8,11 +8,9 @@
 
 #include "CTXAFS.hpp"
 #include "XANES_fitting.hpp"
-#include "atan_lor_linear_fitting.hpp"
 
 mutex m1,m2;
 vector<thread> input_th, imageReg_th, fitting_th, output_th, output_th_fit;
-fitting_eq fiteq(atanlorlinear_preprocessor1,atanlorlinear_preprocessor2);
 
 int main(int argc, const char * argv[]) {
     string fp_str;
@@ -155,7 +153,7 @@ int main(int argc, const char * argv[]) {
         inp.setEnergyFilePath(buffer);
     }
     if (inp.getEnergyFilePath().length()==0) {
-        inp.setEnergyFilePathFromDialog("Set energy file path.");
+        inp.setEnergyFilePathFromDialog("Set energy file path.\n");
     }
     ifstream energy_ifs(inp.getEnergyFilePath(),ios::in);
     if(!energy_ifs) {
@@ -172,7 +170,7 @@ int main(int argc, const char * argv[]) {
         inp.setE0(buffer);
     }
     if (inp.getE0()==NAN) {
-        inp.setE0FromDialog("Set E0 /eV (ex. 11559).");
+        inp.setE0FromDialog("Set E0 /eV (ex. 11559).\n");
     }
     
     
@@ -182,7 +180,7 @@ int main(int argc, const char * argv[]) {
         inp.setEnergyRange(buffer);
     }
     if ((inp.getStartEnergy()==NAN)|(inp.getEndEnergy()==NAN)) {
-        inp.setEnergyRangeFromDialog("Set fitting energy range /eV (ex. 11540.0-11600.0).");
+        inp.setEnergyRangeFromDialog("Set fitting energy range /eV (ex. 11540.0-11600.0).\n");
     }
     cout<<endl;
     
@@ -200,7 +198,7 @@ int main(int argc, const char * argv[]) {
     
     
     //select regmode
-    regMode regmode(0,1);
+    regMode regmode(0);
     buffer = output_flag("-rm", argc, argv);
     if (buffer.length()>0) {
         inp.setRegMode(buffer);
@@ -208,19 +206,13 @@ int main(int argc, const char * argv[]) {
         cout << "Registration mode: "<< inp.getRegMode()<<endl;
         
     }
-    buffer = output_flag("-cm", argc, argv);
-    if (buffer.length()>0) {
-        inp.setCntMode(buffer);
-        regmode=regMode(inp.getRegMode(),2);
-        cout << "Registration contrast factor mode: "<< inp.getCntMode()<<endl;
-    }
     if ((inp.getRegMode()==NAN)) {
         inp.setRegModeFromDialog("Set Registration mode. \n\
                                  (0:xy shift, 1:rotation+xy shift, 2:scale+xy shift, \
                                  3:rotation+scale + xy shift, 4:affine + xy shift,-1:none)\n");
-        regmode=regMode(inp.getRegMode(),2);
+        regmode=regMode(inp.getRegMode());
     }
-    regmode=regMode(inp.getRegMode(),inp.getCntMode());
+    regmode=regMode(inp.getRegMode());
     
     //fitting parameter setting
     buffer = output_flag("-fitp", argc, argv);
@@ -228,7 +220,7 @@ int main(int argc, const char * argv[]) {
         inp.setFittingPara(buffer);
     }
     if (inp.getFittingPara().size()==0) {
-        inp.setFittingParaFromDialog("Set Initial fitting parameters (ex. 1.1,0.2,.....)");
+        inp.setFittingParaFromDialog("Set Initial fitting parameters (ex. 1.1,0.2,.....)\n");
         cout<<endl;
     }
     
@@ -239,7 +231,7 @@ int main(int argc, const char * argv[]) {
         inp.setFreeFixPara(buffer);
     }
     if (inp.getFreeFixPara().size()==0) {
-        inp.setFreeFixParaFromDialog("Set Free(1)/Fix(0) of fitting parameters (ex. 1,1,0,.....)");
+        inp.setFreeFixParaFromDialog("Set Free(1)/Fix(0) of fitting parameters (ex. 1,1,0,.....)\n");
         cout<<endl;
     }
     
@@ -250,10 +242,10 @@ int main(int argc, const char * argv[]) {
         inp.setValidParaLimit(buffer);
     }
     if (inp.getFreeFixPara().size()==0) {
-        inp.setValidParaLowerLimitFromDialog("Set valid parameter lower limit (ex. 0,-1.0,0,.....)");
+        inp.setValidParaLowerLimitFromDialog("Set valid parameter lower limit (ex. 0,-1.0,0,.....)\n");
         cout<<endl;
         
-        inp.setValidParaLowerLimitFromDialog("Set valid parameter upper limit (ex. 1.0,1.0,10.0,.....)");
+        inp.setValidParaLowerLimitFromDialog("Set valid parameter upper limit (ex. 1.0,1.0,10.0,.....)\n");
         cout<<endl;
     }
     
@@ -264,14 +256,14 @@ int main(int argc, const char * argv[]) {
         inp.setFittingParaName(buffer);
     }
     if (inp.getFittingParaName().size()==0) {
-        inp.setFittingParaNameFromDialog("Set fitting parameter names (ex. a0,a1,.....)");
+        inp.setFittingParaNameFromDialog("Set fitting parameter names (ex. a0,a1,.....)\n");
     }
     
-    fiteq=fitting_eq(inp, atanlorlinear_preprocessor1,atanlorlinear_preprocessor2);
+    fitting_eq fiteq(inp);
     
     //set image reg initial parameter
-	for (int i=0; i<min(regmode.get_p_num()+regmode.get_cp_num(), (int)inp.getRegCnt_inipara().size()); i++) {
-        regmode.p_ini[i]=inp.getRegCnt_inipara()[i];
+	for (int i=0; i<min(regmode.get_p_num(), (int)inp.getReg_inipara().size()); i++) {
+        regmode.p_ini[i]=inp.getReg_inipara()[i];
     }
     
     time_t start,end;

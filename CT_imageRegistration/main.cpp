@@ -30,14 +30,13 @@ int main(int argc, const char * argv[]) {
     OCL_platform_device plat_dev_list(inp.getPlatDevList(),true); //true:非共有context
     //inp.setLambda_t(0.00001f);
     inp.setNumtrial(5);
-    cout <<endl;
     
-    if (inp.getNumParallel()==NAN) {
+    //number of parallel processing
+    if (inp.getNumParallel()<0) {
         inp.setNumParallel(6);
     }
     
-    
-    /* Input directory settings*/
+    // Input directory settings
     string buffer;
     buffer = output_flag("-ip", argc, argv);
     if (buffer.length()>0) {
@@ -50,7 +49,6 @@ int main(int argc, const char * argv[]) {
     }
     string fileName_base = inp.getInputDir();
     fileName_base += "/";
-    
     DIR *dir;
     struct dirent *dp;
     dir=opendir(inp.getInputDir().c_str());
@@ -58,13 +56,11 @@ int main(int argc, const char * argv[]) {
         cout <<"Directory not found."<<endl;
         return -1;
     }
-    
-    
     for(dp=readdir(dir);dp!=NULL;dp=readdir(dir)){
         string darkname = dp->d_name;
         
         if (darkname.find("dark.his")!=string::npos) {
-            cout << "his file found: " << darkname <<endl<<endl;
+            cout << "his file found: " << darkname <<endl;
             fileName_base += darkname;
             fileName_base.erase(fileName_base.size()-8);
             break;
@@ -78,7 +74,7 @@ int main(int argc, const char * argv[]) {
     //printf("%s\n",fileName_base);
     
     
-    /*output directory settings*/
+    //output directory settings
     buffer = output_flag("-op", argc, argv);
     if (buffer.length()>0) {
         inp.setOutputDir(buffer);
@@ -91,7 +87,7 @@ int main(int argc, const char * argv[]) {
     MKDIR(inp.getOutputDir().c_str());
     
     
-    /*output file base settings*/
+    //output file base settings
     buffer = output_flag("-ob", argc, argv);
     if (buffer.length()>0) {
         inp.setOutputFileBase(buffer);
@@ -110,7 +106,7 @@ int main(int argc, const char * argv[]) {
         cout << "Energy num range:"<<endl;
         cout << "   "<<inp.getStartEnergyNo()<<" - "<<inp.getEndEnergyNo()<<endl;
     }
-    if ((inp.getStartEnergyNo()==NAN)|(inp.getEndEnergyNo()==NAN)) {
+    if ((inp.getStartEnergyNo()<0)|(inp.getEndEnergyNo()<0)) {
         inp.setEnergyNoRangeFromDialog("Set energy num range (ex. 1-100).\n");
     }
     
@@ -122,7 +118,7 @@ int main(int argc, const char * argv[]) {
         cout << "reference energy No. for image registration: "<<endl;
         cout << "   " << inp.getTargetEnergyNo() << endl;
     }
-    if (inp.getTargetEnergyNo()==NAN) {
+    if (inp.getTargetEnergyNo()<0) {
         inp.setTargetEnergyNoFromDialog("Set reference energy No. for image registration.\n");
     }
     
@@ -134,44 +130,41 @@ int main(int argc, const char * argv[]) {
         cout << "Angle num range:"<<endl;
         cout << "   "<<inp.getStartAngleNo()<<" - "<<inp.getEndAngleNo()<<endl;
     }
-    if ((inp.getStartAngleNo()==NAN)|(inp.getEndAngleNo()==NAN)) {
+    if ((inp.getStartAngleNo()<0)|(inp.getEndAngleNo()<0)) {
         inp.setAngleRangeFromDialog("Set angle num range (ex. 1-1600).\n");
     }
     
     
     //select regmode
-    regMode regmode(0,1);
+    regMode regmode(inp.getRegMode());
     buffer = output_flag("-rm", argc, argv);
     if (buffer.length()>0) {
         inp.setRegMode(buffer);
-        
         cout << "Registration mode: "<< inp.getRegMode()<<endl;
-        
     }
-    buffer = output_flag("-cm", argc, argv);
-    if (buffer.length()>0) {
-        inp.setCntMode(buffer);
-        regmode=regMode(inp.getRegMode(),2);
-        cout << "Registration contrast factor mode: "<< inp.getCntMode()<<endl;
-    }
-    if ((inp.getRegMode()==NAN)) {
-        inp.setRegModeFromDialog("Set Registration mode. \n\
-                                 (0:xy shift, 1:rotation+xy shift, 2:scale+xy shift, \
-                                 3:rotation+scale + xy shift, 4:affine + xy shift,-1:none)\n");
-        regmode=regMode(inp.getRegMode(),2);
-    }
-    regmode=regMode(inp.getRegMode(),inp.getCntMode());
     
-    //set image reg initial parameter
-    for (int i=0; i<min(regmode.get_p_num()+regmode.get_cp_num(), (int)inp.getRegCnt_inipara().size()); i++) {
-        regmode.p_ini[i]=inp.getRegCnt_inipara()[i];
+    
+    //set image reg fixed parameter
+    if(inp.getReg_fixpara().size()==0){
+        inp.setReg_fixparaFromDialog("Input Free(1)/Fix(0) paramater\n");
     }
+	regmode.set_pfix(inp);
+    
+
+    //set image reg initial parameter
+    if(inp.getReg_inipara().size()==0){
+        inp.setReg_iniparaFromDialog("Input initial fitting paramater\n");
+    }
+    for (int i=0; i<min(regmode.get_p_num(), (int)inp.getReg_inipara().size()); i++) {
+        regmode.p_ini[i]=inp.getReg_inipara()[i];
+    }
+    
     
     time_t start,end;
     time(&start);
     
     
-    /*Image Registration*/
+    //Image Registration
     imageRegistlation_ocl(fileName_base,inp,plat_dev_list,regmode);
     
     

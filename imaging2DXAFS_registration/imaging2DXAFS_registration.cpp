@@ -8,339 +8,407 @@
 
 
 #include "imaging2DXAFS.hpp"
+static int buffsize=512;
 
-int mt_output_thread(int startLoopNo, int EndLoopNo, int startEnergyNo, int endEnergyNo,
-                     string output_dir, vector<float*> mt_outputs, float *mt_merge_output,
-                     vector<float*> p,vector<float*> p_err,
-                     regMode regmode, int waittime){
+int mt_output_thread(int startEnergyNo, int endEnergyNo,
+                     string output_filepath, float* mt_outputs,vector<float*> p,vector<float*> p_err,
+                     regMode regmode,int imageSizeM){
     
-    this_thread::sleep_for(chrono::seconds(waittime));
+    const int p_num = regmode.get_p_num();
     
-    string shift_dir=output_dir+ "/imageRegShift";
-    MKDIR(shift_dir.c_str());
-    
-    const int p_num = regmode.get_p_num()+regmode.get_cp_num();
-    
-    ostringstream oss;
-    for (int j=startLoopNo; j<=EndLoopNo; j++) {
-        string fileName_output= shift_dir+ LnumTagString(j,"/shift", ".txt");
-        ofstream ofs(fileName_output,ios::out|ios::trunc);
-        ofs<<regmode.ofs_transpara();
-        
-        for (int i=startEnergyNo; i<=endEnergyNo; i++) {
-            string fileName_output= output_dir+ "/"+ LnumTagString(j,"","")+ EnumTagString(i,"/mtr", ".raw");
-            oss << "output file: " << fileName_output << "\n";
-            outputRawFile_stream(fileName_output,mt_outputs[j-startLoopNo]+(i-startEnergyNo)*IMAGE_SIZE_M,IMAGE_SIZE_M);
-            
-            for (int k=0; k<regmode.get_p_num(); k++) {
-                ofs<<p[i-startEnergyNo][k+p_num*(j-startLoopNo)]<<"\t"
-                <<p_err[i-startEnergyNo][k+p_num*(j-startLoopNo)]<<"\t";
-            }
-            ofs<<endl;
+    string result_output;
+    size_t ini = output_filepath.rfind(".");
+    if(ini<output_filepath.length()-5) result_output= output_filepath+"_result.txt";
+    else if(ini!=-1){
+        result_output= output_filepath;
+        result_output.replace(output_filepath.rfind("."), 4, "_result.txt");
+    }else result_output= output_filepath+"_result.txt";
+    ofstream ofs(result_output,ios::out|ios::trunc);
+    ofs<<regmode.ofs_transpara();
+    for(int i=startEnergyNo; i<=endEnergyNo; i++) {
+        for (int k=0; k<p_num; k++) {
+            ofs<<p[i-startEnergyNo][k]<<"\t"
+            <<p_err[i-startEnergyNo][k]<<"\t";
         }
-        ofs.close();
+        ofs<<endl;
     }
-    if(EndLoopNo-startLoopNo>0){
-        for (int i=startEnergyNo; i<=endEnergyNo; i++) {
-            string fileName_output = output_dir+ "/merge"+ EnumTagString(i,"/mtr", ".raw");
-            oss << "output file: " << fileName_output << "\n";
-            outputRawFile_stream(fileName_output,mt_merge_output+(i-startEnergyNo)*IMAGE_SIZE_M,IMAGE_SIZE_M);
-        }
-    }
-    oss <<endl;
-    cout << oss.str();
+    ofs.close();
+    
+    outputRawFile_stream(output_filepath,mt_outputs,imageSizeM*(endEnergyNo-startEnergyNo+1));
+    
     for (int i=startEnergyNo; i<=endEnergyNo; i++) {
         delete [] p[i-startEnergyNo];
         delete [] p_err[i-startEnergyNo];
     }
-    for(int j=startLoopNo; j<=EndLoopNo; j++){
-        delete [] mt_outputs[j-startLoopNo];
-    }
-     delete [] mt_merge_output;
+    delete [] mt_outputs;
     return 0;
 }
 
+int mt_transfer(cl::CommandQueue queue,cl::Kernel kernel,
+                  cl::Buffer mt_buffer,cl::Image2DArray mt_image,cl::Image2DArray mt_outputImg,
+                  const cl::NDRange global_item_size,const cl::NDRange local_item_size,
+                  float *mt_pointer, mask msk, bool refBool,int imageSizeM){
+    
+    cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
+    
+    queue.enqueueWriteBuffer(mt_buffer, CL_TRUE, 0, sizeof(cl_float)*imageSizeM, mt_pointer, NULL, NULL);
+    //cout<<kernel.getInfo<CL_KERNEL_FUNCTION_NAME>()<<endl;
+    kernel.setArg(0, mt_buffer);
+    kernel.setArg(1, mt_image);
+    kernel.setArg(2, mt_outputImg);
+    if (refBool) {
+        kernel.setArg(3, msk.refMask_shape);
+        kernel.setArg(4, msk.refMask_x);
+        kernel.setArg(5, msk.refMask_y);
+        kernel.setArg(6, msk.refMask_width);
+        kernel.setArg(7, msk.refMask_height);
+        kernel.setArg(8, msk.refMask_angle);
+    }else{
+        kernel.setArg(3, msk.sampleMask_shape);
+        kernel.setArg(4, msk.sampleMask_x);
+        kernel.setArg(5, msk.sampleMask_y);
+        kernel.setArg(6, msk.sampleMask_width);
+        kernel.setArg(7, msk.sampleMask_height);
+        kernel.setArg(8, msk.sampleMask_angle);
+    }
+    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_item_size, local_item_size, NULL, NULL);
+    queue.finish();
+    
+    return 0;
+}
 
-int imageReg_2D_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
-                       cl::Buffer dark_buffer,
-                       cl::Buffer I0_target_buffer,
-                       float* It_img_target,
-                       int startLoopNo,int EndLoopNo, int targetLoopNo,
-                       int startEnergyNo, int endEnergyNo, int targetEnergyNo,
-                       string fileName_base, string output_dir, regMode regmode,
-                       mask msk,int Num_trial, float lambda, bool last){
+int imageReg_2D_thread(cl::CommandQueue command_queue, CL_objects CLO,
+                       input_parameter inp, regMode regmode, mask msk){
     try {
+        int imageSizeX = inp.getImageSizeX();
+        int imageSizeY = inp.getImageSizeY();
+        int imageSizeM = inp.getImageSizeM();
         
         cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
         cl::Device device = command_queue.getInfo<CL_QUEUE_DEVICE>();
         string devicename = device.getInfo<CL_DEVICE_NAME>();
-        size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), IMAGE_SIZE_X);
-        const int dLp=EndLoopNo-startLoopNo+1;
-        const int dE =endEnergyNo-startEnergyNo+1;
-        const int p_num = regmode.get_p_num()+regmode.get_cp_num();
-        
+        size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), imageSizeX);
+        int startEnergyNo=inp.getStartEnergyNo();
+        int endEnergyNo=inp.getEndEnergyNo();
+        int dE = endEnergyNo - startEnergyNo+1;
+        int targetEnergyNo=inp.getTargetEnergyNo();
+        float lambda=inp.getLambda_t();
+        int Num_trial=inp.getNumTrial();
+        const int p_num = regmode.get_p_num();
         cl::ImageFormat format(CL_RG,CL_FLOAT);
         
-        /* Sample I0, It data input */
-        vector<float*>I0_sample_img;
-        vector<float*>It2mt_sample_img;
-        float *mt_merge_img;
-        time_t start_t,readfinish_t;
-        time(&start_t);
-        mt_merge_img=new float[IMAGE_SIZE_M*dE];
-        for (int i=startLoopNo; i<=EndLoopNo; i++) {
-            I0_sample_img.push_back(new float[IMAGE_SIZE_M*dE]);
-            It2mt_sample_img.push_back(new float[IMAGE_SIZE_M*dE]);
-            string fileName_I0 = LnumTagString(i,fileName_base,"_I0.his");
-            string fileName_It = LnumTagString(i,fileName_base,".his");
-            readHisFile_stream(fileName_I0,startEnergyNo,endEnergyNo,I0_sample_img[i-startLoopNo],IMAGE_SIZE_M);
-            readHisFile_stream(fileName_It,startEnergyNo,endEnergyNo,It2mt_sample_img[i-startLoopNo],IMAGE_SIZE_M);
-        }
+        cl::Buffer dark_buffer=CLO.dark_buffer;
+        cl::Buffer I0_target_buffer=CLO.I0_target_buffer;
+        vector<cl::Buffer> I0_sample_buffers=CLO.I0_sample_buffers;
+        
+        // p_vec, p_err_vec, mt_sample
         vector<float*>p_vec;
         vector<float*>p_err_vec;
+        /*float* p_vec_pointer;
+        float* p_err_vec_pointer;
+        p_vec_pointer = new float[p_num*(endEnergyNo-startEnergyNo+1)];
+        p_err_vec_pointer = new float[p_num*(endEnergyNo-startEnergyNo+1)];
         for (int i=startEnergyNo; i<=endEnergyNo; i++) {
-            p_vec.push_back(new float[p_num*dLp]);
-            p_err_vec.push_back(new float[p_num*dLp]);
+            p_vec.push_back(&p_vec_pointer[p_num*(i-startEnergyNo)]);
+            p_err_vec.push_back(&p_err_vec_pointer[p_num*(i-startEnergyNo)]);
+            mt_sample_img.push_back(new float[IMAGE_SIZE_M]);
+        }*/
+        for (int i=startEnergyNo; i<=endEnergyNo; i++) {
+            p_vec.push_back(new float[p_num]);
+            p_err_vec.push_back(new float[p_num]);
         }
-        time(&readfinish_t);
         
+        ifstream ini_ifs(inp.getIniFilePath(),ios::in);
+        if (ini_ifs) {
+            char *buffer;
+            buffer = new char[buffsize];
+            ini_ifs.getline(buffer, buffsize);
+            int en=1;
+            //cout<<buffer<<endl;
+            while (!ini_ifs.eof()) {
+                ini_ifs.getline(buffer, buffsize);
+                if ((en>=startEnergyNo)&&(en<=endEnergyNo)) {
+                    istringstream iss(buffer);
+                    float a;
+                    int j=0;
+                    for (iss>>a; !iss.eof(); iss.ignore()>>a) {
+                        p_vec[en-startEnergyNo][j]=a;
+                        //cout<<p_vec[en-startEnergyNo][j]<<",";
+                        j++;
+                    }
+                    p_vec[en-startEnergyNo][j]=a;
+                    //cout<<p_vec[en-startEnergyNo][j];
+                    j++;
+                    
+                    while (j<p_num) {
+                        p_vec[en-startEnergyNo][j]=0.0f;
+                        //cout<<","<<p_vec[en-startEnergyNo][j];
+                        j++;
+                    }
+                }
+                //cout<<endl;
+                en++;
+            }
+        }
+        ini_ifs.close();
+        
+    
         //Buffer declaration
-        cl::Buffer It2mt_target_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M*dLp, 0, NULL);
-        cl::Buffer I0_sample_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_float)*IMAGE_SIZE_M*dLp, 0, NULL);
-        cl::Buffer It2mt_sample_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M*dLp, 0, NULL);
+        cl::Buffer mt_target_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeM, 0, NULL);
+        cl::Buffer mt_sample_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeM, 0, NULL);
         vector<cl::Image2DArray> mt_target_image;
         vector<cl::Image2DArray> mt_sample_image;
         for (int i=0; i<4; i++) {
             int mergeN = 1<<i;
-            mt_target_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dLp,
-                                                       IMAGE_SIZE_X/mergeN,IMAGE_SIZE_Y/mergeN,
+            mt_target_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,1,
+                                                       imageSizeX/mergeN,imageSizeY/mergeN,
                                                        0,0,NULL,NULL));
-            mt_sample_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dLp,
-                                                       IMAGE_SIZE_X/mergeN,IMAGE_SIZE_Y/mergeN,
+            mt_sample_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,1,
+                                                       imageSizeX/mergeN,imageSizeY/mergeN,
                                                        0,0,NULL,NULL));
         }
-        cl::Buffer p_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dLp, 0, NULL);
-        cl::Buffer p_err_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*p_num*dLp, 0, NULL);
-        cl::Buffer mt_merge_output_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*IMAGE_SIZE_M, 0, NULL);
-        cl::Buffer lambda_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*dLp, 0, NULL);
-
+        cl::Buffer p_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num, 0, NULL);
+        cl::Buffer p_err_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*p_num, 0, NULL);
+        cl::Buffer p_target_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_float)*p_num, 0, NULL);
+        cl::Buffer p_fix_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num, 0, NULL);
+        cl::Buffer lambda_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float), 0, NULL);
+        cl::Image2DArray mt_target_outputImg(context, CL_MEM_READ_WRITE,format,1,imageSizeX,imageSizeY,0,0,NULL,NULL);
+        cl::Image2DArray mt_sample_outputImg(context, CL_MEM_READ_WRITE,format,1,imageSizeX,imageSizeY,0,0,NULL,NULL);
         
         
         //kernel dimension declaration
-        const cl::NDRange global_item_size(WorkGroupSize*dLp,IMAGE_SIZE_Y,1);
-        const cl::NDRange global_item_size2(IMAGE_SIZE_X,IMAGE_SIZE_Y,1);
+        const cl::NDRange global_item_size(WorkGroupSize,imageSizeY,1);
         const cl::NDRange local_item_size(WorkGroupSize,1,1);
         
         
         //Energy loop setting
-        vector<int> LoopEndEnergyNo={startEnergyNo,endEnergyNo};
+        vector<int> LoopEndenergyNo={startEnergyNo,endEnergyNo};
         vector<int> LoopStartenergyNo;
         LoopStartenergyNo.push_back(min(targetEnergyNo, endEnergyNo));
         LoopStartenergyNo.push_back(max(targetEnergyNo, startEnergyNo));
         
         
-        if (startLoopNo==EndLoopNo) {
-            cout << "Device: "<< devicename << ", loop: "<<startLoopNo<< ", processing I0 and It..."<<endl;
-        } else {
-            cout << "Device: "<< devicename << ", Loop: "<<startLoopNo<<"-"<<EndLoopNo<< "    processing I0 and It..."<<endl;
+        //target mt input
+        string inputfilepath = inp.getInputDir(); //inputDirだが実際はファイルパス
+        float* mt_target;
+        mt_target=new float[imageSizeM];
+        readRawFile(inputfilepath,mt_target,targetEnergyNo,targetEnergyNo);
+        cl::Kernel kernel_trans = CLO.getKernel("mt_transfer");
+        mt_transfer(command_queue,kernel_trans,
+                    mt_target_buffer,mt_target_image[0], mt_target_outputImg,
+                    global_item_size,local_item_size,mt_target,msk,true,imageSizeM);
+        
+        // Sample mt data input
+        float *mt_sample;
+        mt_sample=new float[imageSizeM*dE];
+        readRawFile(inputfilepath,mt_sample,startEnergyNo,endEnergyNo);
+        
+        //target image reg parameter (p_target_buffer) initialize
+        ifstream ini_ifs2(inp.getIniFilePath(),ios::in);
+        if (!ini_ifs2) {
+            command_queue.enqueueWriteBuffer(p_target_buffer, CL_TRUE, 0, sizeof(cl_float)*p_num,regmode.p_ini,NULL,NULL);
+        }else{
+            command_queue.enqueueWriteBuffer(p_target_buffer, CL_TRUE, 0, sizeof(cl_float)*p_num,p_vec[targetEnergyNo-startEnergyNo],NULL,NULL);
         }
-        
-        
-        //write dark buffer
-        
-        //target mt conversion
-        command_queue.enqueueWriteBuffer(It2mt_target_buffer, CL_TRUE, 0, sizeof(cl_float)*IMAGE_SIZE_M*dLp, It_img_target, NULL, NULL);
-        kernel[0].setArg(0, dark_buffer);
-        kernel[0].setArg(1, I0_target_buffer);
-        kernel[0].setArg(2, It2mt_target_buffer);
-        kernel[0].setArg(3, mt_target_image[0]);
-        kernel[0].setArg(4, msk.refMask_shape);
-        kernel[0].setArg(5, msk.refMask_x);
-        kernel[0].setArg(6, msk.refMask_y);
-        kernel[0].setArg(7, msk.refMask_width);
-        kernel[0].setArg(8, msk.refMask_height);
-        kernel[0].setArg(9, msk.refMask_angle);
-        command_queue.enqueueNDRangeKernel(kernel[0], cl::NullRange, global_item_size, local_item_size, NULL, NULL);
+        command_queue.enqueueWriteBuffer(p_fix_buffer, CL_TRUE, 0, sizeof(cl_float)*p_num,regmode.p_fix,NULL,NULL);
         command_queue.finish();
-        delete [] It_img_target;
-        
+        delete [] mt_target;
         
         //It_target merged image create
+        cl::Kernel kernel_merge = CLO.getKernel("merge");
         if (regmode.get_regModeNo()>=0) {
             for (int i=3; i>0; i--) {
                 int mergeN = 1<<i;
-                int localsize = min((int)WorkGroupSize,IMAGE_SIZE_X/mergeN);
-                const cl::NDRange global_item_size_merge(localsize*dLp,1,1);
+                int localsize = min((int)WorkGroupSize,imageSizeX/mergeN);
+                const cl::NDRange global_item_size_merge(localsize,1,1);
                 const cl::NDRange local_item_size_merge(localsize,1,1);
                 
-                kernel[1].setArg(0, mt_target_image[0]);
-                kernel[1].setArg(1, mt_target_image[i]);
-                kernel[1].setArg(2, mergeN);
-                command_queue.enqueueNDRangeKernel(kernel[1], cl::NullRange, global_item_size_merge, local_item_size_merge, NULL, NULL);
+                kernel_merge.setArg(0, mt_target_image[0]);
+                kernel_merge.setArg(1, mt_target_image[i]);
+                kernel_merge.setArg(2, mergeN);
+                command_queue.enqueueNDRangeKernel(kernel_merge, cl::NullRange, global_item_size_merge, local_item_size_merge, NULL, NULL);
             }
             command_queue.finish();
         }
+        
+        //process when (sample Enegry No. == target Energy No.)
+        cl::Kernel kernel_output = CLO.getKernel("output_imgReg_result");
+        if ((targetEnergyNo>=startEnergyNo)&(targetEnergyNo<=endEnergyNo)) {
+            if (regmode.get_regModeNo()>=0) {
+                //kernel setArgs of outputing image reg results to buffer
+                kernel_output.setArg(0, mt_target_outputImg);
+                kernel_output.setArg(1, mt_target_buffer);
+                kernel_output.setArg(2, p_target_buffer);
+                
+                //output image reg results to buffer
+                command_queue.enqueueNDRangeKernel(kernel_output, NULL, global_item_size, local_item_size, NULL, NULL);
+                command_queue.finish();
+            }
+            
+            command_queue.enqueueReadBuffer(mt_target_buffer, CL_TRUE, 0, sizeof(cl_float)*imageSizeM, &mt_sample[imageSizeM*(targetEnergyNo - startEnergyNo)], NULL, NULL);
+            command_queue.finish();
+            
+            command_queue.enqueueReadBuffer(p_target_buffer,CL_TRUE,0,sizeof(cl_float)*p_num,p_vec[targetEnergyNo-startEnergyNo],NULL,NULL);
+            command_queue.finish();
+            ostringstream oss;
+            for (int t=0; t<p_num; t++) {
+                //p_vec[targetEnergyNo - startEnergyNo][t+p_num*(j-startAngleNo)]=0;
+                p_err_vec[targetEnergyNo - startEnergyNo][t]=0;
+            }
+                
+            oss << "Device: "<< devicename << ", energy: "<<targetEnergyNo<<endl;
+            if(!ini_ifs2) oss <<regmode.get_oss_target();
+            else oss <<regmode.get_oss_target(p_vec[targetEnergyNo-startEnergyNo]);
+            cout << oss.str();
+        }
+        
+        
+        //kernel setArgs of It_sample merged image create
+        kernel_merge.setArg(0, mt_sample_image[0]);
+        
+        //kernel setArgs of Image registration
+        cl::Kernel kernel_imgReg = CLO.getKernel("ImageRegistration");
+        kernel_imgReg.setArg(2, lambda_buffer);
+        kernel_imgReg.setArg(3, p_buffer);
+        kernel_imgReg.setArg(4, p_err_buffer);
+        kernel_imgReg.setArg(5, p_target_buffer);
+        kernel_imgReg.setArg(6, p_fix_buffer);
+        kernel_imgReg.setArg(9, 1.0f);
+        
+        //kernel setArgs of outputing image reg results to buffer
+        kernel_output.setArg(0, mt_sample_outputImg);
+        kernel_output.setArg(1, mt_sample_buffer);
+        kernel_output.setArg(2, p_buffer);
         
         
         for (int s=0; s<2; s++) {//1st cycle:i<targetEnergyNo, 2nd cycle:i>targetEnergyNo
             int di=(-1+2*s);
             if (startEnergyNo==endEnergyNo){
                 if(startEnergyNo==targetEnergyNo) break;
-            }else if ((LoopStartenergyNo[s]+di)*di>LoopEndEnergyNo[s]*di) {
+            }else if ((LoopStartenergyNo[s]+di)*di>LoopEndenergyNo[s]*di) {
                 continue;
             }
             
             //transpara reset
-            command_queue.enqueueFillBuffer(p_buffer, (cl_float)0.0, 0, sizeof(cl_float)*p_num*dLp,NULL,NULL);
+            if (!ini_ifs2) {
+                command_queue.enqueueFillBuffer(p_buffer, (cl_float)0.0, 0, sizeof(cl_float)*p_num,NULL,NULL);
+            }else{
+                command_queue.enqueueWriteBuffer(p_buffer, CL_TRUE, 0, sizeof(cl_float)*p_num,p_vec[targetEnergyNo-startEnergyNo],NULL,NULL);
+            }
             command_queue.finish();
             
             int ds = (LoopStartenergyNo[s]==targetEnergyNo) ? di:0;
-            for (int i=LoopStartenergyNo[s]+ds; i*di<=LoopEndEnergyNo[s]*di; i+=di) {
+            for (int i=LoopStartenergyNo[s]+ds; i*di<=LoopEndenergyNo[s]*di; i+=di) {
+                
+                //set transpara
+                if (ini_ifs2) {
+                    float *p_dummy;
+                    p_dummy=new float[p_num];
+                    command_queue.enqueueReadBuffer(p_buffer, CL_TRUE, 0, sizeof(cl_float)*p_num,p_dummy,NULL,NULL);
+                    for(int t=0;t<p_num;t++){
+                        //cout<<"p_vec "<<p_vec[i-startEnergyNo][t]<<" ";
+                        p_dummy[t] = p_dummy[t]*regmode.p_fix[t]+p_vec[i-startEnergyNo][t]*(1.0f-regmode.p_fix[t]);
+                        //cout << p_dummy[t]<<" ";
+                    }
+                    //cout<<endl;
+                    command_queue.enqueueWriteBuffer(p_buffer, CL_TRUE, 0, sizeof(cl_float)*p_num,p_dummy,NULL,NULL);
+                    delete [] p_dummy;
+                }
+                
                 
                 //sample mt conversion
-                for (int k = 0; k<dLp; k++) {
-                    command_queue.enqueueWriteBuffer(I0_sample_buffer, CL_TRUE, sizeof(cl_float)*IMAGE_SIZE_M*k, sizeof(cl_float)*IMAGE_SIZE_M, I0_sample_img[i-startEnergyNo], NULL, NULL);
-                }
-                command_queue.enqueueWriteBuffer(It2mt_sample_buffer, CL_TRUE, 0, sizeof(cl_float)*IMAGE_SIZE_M*dLp,It2mt_sample_img[i-startEnergyNo], NULL, NULL);
-                kernel[0].setArg(0, dark_buffer);
-                kernel[0].setArg(1, I0_sample_buffer);
-                kernel[0].setArg(2, It2mt_sample_buffer);
-                kernel[0].setArg(3, mt_sample_image[0]);
-                kernel[0].setArg(4, msk.sampleMask_shape);
-                kernel[0].setArg(5, msk.sampleMask_x);
-                kernel[0].setArg(6, msk.sampleMask_y);
-                kernel[0].setArg(7, msk.sampleMask_width);
-                kernel[0].setArg(8, msk.sampleMask_height);
-                kernel[0].setArg(9, msk.sampleMask_angle);
-                command_queue.enqueueNDRangeKernel(kernel[0], cl::NullRange, global_item_size, local_item_size, NULL, NULL);
-                command_queue.finish();
+                mt_transfer(command_queue,kernel_trans,
+                             mt_sample_buffer,mt_sample_image[0], mt_sample_outputImg,
+                             global_item_size,local_item_size,&mt_sample[imageSizeM*(i-startEnergyNo)],msk,false,imageSizeM);
                 
                 
                 if(regmode.get_regModeNo()>=0){
-                    //It_sample merged image create
+                    //mt_sample merged image create
                     for (int i=3; i>0; i--) {
-                        int mergeN = 1<<i;
-                        int localsize = min((int)WorkGroupSize,IMAGE_SIZE_X/mergeN);
-                        const cl::NDRange global_item_size_merge(localsize*dLp,1,1);
+                        unsigned int mergeN = 1<<i;
+                        unsigned int localsize = min((unsigned int)WorkGroupSize,imageSizeX/mergeN);
+                        const cl::NDRange global_item_size_merge(localsize,1,1);
                         const cl::NDRange local_item_size_merge(localsize,1,1);
                         
-                        kernel[1].setArg(0, mt_sample_image[0]);
-                        kernel[1].setArg(1, mt_sample_image[i]);
-                        kernel[1].setArg(2, mergeN);
-                        command_queue.enqueueNDRangeKernel(kernel[1], cl::NullRange, global_item_size_merge, local_item_size_merge, NULL, NULL);
+                        kernel_merge.setArg(1, mt_sample_image[i]);
+                        kernel_merge.setArg(2, mergeN);
+                        command_queue.enqueueNDRangeKernel(kernel_merge, cl::NullRange, global_item_size_merge, local_item_size_merge, NULL, NULL);
                         command_queue.finish();
                     }
                     
                     
                     //lambda_buffer reset
-                    command_queue.enqueueFillBuffer(lambda_buffer, (cl_float)lambda, 0, sizeof(cl_float)*dLp,NULL,NULL);
+                    command_queue.enqueueFillBuffer(lambda_buffer, (cl_float)lambda, 0, sizeof(cl_float),NULL,NULL);
                     command_queue.finish();
                     
                     
                     //Image registration
                     for (int i=0; i>=0; i--) {
-                        int mergeN = 1<<i;
+                        unsigned int mergeN = 1<<i;
                         //cout<<mergeN<<endl;
-                        int localsize = min((int)WorkGroupSize,IMAGE_SIZE_X/mergeN);
-                        const cl::NDRange global_item_size_merge(localsize*dLp,1,1);
+                        unsigned int localsize = min((unsigned int)WorkGroupSize,imageSizeX/mergeN);
+                        const cl::NDRange global_item_size_merge(localsize,1,1);
                         const cl::NDRange local_item_size_merge(localsize,1,1);
                         
-                        kernel[2].setArg(0, mt_target_image[i]);
-                        kernel[2].setArg(1, mt_sample_image[i]);
-                        kernel[2].setArg(2, lambda_buffer);
-                        kernel[2].setArg(3, p_buffer);
-                        kernel[2].setArg(4, p_err_buffer);
-                        kernel[2].setArg(5, cl::Local(sizeof(cl_float)*localsize));//locmem
-                        kernel[2].setArg(6, mergeN);
-                        kernel[2].setArg(7, 1.0f);
+                        kernel_imgReg.setArg(0, mt_target_image[i]);
+                        kernel_imgReg.setArg(1, mt_sample_image[i]);
+                        kernel_imgReg.setArg(7, cl::Local(sizeof(cl_float)*localsize));//locmem
+                        kernel_imgReg.setArg(8, mergeN);
                         for (int trial=0; trial < Num_trial; trial++) {
-                            command_queue.enqueueNDRangeKernel(kernel[2], NULL, global_item_size_merge, local_item_size_merge, NULL, NULL);
+                            command_queue.enqueueNDRangeKernel(kernel_imgReg, NULL, global_item_size_merge, local_item_size_merge, NULL, NULL);
                             command_queue.finish();
                         }
                     }
                     
                     
                     //output image reg results to buffer
-                    kernel[3].setArg(0, mt_sample_image[0]);
-                    kernel[3].setArg(1, It2mt_sample_buffer);
-                    kernel[3].setArg(2, p_buffer);
-                    //kernel[3].setArg(3, cl::Local(sizeof(cl_float)*p_num));//p_loc
-                    command_queue.enqueueNDRangeKernel(kernel[3], NULL, global_item_size, local_item_size, NULL, NULL);
+                    command_queue.enqueueNDRangeKernel(kernel_output, NULL, global_item_size, local_item_size, NULL, NULL);
                     command_queue.finish();
                     
                     
                     //transpara read buffer
-                    command_queue.enqueueReadBuffer(p_buffer,CL_TRUE,0,sizeof(cl_float)*p_num*dLp,p_vec[i-startEnergyNo],NULL,NULL);
-                    command_queue.enqueueReadBuffer(p_err_buffer,CL_TRUE,0,sizeof(cl_float)*p_num*dLp,p_err_vec[i-startEnergyNo],NULL,NULL);
+                    command_queue.enqueueReadBuffer(p_buffer,CL_TRUE,0,sizeof(cl_float)*p_num,p_vec[i-startEnergyNo],NULL,NULL);
+                    command_queue.enqueueReadBuffer(p_err_buffer,CL_TRUE,0,sizeof(cl_float)*p_num,p_err_vec[i-startEnergyNo],NULL,NULL);
                     command_queue.finish();
                 }
                 
                 
                 ostringstream oss;
-                for (int k=0; k<dLp; k++) {
-                    if (startLoopNo+k>EndLoopNo) {
-                        break;
-                    }
-                    int *p_precision, *p_err_precision;
-                    p_precision=new int[p_num];
-                    p_err_precision=new int[p_num];
-                    for (int n=0; n<p_num; n++) {
-                        int a = floor(log10(abs(p_vec[i-startEnergyNo][n+k*p_num])));
-                        int b = floor(log10(abs(p_err_vec[i-startEnergyNo][n+k*p_num])));
-                        p_err_precision[n] = max(0,b)+1;
+                int *p_precision, *p_err_precision;
+                p_precision=new int[p_num];
+                p_err_precision=new int[p_num];
+                for (int n=0; n<p_num; n++) {
+                    int a = floor(log10(abs(p_vec[i-startEnergyNo][n])));
+                    int b = floor(log10(abs(p_err_vec[i-startEnergyNo][n])));
+                    p_err_precision[n] = max(0,b)+1;
                         
                         
-                        if (a>0) {
-                            int c = floor(log10(pow(10,a+1)-0.5));
-                            if(a>c) a++;
-                            
-                            p_precision[n] = a+1 - min(0,b);
-                        }else if(a<b){
-                            p_precision[n] = 1;
-                        }else{
-                            p_precision[n]= a - b + 1;
-                        }
+                    if(regmode.p_fix[n]==0.0f) p_precision[n]=3;
+                    else if (a>0) {
+                        int c = floor(log10(pow(10,a+1)-0.5));
+                        if(a>c) a++;
+                        
+                        p_precision[n] = a+1 - min(0,b);
+                    }else if(a<b){
+                        p_precision[n] = 1;
+                    }else{
+                        p_precision[n]= a - b + 1;
                     }
-                    oss << "Device: "<< devicename << ", loop: "<<startLoopNo+k<< ", energy: "<<i<<endl;
-                    oss << regmode.oss_sample(p_vec[i-startEnergyNo]+p_num*k,p_err_vec[i-startEnergyNo]+p_num*k,p_precision,p_err_precision);
-
                 }
+                oss << "Device: "<< devicename << ", energy: "<<i<<endl;
+                oss << regmode.oss_sample(p_vec[i-startEnergyNo],p_err_vec[i-startEnergyNo],p_precision,p_err_precision);
+
                 cout << oss.str();
                 
-                //merge mt
-                kernel[4].setArg(0, mt_target_image);
-                kernel[4].setArg(1, mt_merge_output_buffer);
-                command_queue.enqueueNDRangeKernel(kernel[7], NULL, global_item_size2, local_item_size, NULL, NULL);
-                command_queue.finish();
-                
                 //read output buffer
-                for (int k=0; k<dLp; k++) {
-                    command_queue.enqueueReadBuffer(It2mt_sample_buffer, CL_TRUE, sizeof(cl_float)*IMAGE_SIZE_M*k, sizeof(cl_float)*IMAGE_SIZE_M, It2mt_sample_img[k]+IMAGE_SIZE_M*(i-startEnergyNo), NULL, NULL);
-                    command_queue.finish();
-                }
-                command_queue.enqueueReadBuffer(mt_merge_output_buffer, CL_TRUE, 0, sizeof(cl_float)*IMAGE_SIZE_M, mt_merge_img+IMAGE_SIZE_M*(i-startEnergyNo), NULL, NULL);
+                command_queue.enqueueReadBuffer(mt_sample_buffer, CL_TRUE, 0, sizeof(cl_float)*imageSizeM, &mt_sample[imageSizeM*(i - startEnergyNo)], NULL, NULL);
                 command_queue.finish();
             }
         }
         
-        for (int i=startLoopNo; i<=EndLoopNo; i++) {
-            delete [] I0_sample_img[i-startLoopNo];
-        }
-        
-        int delta_t;
-        if (last) {
-            delta_t=0;
-        }else{
-            delta_t= 0;//min(60.0,difftime(readfinish_t,start_t)*0.4);
-            //considering reading time of next cycle (max 60s)
-        }
-        
-        thread th_output(mt_output_thread,
-                         startLoopNo,EndLoopNo,startEnergyNo,endEnergyNo,
-                         output_dir,move(It2mt_sample_img),move(mt_merge_img),
-                         move(p_vec),move(p_err_vec),regmode,delta_t);
-        if(last) th_output.join();
-        else th_output.detach();
+        //delete [] mt_sample;
+        mt_output_thread(startEnergyNo,endEnergyNo,
+                         inp.getOutputDir(), move(mt_sample), move(p_vec),move(p_err_vec),regmode,imageSizeM);
         
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
@@ -353,112 +421,39 @@ int imageReg_2D_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel
 
 
 
-int imageRegistlation_2D_ocl(string fileName_base, input_parameter inp,
-                          OCL_platform_device plat_dev_list, regMode regmode)
+int imageRegistlation_2D_ocl(input_parameter inp, OCL_platform_device plat_dev_list, regMode regmode)
 {
     cl_int ret;
+    int imageSizeX = inp.getImageSizeX();
+    int imageSizeY = inp.getImageSizeY();
+    int imageSizeM = inp.getImageSizeM();
     
-    const int startEnergyNo=inp.getStartEnergyNo();
-    const int endEnergyNo=inp.getEndEnergyNo();
-    const int targetEnergyNo=inp.getTargetEnergyNo();
-    const int startLoopNo=inp.getStartAngleNo();
-    const int endLoopNo=inp.getEndAngleNo();
-    const int targetLoopNo=inp.getTargetAngleNo();
-    
-    
-    for (int i=startLoopNo; i<=endLoopNo; i++) {
-        string fileName_output = inp.getOutputDir() + "/" + LnumTagString(i,"","");
-        MKDIR(fileName_output.c_str());
-    }
-    if(endLoopNo-startLoopNo>0){
-        string fileName_output = inp.getOutputDir() + "/merged";
-        MKDIR(fileName_output.c_str());
-    }
-    
-    
+    //OpenCL objects class
+    vector<CL_objects> CLO;
+    CL_objects CLO_contx;
+    CLO.push_back(CLO_contx);
     
     //OpenCL Program
-    vector<vector<cl::Kernel>> kernels;
-    for (int i=0; i<plat_dev_list.contextsize(); i++) {
-        cl::Program program=regmode.buildImageRegProgram(plat_dev_list.context(i));
-        vector<cl::Kernel> kernels_plat;
-        kernels_plat.push_back(cl::Kernel::Kernel(program,"mt_conversion", &ret));//0
-        kernels_plat.push_back(cl::Kernel::Kernel(program,"merge", &ret));//1
-        kernels_plat.push_back(cl::Kernel::Kernel(program,"imageRegistration", &ret));//2
-        kernels_plat.push_back(cl::Kernel::Kernel(program,"output_imgReg_result", &ret));//3
-        kernels_plat.push_back(cl::Kernel::Kernel(program,"merge_mt", &ret));//4
-        kernels.push_back(kernels_plat);
-    }
+    cl::Program program=regmode.buildImageRegProgram(plat_dev_list.context(0),imageSizeX, imageSizeY);
+    CLO[0].addKernel(program,"mt_transfer");//0
+    CLO[0].addKernel(program,"merge");//1
+    CLO[0].addKernel(program,"imageRegistration");//2
+    CLO[0].addKernel(program,"output_imgReg_result");//3
+    CLO[0].addKernel(program,"merge_rawhisdata");//4
     
     
     //display OCL device
-    int t=0;
-    vector<int> dLp;
-    for (int i=0; i<plat_dev_list.platsize(); i++) {
-        for (int j=0; j<plat_dev_list.devsize(i); j++) {
-            cout<<"Device No. "<<t+1<<endl;
-            string platform_param;
-            plat_dev_list.plat(i).getInfo(CL_PLATFORM_NAME, &platform_param);
-            cout << "CL PLATFORM NAME: "<< platform_param<<endl;
-            plat_dev_list.plat(i).getInfo(CL_PLATFORM_VERSION, &platform_param);
-            cout << "   "<<platform_param<<endl;
-            string device_pram;
-            plat_dev_list.dev(i,j).getInfo(CL_DEVICE_NAME, &device_pram);
-            cout << "CL DEVICE NAME: "<< device_pram<<endl;
-            
-            /*Open CL command que create*/
-            dLp.push_back(endLoopNo-startLoopNo+1);
-            cout<<"Number of working compute unit: "<<dLp[i]<<endl<<endl;
-            t++;
-        }
-    }
-    
-    
-    /* dark data input / OCL transfer*/
-    cout << "Processing dark..."<<endl;
-    float *dark_img;
-    dark_img = new float[IMAGE_SIZE_M];
-    string fileName_dark = fileName_base+ "dark.his";
-    //cout<<fileName_dark<<endl;
-    readHisFile_stream(fileName_dark,1,30,dark_img,0);
-    
-    
-    // I0 target data input
-    float *I0_img_target;
-    I0_img_target = new float[IMAGE_SIZE_M];
-    string fileName_I0_target;
-    fileName_I0_target = LnumTagString(targetLoopNo,fileName_base,"_I0.his");
-    //cout<<fileName_I0_target<<endl;
-    readHisFile_stream(fileName_I0_target,targetEnergyNo,targetEnergyNo,I0_img_target,0);
-    
-    
-    // It target data input
-    float *It_img_target;
-    It_img_target = new float[IMAGE_SIZE_M];
-    string fileName_It_target;
-    fileName_It_target = LnumTagString(targetLoopNo,fileName_base,".his");
-    readHisFile_stream(fileName_It_target,targetEnergyNo,targetEnergyNo,It_img_target,0);
-    
-    
-    //create dark, I0_target, I0_sample buffers
-    vector<cl::Buffer> dark_buffers;
-    vector<cl::Buffer> I0_target_buffers;
-    for (int i=0; i<plat_dev_list.platsize(); i++) {
-        cl::Buffer dark_buffer(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_float)*IMAGE_SIZE_M, 0, NULL);
-        cl::Buffer I0_target_buffer(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_float)*IMAGE_SIZE_M, 0, NULL);
-        cl::Buffer It_target_buffer(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_float)*IMAGE_SIZE_M, 0, NULL);
-        
-        //write buffers
-        plat_dev_list.queue(i, 0).enqueueWriteBuffer(dark_buffer, CL_TRUE, 0, sizeof(cl_float)*IMAGE_SIZE_M, dark_img, NULL, NULL);
-        plat_dev_list.queue(i, 0).enqueueWriteBuffer(I0_target_buffer, CL_TRUE, 0, sizeof(cl_float)*IMAGE_SIZE_M, I0_img_target, NULL, NULL);
-        
-        dark_buffers.push_back(dark_buffer);
-        I0_target_buffers.push_back(I0_target_buffer);
-    }
-    delete[] dark_img;
-    delete[] I0_img_target;
-    
-
+    int maxWorkSize;
+    string platform_param;
+    plat_dev_list.plat(0).getInfo(CL_PLATFORM_NAME, &platform_param);
+    cout << "CL PLATFORM NAME: "<< platform_param<<endl;
+    plat_dev_list.plat(0).getInfo(CL_PLATFORM_VERSION, &platform_param);
+    cout << "   "<<platform_param<<endl;
+    string device_pram;
+    plat_dev_list.dev(0,0).getInfo(CL_DEVICE_NAME, &device_pram);
+    cout << "CL DEVICE NAME: "<< device_pram<<endl;
+    //working compute unit
+    maxWorkSize=(int)min((int)plat_dev_list.dev(0,0).getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), imageSizeX);
     
     
     //mask settings
@@ -466,63 +461,13 @@ int imageRegistlation_2D_ocl(string fileName_base, input_parameter inp,
     
     
     //queueを通し番号に変換
-    vector<cl::CommandQueue> queues;
-    vector<int> cotextID_OfQueue;
-    for (int i=0; i<plat_dev_list.contextsize(); i++) {
-        for (int j=0; j<plat_dev_list.queuesize(i); j++) {
-            queues.push_back(plat_dev_list.queue(i,j));
-            cotextID_OfQueue.push_back(i);
-        }
-    }
+    cl::CommandQueue queues = plat_dev_list.queue(0,0);
     
     
     //start threads
-    vector<thread> th;
-    for (int i=startLoopNo; i<=endLoopNo;) {
-        for (int j = 0; j<queues.size(); j++) {
-            
-            
-            if (th.size()<queues.size()) {
-                bool last = (i + dLp[j] - 1>endLoopNo - queues.size()*dLp[j]);
-                th.push_back(thread(imageReg_2D_thread, queues[j], kernels[cotextID_OfQueue[j]],
-                                    dark_buffers[cotextID_OfQueue[j]],
-                                    I0_target_buffers[cotextID_OfQueue[j]],
-                                    It_img_target,
-                                    i, min(i + dLp[j] - 1, endLoopNo),targetLoopNo,
-                                    startEnergyNo,endEnergyNo,targetEnergyNo,
-                                    fileName_base, inp.getOutputDir(), regmode,
-                                    msk,inp.getNumTrial(),inp.getLambda_t(),last));
-                this_thread::sleep_for(chrono::seconds((int)((endLoopNo-startEnergyNo+1)*dLp[j]*0.02)));
-                //this_thread::sleep_for(chrono::seconds(40));
-                i+=dLp[j];
-                if (i > endLoopNo) break;
-                else continue;
-            }else if (th[j].joinable()) {
-                bool last = (i + dLp[j] - 1>endLoopNo - queues.size()*dLp[j]);
-                th[j].join();
-                th[j] = thread(imageReg_2D_thread, queues[j], kernels[cotextID_OfQueue[j]],
-                               dark_buffers[cotextID_OfQueue[j]],
-                               I0_target_buffers[cotextID_OfQueue[j]],
-                               It_img_target,
-                               i, min(i + dLp[j] - 1, endLoopNo),targetLoopNo,
-                               startEnergyNo,endEnergyNo,targetEnergyNo,
-                               fileName_base, inp.getOutputDir(), regmode,
-                               msk, inp.getNumTrial(),inp.getLambda_t(),last);
-                i+=dLp[j];
-                if (i > endLoopNo) break;
-            } else{
-                this_thread::sleep_for(chrono::milliseconds(100));
-            }
-            
-            if (i > endLoopNo) break;
-        }
-    }
-    
-    for (int j=0; j<queues.size(); j++) {
-        if (th[j].joinable()) th[j].join();
-    }
-    delete[] It_img_target;
-    
-    
+    imageReg_2D_thread(queues, CLO[0], inp, regmode, msk);
+
+
+
     return 0;
 }

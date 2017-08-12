@@ -53,6 +53,14 @@ float input_parameter_reslice::getRotCenterShiftStep(){
     return rotCenterShiftStep;
 }
 
+int input_parameter_reslice::getStartLayer(){
+    return startLayer;
+}
+
+int input_parameter_reslice::getEndLayer(){
+    return endLayer;
+}
+
 
 //set from dialog
 void input_parameter_reslice::setBaseupFromDialog(string message){
@@ -96,17 +104,20 @@ void input_parameter_reslice::setRotCenterShiftStep(string str){
 
 //constructor
 input_parameter_reslice::input_parameter_reslice(){
+
     baseup=0.0;
     Z_corr=0;
     X_corr=0;
-    startX=NAN;
-    endX=NAN;
-    startZ=NAN;
-    endZ=NAN;
-    layerN=NAN;
+    startX=0;
+    endX=0;
+    startZ=0;
+    endZ=0;
+    layerN=0;
+    startLayer=1;
+    endLayer=2048;
 	
-	rotCenterShiftStart = NAN;
-	rotCenterShiftN = NAN;
+	rotCenterShiftStart = 0;
+	rotCenterShiftN = 0;
 	rotCenterShiftStep = NAN;
 }
 
@@ -121,44 +132,84 @@ input_parameter_reslice::input_parameter_reslice(string inputfile_path){
             char *buffer;
             buffer = new char[buffsize];
             inp_ifs.getline(buffer, buffsize);
-            if((string)buffer=="#Image baseup"){
-                cout<<buffer<<endl;
-                inp_ifs>>baseup;
-                cout<<"  "<<baseup<<endl;
-            }else if((string)buffer=="#Z-correction"){
-                cout<<buffer<<endl;
-                inp_ifs>>Z_corr;
-                cout<<"  "<<baseup<<endl;
-            }else if((string)buffer=="#X-correction"){
-                cout<<buffer<<endl;
-                inp_ifs>>X_corr;
-                cout<<"  "<<baseup<<endl;
-            }else if((string)buffer=="#X range of correction evaluation"){
-                cout<<buffer<<endl;
-                inp_ifs>>startX; inp_ifs.ignore() >> endX;
-                cout<<"  "<<startX<<"-"<<endX<<endl;
-            }else if((string)buffer=="#Z range of correction evaluation"){
-                cout<<buffer<<endl;
-                inp_ifs>>startZ; inp_ifs.ignore() >> endZ;
-                cout<<"  "<<startZ<<"-"<<endZ<<endl;
-            }else if((string)buffer=="#Target energy number for rotation center search"){
-                cout<<buffer<<endl;
-                inp_ifs>>layerN;
-                cout<<"  "<<layerN<<endl;
-            }else if((string)buffer=="#Start shift for rotation center search"){
-                cout<<buffer<<endl;
-                inp_ifs>>rotCenterShiftStart;
-                cout<<"  "<<rotCenterShiftStart<<endl;
-            }else if((string)buffer=="#Number of shift step for rotation center search"){
-                cout<<buffer<<endl;
-                inp_ifs>>rotCenterShiftN;
-                cout<<"  "<<rotCenterShiftN<<endl;
-            }else if((string)buffer=="#Shift step for rotation center search"){
-                cout<<buffer<<endl;
-                inp_ifs>>rotCenterShiftStep;
-                cout<<"  "<<rotCenterShiftStep<<endl;
-            }
+            inputFromFile_reslice(buffer, &inp_ifs);
         }
         inp_ifs.close();
+    }
+}
+
+void input_parameter_reslice::inputFromFile_reslice(char *buffer, ifstream *inp_ifs){
+    if((string)buffer=="#Image baseup"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>baseup;
+        cout<<"  "<<baseup<<endl;
+    }else if((string)buffer=="#Z-correction"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>Z_corr;
+        cout<<"  "<<baseup<<endl;
+    }else if((string)buffer=="#X-correction"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>X_corr;
+        cout<<"  "<<baseup<<endl;
+    }else if((string)buffer=="#X range of correction evaluation"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>startX; (*inp_ifs).ignore() >> endX;
+        cout<<"  "<<startX<<"-"<<endX<<endl;
+    }else if((string)buffer=="#Z range of correction evaluation"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>startZ; (*inp_ifs).ignore() >> endZ;
+        cout<<"  "<<startZ<<"-"<<endZ<<endl;
+    }else if((string)buffer=="#Start shift for rotation center search"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>rotCenterShiftStart;
+        cout<<"  "<<rotCenterShiftStart<<endl;
+    }else if((string)buffer=="#Number of shift step for rotation center search"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>rotCenterShiftN;
+        cout<<"  "<<rotCenterShiftN<<endl;
+    }else if((string)buffer=="#Shift step for rotation center search"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>rotCenterShiftStep;
+        cout<<"  "<<rotCenterShiftStep<<endl;
+    }else if((string)buffer=="#Image baseup"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>baseup;
+        cout<<"  "<<baseup<<endl;
+    }else if((string)buffer=="#Z-correction"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>Z_corr;
+        cout<<"  "<<baseup<<endl;
+    }else if((string)buffer=="#X-correction"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>X_corr;
+        cout<<"  "<<baseup<<endl;
+    }else if((string)buffer=="#X range of correction evaluation"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>startX; (*inp_ifs).ignore() >> endX;
+        cout<<"  "<<startX<<"-"<<endX<<endl;
+    }else if((string)buffer=="#Z range of correction evaluation"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>startZ; (*inp_ifs).ignore() >> endZ;
+        cout<<"  "<<startZ<<"-"<<endZ<<endl;
+    }else if((string)buffer=="#Start shift for rotation center search"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>rotCenterShiftStart;
+        cout<<"  "<<rotCenterShiftStart<<endl;
+    }else if((string)buffer=="#Number of shift step for rotation center search"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>rotCenterShiftN;
+        cout<<"  "<<rotCenterShiftN<<endl;
+    }else if((string)buffer=="#Shift step for rotation center search"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>rotCenterShiftStep;
+        cout<<"  "<<rotCenterShiftStep<<endl;
+    }else if ((string)buffer == "#Target layer number for rotation center search") {
+        cout << buffer << endl;
+        (*inp_ifs) >> layerN;
+        cout << "  " << layerN << endl;
+    }else if ((string)buffer == "#Output Layer No. range") {
+        cout << buffer << endl;
+        (*inp_ifs) >> startLayer; (*inp_ifs).ignore()>>endLayer;
+        cout << "  " << startLayer << endLayer << endl;
     }
 }

@@ -21,7 +21,10 @@ int		g_fst = 2;				/* 初期画像の使用 */
 double	g_ini = 1;				/* 初期値 */
 int		g_px = 2048;				/* カメラピクセルサイズ */
 int		g_pa = 1600;				/* 投影数 */
-int		g_nx = 2048;				/* 再構成ピクセルサイズ */
+int		g_nx = 2048;				/* 再構成ピクセルサイズ X*/
+int		g_ny = 2048;				/* 再構成ピクセルサイズ Y*/
+int		g_ox = 2048;				/* 再構成出力ピクセルサイズ X*/
+int		g_oy = 2048;				/* 再構成出力ピクセルサイズ Y*/
 int		g_mode = 6;				/* 再構成法 */
 int		g_it = 1;				/* 反復回数 */
 int		g_num = 1;			/* レイヤー数 */
@@ -36,7 +39,13 @@ int		g_cover = 2;			/* 非投影領域の推定 */
 time_t	g_t0;					/* 時間 */
 string   g_devList="1"; //OpenCLデバイスリスト
 int numParallel=10; //OpenCLデバイス当たりの並列数
-int correctionMode = 1; //投影像補正 0:なし,1:x方向,2:θ方向,3:x+θ方向
+int correctionMode = 0; //投影像補正 0:なし,1:x方向,2:θ方向,3:x+θ方向
+float amp = 1.0f; //強度増幅因子
+int baseupOrder =4;//baseup 減少速度次数
+bool CSitBool = false; //圧縮センシング逐次計算
+float CSepsilon = 1.0e-8f; //圧縮センシング逐次計算ノイズファクター
+float CSalpha = 0.1f; //圧縮センシング逐次計算加算ファクター
+int CSit = 5; //圧縮センシング逐次計算回数
 
 //int CPU();
 int GPU();
@@ -45,17 +54,24 @@ vector<thread> input_th, reconst_th, output_th;
 
 int main(int argc, const char * argv[]) {
     string inputfile_path;
-    cout << "Inputファイルがあればパスを入力:"<<endl;
-    string dummy;
-    getline(cin,dummy);
-    istringstream iss(dummy);
-    iss>>inputfile_path;
+    if (argc>1) {
+        inputfile_path=argv[1];
+    }else{
+        cout << "Inputファイルがあればパスを入力:"<<endl;
+        string dummy;
+        getline(cin,dummy);
+        istringstream iss(dummy);
+        iss>>inputfile_path;
+    }
     getparameter_inp(inputfile_path);
     
     time(&g_t0);
     g_ang = new float[(unsigned long)g_pa];
     read_log(g_f3, g_pa);
     MKDIR(g_d2.c_str());  //reconstディレクトリ
+	/*for (int i= 0; i < g_pa; i++) {
+		cout << g_ang[i] << endl;
+	}*/
     
     //CPU();
     GPU();
