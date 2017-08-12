@@ -7,6 +7,7 @@
 //
 
 #include "imaging2DXAFS.hpp"
+vector<thread> input_th, imageReg_th, output_th;
 
 int main(int argc, const char * argv[]) {
     string fp_str;
@@ -19,78 +20,51 @@ int main(int argc, const char * argv[]) {
         istringstream iss(dummy);
         iss>>fp_str;
         //fp_str="./image_reg.inp";
+        //fp_str="/Users/ishiguro/Desktop/ImageReg2.inp";
     }
     
-    input_parameter inp(fp_str);
     
+    input_parameter inp(fp_str);
     OCL_platform_device plat_dev_list(inp.getPlatDevList(),false);
     cout << endl;
     
     
-    // Input directory settings
-    if (argc>1) {
-        inp.setInputDir(output_flag("-ip", argc, argv));
-        cout << "raw his file directory."<<endl;
+    // Input file path settings
+    string buffer;
+    buffer = output_flag("-ip", argc, argv);
+    if (buffer.length()>0) {
+        inp.setInputDir(buffer);
+        cout << "Input raw file path."<<endl;
         cout <<inp.getInputDir()<<endl;
     }
     if (inp.getInputDir().length()==0) {
-        inp.setInputDirFromDialog("Set input raw his file directory.\n");
+        inp.setInputDirFromDialog("Set input mt raw file path.\n");
     }
-    string fileName_base = inp.getInputDir();
-    fileName_base += "/";
-    
-    DIR *dir;
-    struct dirent *dp;
-    dir=opendir(inp.getInputDir().c_str());
-    if (dir==NULL) {
-        cout <<"Directory not found."<<endl;
+    string fileName_path = inp.getInputDir();
+    ifstream inputstream(fileName_path,ios::in|ios::binary);
+    if(!inputstream) {
+        cerr << "   Failed to load raw file: " <<endl;
+        cerr<< fileName_path << endl;
         return -1;
     }
     
     
-    for(dp=readdir(dir);dp!=NULL;dp=readdir(dir)){
-        string darkname = dp->d_name;
-        
-        if (darkname.find("dark.his")!=string::npos) {
-            cout << "his file found: " << darkname <<endl;
-            fileName_base += darkname;
-            fileName_base.erase(fileName_base.size()-8);
-            break;
-        }
-    }
-    if (dp==NULL) {
-        cout <<"No his file found."<<endl;
-        return -1;
-    }
-    closedir(dir);
-    //printf("%s\n",fileName_base);
-    
-    //output directory settings
-    if (argc>1) {
-        inp.setOutputDir(output_flag("-op", argc, argv));
-        cout << "Output file directory."<<endl;
+    //output path settings
+    buffer = output_flag("-op", argc, argv);
+    if (buffer.length()>0) {
+        inp.setOutputDir(buffer);
+        cout << "Output file path."<<endl;
         cout << inp.getOutputDir()<<endl;
     }
     if (inp.getOutputDir().length()==0) {
-        inp.setOutputDirFromDialog("Set output file directory.\n");
+        inp.setOutputDirFromDialog("Set output file path.\n");
     }
-    MKDIR(inp.getOutputDir().c_str());
-    
-    //output file base settings
-    if (argc>1) {
-        inp.setOutputDir(output_flag("-ob", argc, argv));
-        cout << "Output file name base."<<endl;
-        cout << inp.getOutputFileBase()<<endl;
-    }
-    if (inp.getOutputFileBase().length()==0) {
-        inp.setOutputFileBaseFromDialog("Set output file name base.\n");
-    }
-    MKDIR(inp.getOutputDir().c_str());
 
     
     //processing energy No range
-    if (argc>1) {
-        inp.setEnergyNoRange(output_flag("-enr", argc, argv));
+    buffer = output_flag("-enr", argc, argv);
+    if (buffer.length()>0) {
+        inp.setEnergyNoRange(buffer);
         cout << "Energy num range:"<<endl;
         cout << "   "<<inp.getStartEnergyNo()<<" - "<<inp.getEndEnergyNo()<<endl;
     }
@@ -98,9 +72,11 @@ int main(int argc, const char * argv[]) {
         inp.setEnergyNoRangeFromDialog("Set energy num range (ex. 1-100).\n");
     }
     
-    //reference energy No
-    if (argc>1) {
-        inp.setTargetEnergyNo(output_flag("-re", argc, argv));
+    
+    //processing target energy No
+    buffer = output_flag("-re", argc, argv);
+    if (buffer.length()>0){
+        inp.setTargetEnergyNo(buffer);
         cout << "reference energy No. for image registration: "<<endl;
         cout << "   " << inp.getTargetEnergyNo() << endl;
     }
@@ -108,50 +84,43 @@ int main(int argc, const char * argv[]) {
         inp.setTargetEnergyNoFromDialog("Set reference energy No. for image registration.\n");
     }
     
-    //processing loop range (treating angle No. as loop No.)
-    if (argc>1) {
-        inp.setAngleRange(output_flag("-ar", argc, argv));
-        cout << "Loop num range:"<<endl;
-        cout << "   "<<inp.getStartAngleNo()<<" - "<<inp.getEndAngleNo()<<endl;
-    }
-    if ((inp.getStartAngleNo()==NAN)|(inp.getEndAngleNo()==NAN)) {
-        inp.setAngleRangeFromDialog("Set loop num range (ex. 1-3).\n");
-    }
-    
-    //reference loop No
-    if (argc>1) {
-        inp.setTargetAngleNo(output_flag("-rln", argc, argv));
-        cout << "Loop num range:"<<endl;
-        cout << "   "<<inp.getStartAngleNo()<<" - "<<inp.getEndAngleNo()<<endl;
-    }
-    if (inp.getTargetAngleNo()==NAN) {
-        inp.setTargetAngleNoFromDialog("Set reference loop No. for image registration.\n");
-    }
     
     //select regmode
-    string buffer;
-    regMode regmode(0,1);
+    regMode regmode(0);
     buffer = output_flag("-rm", argc, argv);
     if (buffer.length()>0) {
         inp.setRegMode(buffer);
-        regmode=regMode(inp.getRegMode(),1);
-        cout << "Registration mode: "<< regmode.get_regModeName()<<"("<< regmode.get_regModeNo()<<")"<<endl;
         
-    }else if ((inp.getRegMode()==NAN)) {
+        cout << "Registration mode: "<< inp.getRegMode()<<endl;
+        
+    }
+    if ((inp.getRegMode()==NAN)) {
         inp.setRegModeFromDialog("Set Registration mode. \n\
                                  (0:xy shift, 1:rotation+xy shift, 2:scale+xy shift, \
                                  3:rotation+scale + xy shift, 4:affine + xy shift,-1:none)\n");
-        regmode=regMode(inp.getRegMode(),1);
-        
-    }else regmode=regMode(inp.getRegMode(),1);
+        regmode=regMode(inp.getRegMode());
+    }
+    regmode=regMode(inp.getRegMode());
+    if(inp.getFreeFixPara().size()>0){
+        for (int i=0; i<inp.getFreeFixPara().size(); i++) {
+            char a = inp.getFreeFixPara()[i];
+            regmode.p_fix[i]=atof(&a);
+        }
+    }
+    
+    
+    //set image reg initial parameter
+    for (int i=0; i<min(regmode.get_p_num(), (int)inp.getReg_inipara().size()); i++) {
+        regmode.p_ini[i]=inp.getReg_inipara()[i];
+    }
     
     
     time_t start,end;
     time(&start);
     
     
-    /*Image Registration*/
-    imageRegistlation_2D_ocl(fileName_base,inp,plat_dev_list,regmode);
+    //Image Registration
+    imageRegistlation_2D_ocl(inp,plat_dev_list,regmode);
     
     
     time(&end);
