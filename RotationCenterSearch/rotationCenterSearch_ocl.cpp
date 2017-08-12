@@ -21,7 +21,10 @@ int his_data_input(OCL_platform_device plat_dev_list,
     cl::Context context = plat_dev_list.context(0);
     cl::CommandQueue queue = plat_dev_list.queue(0, 0);
     cl::Device device = queue.getInfo<CL_QUEUE_DEVICE>();
-    int maxWorkSize = (int)min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), IMAGE_SIZE_X);
+    int imageSizeX = inp.getImageSizeX();
+    int imageSizeY = inp.getImageSizeY();
+    int imageSizeM = inp.getImageSizeM();
+    int maxWorkSize = (int)min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), imageSizeX);
     
     int targetEnergyNo=inp.getTargetEnergyNo();
     int startAngleNo = inp.getStartAngleNo();
@@ -33,46 +36,46 @@ int his_data_input(OCL_platform_device plat_dev_list,
     // dark data input
     cout << "Reading dark file...";
     unsigned short *dark_img;
-    dark_img = new unsigned short[(IMAGE_SIZE_M+32)*scanN];
+    dark_img = new unsigned short[(imageSizeM+32)*scanN];
     string fileName_dark = fileName_base+ "dark.his";
-    readHisFile_stream(fileName_dark,1,scanN,dark_img);
+    readHisFile_stream(fileName_dark,1,scanN,dark_img,imageSizeM);
 	cout << "done." << endl << endl;
     
 
     // I0 target data input
 	cout << "Reading I0 file...";
     unsigned short *I0_img_target;
-    I0_img_target = new unsigned short[(IMAGE_SIZE_M+32)*scanN];
+    I0_img_target = new unsigned short[(imageSizeM+32)*scanN];
     string fileName_I0_target;
     fileName_I0_target =  EnumTagString(targetEnergyNo,fileName_base,"_I0.his");
-    readHisFile_stream(fileName_I0_target,1,scanN,I0_img_target);
+    readHisFile_stream(fileName_I0_target,1,scanN,I0_img_target,imageSizeM);
 	cout << "done." << endl << endl;
     
    
     //target It data input
 	cout << "Reading It file...";
     unsigned short *It_img_target;
-    It_img_target = new unsigned short[(IMAGE_SIZE_M+32)*(int64_t)dA];
+    It_img_target = new unsigned short[(imageSizeM+32)*(int64_t)dA];
     string fileName_It_target = EnumTagString(targetEnergyNo,fileName_base,".his");
-    readHisFile_stream(fileName_It_target,startAngleNo,EndAngleNo,It_img_target);
+    readHisFile_stream(fileName_It_target,startAngleNo,EndAngleNo,It_img_target,imageSizeM);
 	cout << "done." << endl << endl;
     
-    cl::Buffer dark_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M, 0, NULL);
-    cl::Buffer I0_target_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M, 0, NULL);
-    cl::Buffer mt_target_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M*di, 0, NULL);
+    cl::Buffer dark_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeM, 0, NULL);
+    cl::Buffer I0_target_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeM, 0, NULL);
+    cl::Buffer mt_target_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeM*di, 0, NULL);
     cl::ImageFormat format(CL_RG,CL_FLOAT);
-    cl::Image2DArray mt_target_image(context, CL_MEM_READ_WRITE,format,di,IMAGE_SIZE_X,IMAGE_SIZE_Y,0,0,NULL,NULL);
-    cl::Image2DArray mt_target_outputImg(context, CL_MEM_READ_WRITE,format,di,IMAGE_SIZE_X,IMAGE_SIZE_Y,0,0,NULL,NULL);
+    cl::Image2DArray mt_target_image(context, CL_MEM_READ_WRITE,format,di,imageSizeX,imageSizeY,0,0,NULL,NULL);
+    cl::Image2DArray mt_target_outputImg(context, CL_MEM_READ_WRITE,format,di,imageSizeX,imageSizeY,0,0,NULL,NULL);
     
     
     //transfer and merge rawhis data to dark_buffer
 	cout << "Merging dark...";
-    mergeRawhisBuffers(queue, kernels[0], cl::NDRange(IMAGE_SIZE_X,IMAGE_SIZE_Y,1),cl::NDRange(maxWorkSize,1,1), dark_img, dark_buffer,scanN);
+    mergeRawhisBuffers(queue, kernels[0], cl::NDRange(imageSizeX,imageSizeY,1),cl::NDRange(maxWorkSize,1,1), dark_img, dark_buffer,scanN,imageSizeM);
 	cout << "done." << endl << endl;
     
     //transfer and merge rawhis data to I0_target_buffer
 	cout << "Merging I0...";
-    mergeRawhisBuffers(queue, kernels[0],cl::NDRange(IMAGE_SIZE_X,IMAGE_SIZE_Y,1),cl::NDRange(maxWorkSize,1,1), I0_img_target, I0_target_buffer,scanN);
+    mergeRawhisBuffers(queue, kernels[0],cl::NDRange(imageSizeX,imageSizeY,1),cl::NDRange(maxWorkSize,1,1), I0_img_target, I0_target_buffer,scanN,imageSizeM);
 	cout << "done." << endl << endl;
 
     //transfer and merge rawhis data to It_target_buffer
@@ -80,9 +83,9 @@ int his_data_input(OCL_platform_device plat_dev_list,
 	mask msk(inp);
     for (int i=0; i<dA; i+=di) {
 		int step = min(di,dA-i);
-        mt_conversion(queue,kernels[1],dark_buffer,I0_target_buffer,mt_target_buffer,mt_target_image,mt_target_outputImg,cl::NDRange(maxWorkSize*step,IMAGE_SIZE_Y,1),cl::NDRange(maxWorkSize,1,1),It_img_target+(IMAGE_SIZE_M+32)*(int64_t)i,step,msk,false);
+        mt_conversion(queue,kernels[1],dark_buffer,I0_target_buffer,mt_target_buffer,mt_target_image,mt_target_outputImg,cl::NDRange(maxWorkSize*step,imageSizeY,1),cl::NDRange(maxWorkSize,1,1),It_img_target+(imageSizeM+32)*(int64_t)i,step,msk,false,imageSizeM);
 		for (int j = 0; j < step; j++) {
-			queue.enqueueReadBuffer(mt_target_buffer, CL_TRUE, sizeof(cl_float)*IMAGE_SIZE_M*j, sizeof(cl_float)*IMAGE_SIZE_M, mt_target_img[i + j], NULL, NULL);		
+			queue.enqueueReadBuffer(mt_target_buffer, CL_TRUE, sizeof(cl_float)*imageSizeM*j, sizeof(cl_float)*imageSizeM, mt_target_img[i + j], NULL, NULL);
 		}
     }
 	cout << "done." << endl << endl;
@@ -103,25 +106,25 @@ int rotCenterShift(OCL_platform_device plat_dev_list,cl::Kernel kernel,
     cl::CommandQueue queue = plat_dev_list.queue(0, 0);
     string devicename = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_NAME>();
     size_t maxWorkGroupSize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-    
+    int imageSizeX = inp.getImageSizeX();
     int num_angle=inp.getEndAngleNo()-inp.getStartAngleNo()+1;
     const cl::NDRange local_item_size(maxWorkGroupSize,1,1);
-    const cl::NDRange global_item_size(IMAGE_SIZE_X,num_angle,1);
+    const cl::NDRange global_item_size(imageSizeX,num_angle,1);
     
     cl::ImageFormat format(CL_R, CL_FLOAT);
-    cl::Image2D prj_input_img(context,CL_MEM_READ_WRITE,format,IMAGE_SIZE_X,num_angle,0,NULL, NULL);
-    cl::Image2D prj_output_img(context,CL_MEM_WRITE_ONLY,format,IMAGE_SIZE_X,num_angle,0, NULL, NULL);
+    cl::Image2D prj_input_img(context,CL_MEM_READ_WRITE,format,imageSizeX,num_angle,0,NULL, NULL);
+    cl::Image2D prj_output_img(context,CL_MEM_WRITE_ONLY,format,imageSizeX,num_angle,0, NULL, NULL);
     
     cl::size_t<3> origin;
     cl::size_t<3> region;
 	origin[0] = 0;
 	origin[1] = 0;
 	origin[2] = 0;
-	region[0] = IMAGE_SIZE_X;
+	region[0] = imageSizeX;
 	region[1] = num_angle;
 	region[2] = 1;
     
-    queue.enqueueWriteImage(prj_input_img, CL_TRUE, origin, region, IMAGE_SIZE_X*sizeof(float), 0, prj_img_vec[inp.getLayerN()-1],NULL,NULL);
+    queue.enqueueWriteImage(prj_input_img, CL_TRUE, origin, region, imageSizeX*sizeof(float), 0, prj_img_vec[inp.getLayerN()-1],NULL,NULL);
 	kernel.setArg(0, prj_input_img);
 	kernel.setArg(1, prj_output_img);
     for (int i=0; i<inp.getRotCenterShiftN(); i++) {
@@ -131,7 +134,7 @@ int rotCenterShift(OCL_platform_device plat_dev_list,cl::Kernel kernel,
         queue.enqueueNDRangeKernel(kernel, NULL, global_item_size, local_item_size, NULL, NULL);
         queue.finish();
         
-        queue.enqueueReadImage(prj_output_img, CL_TRUE, origin, region, IMAGE_SIZE_X*sizeof(float), 0, rotCntShft_img_vec[i] ,NULL,NULL);
+        queue.enqueueReadImage(prj_output_img, CL_TRUE, origin, region, imageSizeX*sizeof(float), 0, rotCntShft_img_vec[i] ,NULL,NULL);
     }
     
     return 0;
@@ -175,9 +178,11 @@ int imgFocusIndex_estimation(cl::Context context,cl::CommandQueue queue,
                         cl::Image2DArray reconst_img, float* Findex,
                         int dN, int offsetN, input_parameter inp,float ang_ini,float ang_fin){
     
+    int imageSizeX = inp.getImageSizeX();
+    
     cl::Device device = queue.getInfo<CL_QUEUE_DEVICE>();
     string devicename = device.getInfo<CL_DEVICE_NAME>();
-    size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), IMAGE_SIZE_X);
+    size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), imageSizeX);
     
     cl::ImageFormat format(CL_R, CL_FLOAT);
     cl::Buffer imgFindex_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dN, 0, NULL);
@@ -219,9 +224,11 @@ int imgSTDEV_estimation(cl::Context context,cl::CommandQueue queue,
                         cl::Image2DArray reconst_img, float* stdev,
                         int dN, int offsetN, input_parameter inp,float ang_ini,float ang_fin){
     
+    int imageSizeX = inp.getImageSizeX();
+    
     cl::Device device = queue.getInfo<CL_QUEUE_DEVICE>();
     string devicename = device.getInfo<CL_DEVICE_NAME>();
-    size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), IMAGE_SIZE_X);
+    size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), imageSizeX);
     
     cl::ImageFormat format(CL_R, CL_FLOAT);
     cl::Buffer imgAVG_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dN, 0, NULL);
@@ -408,11 +415,14 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
     OCL_platform_device plat_dev_list(g_devList,true);
     
     int num_angle=inp.getEndAngleNo()-inp.getStartAngleNo()+1;
+    int imageSizeX = inp.getImageSizeX();
+    int imageSizeY = inp.getImageSizeY();
+    int imageSizeM = inp.getImageSizeM();
     
     //program build (mt conversion, reslice)
     cl_int ret;
-    regMode regmode(0,2);
-    cl::Program program=regmode.buildImageRegProgram(plat_dev_list.context(0));
+    regMode regmode(0);
+    cl::Program program=regmode.buildImageRegProgram(plat_dev_list.context(0),imageSizeX,imageSizeY);
     vector<cl::Kernel> kernels;
     kernels.push_back(cl::Kernel(program,"merge_rawhisdata", &ret));//0
     kernels.push_back(cl::Kernel(program,"mt_conversion", &ret));//1
@@ -436,7 +446,7 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
     //input his file
     vector<float*> mt_img_vec;
     for (int i=0; i<num_angle; i++) {
-        mt_img_vec.push_back(new float[IMAGE_SIZE_M]);
+        mt_img_vec.push_back(new float[imageSizeM]);
     }
     his_data_input(plat_dev_list,kernels,fileName_base,inp,mt_img_vec);
 	/*for (int i = 0; i < num_angle; i++) {
@@ -447,8 +457,8 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
     //reslice
 	cout << "Reslicing...";
     vector<float*> prj_img_vec;
-    for (int i=0; i<IMAGE_SIZE_Y; i++) {
-        prj_img_vec.push_back(new float[IMAGE_SIZE_X*num_angle]);
+    for (int i=0; i<imageSizeY; i++) {
+        prj_img_vec.push_back(new float[imageSizeX*num_angle]);
     }
     reslice_mtImg(plat_dev_list,kernels[2],mt_img_vec,prj_img_vec,inp);
     //delete input mt_vec
@@ -466,10 +476,10 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
 	cout << "Shifting rotation center...";
     vector<float*> prjshift_img_vec;
     for (int i=0; i<inp.getRotCenterShiftN(); i++) {
-        prjshift_img_vec.push_back(new float[IMAGE_SIZE_X*num_angle]);
+        prjshift_img_vec.push_back(new float[imageSizeX*num_angle]);
     }
     rotCenterShift(plat_dev_list,kernels_reconst[0][5],prj_img_vec,prjshift_img_vec,inp);
-    for (int i=0; i<IMAGE_SIZE_Y; i++) {
+    for (int i=0; i<imageSizeY; i++) {
         delete [] prj_img_vec[i];
     }
 	/*for (int i = 0; i < inp.getRotCenterShiftN(); i++) {
@@ -483,7 +493,7 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
 	cout << "Reconstructing CT images...";
     vector<float*> reconst_img_vec;
     for (int i=0; i<inp.getRotCenterShiftN(); i++) {
-        reconst_img_vec.push_back(new float[IMAGE_SIZE_M]);
+        reconst_img_vec.push_back(new float[imageSizeM]);
     }
     float* Findex;
     Findex = new float[inp.getRotCenterShiftN()];
@@ -501,7 +511,7 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
 	int min_i = 0;
     for (int i=0; i<inp.getRotCenterShiftN(); i++) {
 		string fileName_output = inp.getOutputDir() + "/" + AnumTagString(i + 1, inp.getOutputFileBase(), ".raw");
-		outputRawFile_stream(fileName_output, reconst_img_vec[i], IMAGE_SIZE_M);
+		outputRawFile_stream(fileName_output, reconst_img_vec[i], imageSizeM);
 
 		if (min > Findex[i]) {
 			min = Findex[i];

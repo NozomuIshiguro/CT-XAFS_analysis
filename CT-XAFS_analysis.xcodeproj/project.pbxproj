@@ -119,7 +119,6 @@
 		2E671AC91EBEE08F0039840A /* AART.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E671AC81EBEE08F0039840A /* AART.cl */; };
 		2E7874601E55E087002E9EB5 /* fileIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E3B76141B367F2900BDFBF9 /* fileIO.cpp */; };
 		2E7FA6321C002ED600D56F13 /* imageregistration_kernel_src_old.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EC657B91B3BDD5100463D06 /* imageregistration_kernel_src_old.cl */; };
-		2E88877A1F3EC1B200F5688F /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E8887791F3EC1B200F5688F /* main.cpp */; };
 		2E8887801F3EC1CB00F5688F /* EXAFS_fitting.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2ECC35841C3A7DC7002215B2 /* EXAFS_fitting.cpp */; };
 		2E8887811F3EC1CE00F5688F /* FEFF_shell_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2ED4401F2B1F100093DA92 /* FEFF_shell_class.cpp */; };
 		2E8887821F3EC1D100F5688F /* shellObject_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2ED4551F2D980D0093DA92 /* shellObject_class.cpp */; };
@@ -137,6 +136,7 @@
 		2E8887941F3EC78200F5688F /* EXAFS_extraction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E88878F1F3EC74400F5688F /* EXAFS_extraction.cpp */; };
 		2E8887981F3EC7CF00F5688F /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E8887971F3EC7CF00F5688F /* main.cpp */; };
 		2E88879A1F3EC8EA00F5688F /* EXAFSextraction.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E8887911F3EC74400F5688F /* EXAFSextraction.cl */; };
+		2E8888111F3EE5B500F5688F /* LevenbergMarquardt.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC95E1F3AF34000B6CD75 /* LevenbergMarquardt.cl */; };
 		2E8C4EC11E5D97CD003ECC51 /* XAFSreconstFitting.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EED26361E5541F3008CFBC5 /* XAFSreconstFitting.cl */; };
 		2E9BFD841C04693F00E08A6C /* XANES_fit.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E57CFF11AD237720086362B /* XANES_fit.cl */; };
 		2E9FAE7B1F1B61A50013001E /* 2D_XANES_fitting_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E4E54071EB36B5C00E990AE /* 2D_XANES_fitting_ocl.cpp */; };
@@ -414,7 +414,6 @@
 		2E80B0F71B33113900668B70 /* GPU.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = GPU.cpp; sourceTree = "<group>"; };
 		2E80B0FD1B33BA0700668B70 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		2E8887771F3EC1B100F5688F /* EXAFS_extraction */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = EXAFS_extraction; sourceTree = BUILT_PRODUCTS_DIR; };
-		2E8887791F3EC1B200F5688F /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		2E88878E1F3EC70E00F5688F /* EXAFS_extraction.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = EXAFS_extraction.hpp; sourceTree = "<group>"; };
 		2E88878F1F3EC74400F5688F /* EXAFS_extraction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EXAFS_extraction.cpp; sourceTree = "<group>"; };
 		2E8887901F3EC74400F5688F /* EXAFSextraction_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = EXAFSextraction_cl.hpp; sourceTree = "<group>"; };
@@ -666,7 +665,6 @@
 				2ECC357C1C3A4183002215B2 /* EXAFS_fitting */,
 				2E8142E91E2C6BA400F9B04D /* EXAFS_extraction */,
 				2ECC2BEE1ECEBB8D0029EE38 /* ImagingXAFS_RegAndBkgRemoval */,
-				2E8887781F3EC1B200F5688F /* EXAFS_extraction */,
 				2E464B431A4113A100BE6BE0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -747,14 +745,6 @@
 				2E8887901F3EC74400F5688F /* EXAFSextraction_cl.hpp */,
 				2E8887971F3EC7CF00F5688F /* main.cpp */,
 				2E8887911F3EC74400F5688F /* EXAFSextraction.cl */,
-			);
-			path = EXAFS_extraction;
-			sourceTree = "<group>";
-		};
-		2E8887781F3EC1B200F5688F /* EXAFS_extraction */ = {
-			isa = PBXGroup;
-			children = (
-				2E8887791F3EC1B200F5688F /* main.cpp */,
 			);
 			path = EXAFS_extraction;
 			sourceTree = "<group>";
@@ -1158,7 +1148,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 2E464B3D1A4113A100BE6BE0 /* Build configuration list for PBXProject "CT-XANES_analysis" */;
+			buildConfigurationList = 2E464B3D1A4113A100BE6BE0 /* Build configuration list for PBXProject "CT-XAFS_analysis" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -1334,6 +1324,7 @@
 				2E4845231DAB44DC00F859AF /* CTXAFS_analysis_share.cpp in Sources */,
 				2E48452B1DAB44EE00F859AF /* imageregistration_kernel_src_old.cl in Sources */,
 				2E4845271DAB44E500F859AF /* input_parameter_fitting_class.cpp in Sources */,
+				2E8888111F3EE5B500F5688F /* LevenbergMarquardt.cl in Sources */,
 				2E4845221DAB44D900F859AF /* readHisRawFile.cpp in Sources */,
 				2E48452A1DAB44EE00F859AF /* mask_class.cpp in Sources */,
 				2E48451B1DAB42FB00F859AF /* main.cpp in Sources */,
@@ -1386,7 +1377,6 @@
 				2E8887841F3EC1D600F5688F /* 3D_FFT.cl in Sources */,
 				2E8887851F3EC1DC00F5688F /* readHisRawFile.cpp in Sources */,
 				2E8887821F3EC1D100F5688F /* shellObject_class.cpp in Sources */,
-				2E88877A1F3EC1B200F5688F /* main.cpp in Sources */,
 				2E8887941F3EC78200F5688F /* EXAFS_extraction.cpp in Sources */,
 				2E88878C1F3EC1F200F5688F /* LevenbergMarquardt.cl in Sources */,
 				2E88879A1F3EC8EA00F5688F /* EXAFSextraction.cl in Sources */,
@@ -2109,7 +2099,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2E464B3D1A4113A100BE6BE0 /* Build configuration list for PBXProject "CT-XANES_analysis" */ = {
+		2E464B3D1A4113A100BE6BE0 /* Build configuration list for PBXProject "CT-XAFS_analysis" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2E464B471A4113A100BE6BE0 /* Debug */,

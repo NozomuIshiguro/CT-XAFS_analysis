@@ -17,7 +17,7 @@
                BlueprintIdentifier = "2EEF3C8D1C91250400BB4E0F"
                BuildableName = "Reslice_CTreconst"
                BlueprintName = "Reslice_CTreconst"
-               ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+               ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -35,7 +35,7 @@
             BlueprintIdentifier = "2EEF3C8D1C91250400BB4E0F"
             BuildableName = "Reslice_CTreconst"
             BlueprintName = "Reslice_CTreconst"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -58,7 +58,7 @@
             BlueprintIdentifier = "2EEF3C8D1C91250400BB4E0F"
             BuildableName = "Reslice_CTreconst"
             BlueprintName = "Reslice_CTreconst"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -77,7 +77,7 @@
             BlueprintIdentifier = "2EEF3C8D1C91250400BB4E0F"
             BuildableName = "Reslice_CTreconst"
             BlueprintName = "Reslice_CTreconst"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

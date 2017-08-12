@@ -1359,8 +1359,7 @@ int hybrid_thread(cl::CommandQueue command_queue,
         cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
         cl::Device device = command_queue.getInfo<CL_QUEUE_DEVICE>();
         string devicename = device.getInfo<CL_DEVICE_NAME>();
-        size_t WorkGroupSize_p = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), g_px);
-		size_t WorkGroupSize_n = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), g_nx);
+        size_t WorkGroupSize_n = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), g_nx);
         
         int dN = endN-startN+1;
 #ifdef BATCHEXE
@@ -1652,7 +1651,7 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
         cl::Device device = command_queue.getInfo<CL_QUEUE_DEVICE>();
         string devicename = device.getInfo<CL_DEVICE_NAME>();
-        size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), IMAGE_SIZE_X);
+        size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), g_ox);
         
         //OpenCL memory objects
         cl::ImageFormat format(CL_R,CL_FLOAT);
@@ -1953,7 +1952,7 @@ int powerIteration(cl::CommandQueue command_queue, vector<cl::Kernel> kernels,
         cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
         cl::Device device = command_queue.getInfo<CL_QUEUE_DEVICE>();
         string devicename = device.getInfo<CL_DEVICE_NAME>();
-        size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), IMAGE_SIZE_X);
+        size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), g_ox);
         
         
         cl::size_t<3> origin;

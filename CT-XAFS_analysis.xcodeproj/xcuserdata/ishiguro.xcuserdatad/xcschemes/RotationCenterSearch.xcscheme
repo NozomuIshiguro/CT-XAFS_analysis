@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "2E3B76721B3847C400BDFBF9"
-               BuildableName = "CT_reconst"
-               BlueprintName = "CT_reconst"
-               ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+               BlueprintIdentifier = "2E41B24C1C7311E400EE4B5E"
+               BuildableName = "RotationCenterSearch"
+               BlueprintName = "RotationCenterSearch"
+               ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,22 +32,21 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E3B76721B3847C400BDFBF9"
-            BuildableName = "CT_reconst"
-            BlueprintName = "CT_reconst"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E41B24C1C7311E400EE4B5E"
+            BuildableName = "RotationCenterSearch"
+            BlueprintName = "RotationCenterSearch"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
       </AdditionalOptions>
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
-      useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/ishiguro/Desktop/CT_programs/CT-XANES_analysis/CT_reconstruction"
+      useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -56,10 +55,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E3B76721B3847C400BDFBF9"
-            BuildableName = "CT_reconst"
-            BlueprintName = "CT_reconst"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E41B24C1C7311E400EE4B5E"
+            BuildableName = "RotationCenterSearch"
+            BlueprintName = "RotationCenterSearch"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -75,10 +74,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E3B76721B3847C400BDFBF9"
-            BuildableName = "CT_reconst"
-            BlueprintName = "CT_reconst"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E41B24C1C7311E400EE4B5E"
+            BuildableName = "RotationCenterSearch"
+            BlueprintName = "RotationCenterSearch"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

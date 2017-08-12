@@ -34,19 +34,22 @@ int reslice_CTreconst_execute(OCL_platform_device plat_dev_list,
     
     int startAngleNo = inp.getStartAngleNo();
     int endAngleNo   = inp.getEndAngleNo();
+    int imageSizeX = inp.getImageSizeX();
+    int imageSizeY = inp.getImageSizeY();
+    int imageSizeM = inp.getImageSizeM();
     
     //input raw mt/fit files
     cout << "Input data of " << subDir_str << "..."<<endl<<endl;
     vector<float*> mt_img_vec;
     for (int i=0; i<num_angle; i++) {
-        mt_img_vec.push_back(new float[IMAGE_SIZE_M]);
+        mt_img_vec.push_back(new float[imageSizeM]);
     }
     //input mt data
     string input_dir = inp.getInputDir();
     for (int i=startAngleNo; i<=endAngleNo; i++) {
         string filepath_input = input_dir+"/"+subDir_str+fileName_base_i+AnumTagString(i,"", ".raw");
         //cout<<filepath_input;
-        readRawFile(filepath_input,mt_img_vec[i-startAngleNo]);
+        readRawFile(filepath_input,mt_img_vec[i-startAngleNo],imageSizeM);
     }
     /*for (int i = 0; i < num_angle; i++) {
      string fileName_output = inp.getOutputDir() + "/" + AnumTagString(i + 1, inp.getOutputFileBase(), ".raw");
@@ -60,8 +63,8 @@ int reslice_CTreconst_execute(OCL_platform_device plat_dev_list,
 	//plat_dev_list.queue(0, 0).finish();
     cout << "Reslicing data of " << subDir_str << "..."<<endl<<endl;
     vector<float*> prj_img_vec;
-    for (int i=0; i<IMAGE_SIZE_Y; i++) {
-        prj_img_vec.push_back(new float[IMAGE_SIZE_X*num_angle]);
+    for (int i=0; i<imageSizeY; i++) {
+        prj_img_vec.push_back(new float[imageSizeX*num_angle]);
     }
     reslice_mtImg(plat_dev_list,kernels_reslice[0],mt_img_vec,prj_img_vec,inp);
     //delete input mt_vec
@@ -89,7 +92,7 @@ int reslice_CTreconst_execute(OCL_platform_device plat_dev_list,
                 int endN = min(N+dN[j]-1,g_st-2 + g_num);
                 vector<float*> reconst_img_vec;
                 for (int i=0; i<endN-startN+1; i++) {
-                    reconst_img_vec.push_back(new float[IMAGE_SIZE_M]);
+                    reconst_img_vec.push_back(new float[g_ox*g_ox]);
 					first_image(g_f4, reconst_img_vec[i], g_ox*g_ox);
                 }
                 switch (g_mode){

@@ -14,7 +14,7 @@
 #include "imageReg.hpp"
 
 int OCL_device_list(vector<OCL_platform_device> *plat_dev_list);
-int readHisFile_stream(string filename, int startnum, int endnum, unsigned short *binImgf);
+int readHisFile_stream(string filename, int startnum, int endnum, unsigned short *binImgf,int imageSizeM);
 int outputRawFile_stream(string filename,float*data,size_t pnt_size);
 
 int imXAFSCT_Registration_ocl(string fileName_base, input_parameter inp,
@@ -22,7 +22,7 @@ int imXAFSCT_Registration_ocl(string fileName_base, input_parameter inp,
 
 int mt_output_thread(int startAngleNo, int EndAngleNo,
                      input_parameter inp,
-                     vector<float*> mt_outputs,float* p_pointer,float* p_err_pointer,
+                     vector<float*> mt_outputs, vector<float*> p, vector<float*> p_err,
                      regMode regmode,int thread_id);
 
 int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
@@ -38,7 +38,7 @@ int imXAFSCT_data_input_thread(int thread_id, cl::CommandQueue command_queue,
 
 int mergeRawhisBuffers(cl::CommandQueue queue, cl::Kernel kernel,
                        const cl::NDRange global_item_size,const cl::NDRange local_item_size,
-                       unsigned short *img, cl::Buffer img_buffer,int mergeN);
+                       unsigned short *img, cl::Buffer img_buffer,int mergeN, int imageSizeM);
 
 int imXAFSCT_mt_conversion(cl::CommandQueue queue,cl::Kernel kernel,
                   cl::Buffer dark_buffer, cl::Buffer I0_buffer,

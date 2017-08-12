@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "2ECC357A1C3A4183002215B2"
-               BuildableName = "EXAFS_fitting"
-               BlueprintName = "EXAFS_fitting"
-               ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+               BlueprintIdentifier = "2E1522F11B16B22C00239AA9"
+               BuildableName = "imaging2DXAFS_registration"
+               BlueprintName = "imaging2DXAFS_registration"
+               ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2ECC357A1C3A4183002215B2"
-            BuildableName = "EXAFS_fitting"
-            BlueprintName = "EXAFS_fitting"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E1522F11B16B22C00239AA9"
+            BuildableName = "imaging2DXAFS_registration"
+            BlueprintName = "imaging2DXAFS_registration"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -55,10 +55,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2ECC357A1C3A4183002215B2"
-            BuildableName = "EXAFS_fitting"
-            BlueprintName = "EXAFS_fitting"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E1522F11B16B22C00239AA9"
+            BuildableName = "imaging2DXAFS_registration"
+            BlueprintName = "imaging2DXAFS_registration"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -74,10 +74,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2ECC357A1C3A4183002215B2"
-            BuildableName = "EXAFS_fitting"
-            BlueprintName = "EXAFS_fitting"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E1522F11B16B22C00239AA9"
+            BuildableName = "imaging2DXAFS_registration"
+            BlueprintName = "imaging2DXAFS_registration"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "2E3B76571B38464B00BDFBF9"
-               BuildableName = "CT_imageRegistration"
-               BlueprintName = "CT_imageRegistration"
-               ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+               BlueprintIdentifier = "2ECC357A1C3A4183002215B2"
+               BuildableName = "EXAFS_fitting"
+               BlueprintName = "EXAFS_fitting"
+               ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E3B76571B38464B00BDFBF9"
-            BuildableName = "CT_imageRegistration"
-            BlueprintName = "CT_imageRegistration"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2ECC357A1C3A4183002215B2"
+            BuildableName = "EXAFS_fitting"
+            BlueprintName = "EXAFS_fitting"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -46,8 +46,7 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
-      useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/ishiguro/Desktop/CT_programs/CT-XANES_analysis/CT_imageRegistration"
+      useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -56,10 +55,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E3B76571B38464B00BDFBF9"
-            BuildableName = "CT_imageRegistration"
-            BlueprintName = "CT_imageRegistration"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2ECC357A1C3A4183002215B2"
+            BuildableName = "EXAFS_fitting"
+            BlueprintName = "EXAFS_fitting"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -75,10 +74,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E3B76571B38464B00BDFBF9"
-            BuildableName = "CT_imageRegistration"
-            BlueprintName = "CT_imageRegistration"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2ECC357A1C3A4183002215B2"
+            BuildableName = "EXAFS_fitting"
+            BlueprintName = "EXAFS_fitting"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -1,4 +1,4 @@
-﻿//
+//
 //  main.cpp
 //  imagingXAFS-CT_registration
 //
@@ -139,7 +139,7 @@ int main(int argc, const char * argv[]) {
     
     
     //select regmode
-    regMode regmode(0,1);
+    regMode regmode(0);
     buffer = output_flag("-rm", argc, argv);
     if (buffer.length()>0) {
         inp.setRegMode(buffer);
@@ -147,32 +147,26 @@ int main(int argc, const char * argv[]) {
         cout << "Registration mode: "<< inp.getRegMode()<<endl;
         
     }
-    buffer = output_flag("-cm", argc, argv);
-    if (buffer.length()>0) {
-        inp.setCntMode(buffer);
-        regmode=regMode(inp.getRegMode(),2);
-        cout << "Registration contrast factor mode: "<< inp.getCntMode()<<endl;
-    }
     if ((inp.getRegMode()==NAN)) {
         inp.setRegModeFromDialog("Set Registration mode. \n\
                                  (0:xy shift, 1:rotation+xy shift, 2:scale+xy shift, \
                                  3:rotation+scale + xy shift, 4:affine + xy shift,-1:none)\n");
-        regmode=regMode(inp.getRegMode(),2);
+        regmode=regMode(inp.getRegMode());
     }
-    regmode=regMode(inp.getRegMode(),inp.getCntMode());
+    regmode=regMode(inp.getRegMode());
     
     //set image reg fixed parameter
-    if(inp.getRegCnt_fixpara().size()==0){
+    if(inp.getReg_fixpara().size()==0){
         inp.setFreeFixParaFromDialog("Input Free(1)/Fix(0) paramater\n");
     }
 	regmode.set_pfix(inp);
     
     //set image reg initial parameter
-    if(inp.getRegCnt_inipara().size()==0){
-        inp.setRegCnt_iniparaFromDialog("Input initial fitting paramater\n");
+    if(inp.getReg_inipara().size()==0){
+        inp.setReg_iniparaFromDialog("Input initial fitting paramater\n");
     }
-    for (int i=0; i<min(regmode.get_p_num()+regmode.get_cp_num(), (int)inp.getRegCnt_inipara().size()); i++) {
-        regmode.p_ini[i]=inp.getRegCnt_inipara()[i];
+    for (int i=0; i<min(regmode.get_p_num(), (int)inp.getReg_inipara().size()); i++) {
+        regmode.p_ini[i]=inp.getReg_inipara()[i];
     }
     
     

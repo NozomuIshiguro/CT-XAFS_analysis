@@ -30,7 +30,7 @@ int mt_output_thread(int startAngleNo, int EndAngleNo,
     MKDIR(shift_dir.c_str());
     
     const int p_num = regmode.get_p_num();
-    const int dA = EndAngleNo-startAngleNo+1;
+    //const int dA = EndAngleNo-startAngleNo+1;
     
     ostringstream oss;
     for (int j=startAngleNo; j<=EndAngleNo; j++) {

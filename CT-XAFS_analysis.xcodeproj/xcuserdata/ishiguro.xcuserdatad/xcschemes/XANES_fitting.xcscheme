@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "2E1522F11B16B22C00239AA9"
-               BuildableName = "imaging2DXAFS_registration"
-               BlueprintName = "imaging2DXAFS_registration"
-               ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+               BlueprintIdentifier = "2E3B76851B384A9400BDFBF9"
+               BuildableName = "XANES_fitting"
+               BlueprintName = "XANES_fitting"
+               ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,21 +32,22 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E1522F11B16B22C00239AA9"
-            BuildableName = "imaging2DXAFS_registration"
-            BlueprintName = "imaging2DXAFS_registration"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E3B76851B384A9400BDFBF9"
+            BuildableName = "XANES_fitting"
+            BlueprintName = "XANES_fitting"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
       </AdditionalOptions>
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
-      useCustomWorkingDirectory = "NO"
+      useCustomWorkingDirectory = "YES"
+      customWorkingDirectory = "/Users/ishiguro/Desktop/CT_programs/CT-XANES_analysis/XANES_fitting"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -55,10 +56,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E1522F11B16B22C00239AA9"
-            BuildableName = "imaging2DXAFS_registration"
-            BlueprintName = "imaging2DXAFS_registration"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E3B76851B384A9400BDFBF9"
+            BuildableName = "XANES_fitting"
+            BlueprintName = "XANES_fitting"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -74,10 +75,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E1522F11B16B22C00239AA9"
-            BuildableName = "imaging2DXAFS_registration"
-            BlueprintName = "imaging2DXAFS_registration"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E3B76851B384A9400BDFBF9"
+            BuildableName = "XANES_fitting"
+            BlueprintName = "XANES_fitting"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

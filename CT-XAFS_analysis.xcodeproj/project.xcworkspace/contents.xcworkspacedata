@@ -2,6 +2,6 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "self:CT-XANES_analysis.xcodeproj">
+      location = "self:/Users/ishiguro/Desktop/CT_programs/CT-XANES_analysis/CT-XAFS_analysis.xcodeproj">
    </FileRef>
 </Workspace>

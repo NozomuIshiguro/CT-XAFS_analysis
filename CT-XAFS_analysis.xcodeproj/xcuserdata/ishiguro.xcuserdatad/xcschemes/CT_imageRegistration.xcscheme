@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "2E3B76981B384B8800BDFBF9"
-               BuildableName = "OpenCL_Device_Info"
-               BlueprintName = "OpenCL_Device_Info"
-               ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+               BlueprintIdentifier = "2E3B76571B38464B00BDFBF9"
+               BuildableName = "CT_imageRegistration"
+               BlueprintName = "CT_imageRegistration"
+               ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,21 +32,22 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E3B76981B384B8800BDFBF9"
-            BuildableName = "OpenCL_Device_Info"
-            BlueprintName = "OpenCL_Device_Info"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E3B76571B38464B00BDFBF9"
+            BuildableName = "CT_imageRegistration"
+            BlueprintName = "CT_imageRegistration"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
       </AdditionalOptions>
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Debug"
+      buildConfiguration = "Release"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
-      useCustomWorkingDirectory = "NO"
+      useCustomWorkingDirectory = "YES"
+      customWorkingDirectory = "/Users/ishiguro/Desktop/CT_programs/CT-XANES_analysis/CT_imageRegistration"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -55,10 +56,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E3B76981B384B8800BDFBF9"
-            BuildableName = "OpenCL_Device_Info"
-            BlueprintName = "OpenCL_Device_Info"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E3B76571B38464B00BDFBF9"
+            BuildableName = "CT_imageRegistration"
+            BlueprintName = "CT_imageRegistration"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -74,10 +75,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2E3B76981B384B8800BDFBF9"
-            BuildableName = "OpenCL_Device_Info"
-            BlueprintName = "OpenCL_Device_Info"
-            ReferencedContainer = "container:CT-XANES_analysis.xcodeproj">
+            BlueprintIdentifier = "2E3B76571B38464B00BDFBF9"
+            BuildableName = "CT_imageRegistration"
+            BlueprintName = "CT_imageRegistration"
+            ReferencedContainer = "container:CT-XAFS_analysis.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
