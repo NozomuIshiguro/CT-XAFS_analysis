@@ -11,29 +11,6 @@
 mutex m1,m2;
 vector<thread> input_th,fitting_th, output_th_fit;
 
-int main2(int argc, const char * argv[]) {
-    string fp_str;
-    if (argc>1) {
-        fp_str=argv[1];
-    }else{
-        /*string dummy;
-        cout<<"Set input file path, if existed."<<endl;
-        getline(cin,dummy);
-        istringstream iss(dummy);
-        iss>>fp_str;*/
-        fp_str="/Users/ishiguro/Desktop/XAFS_tools/feff_inp/Pt_feff/feff0001.dat";
-    }
-    
-    OCL_platform_device plat_dev_list("2"/*inp.getPlatDevList()*/,false);
-    
-    vector<FEFF_shell> shell;
-    shell.push_back(FEFF_shell::FEFF_shell(fp_str));
-    testEXAFS(shell,plat_dev_list);
-    
-    return 0;
-}
-
-
 int main(int argc, const char * argv[]) {
     string fp_str;
     if (argc>1) {

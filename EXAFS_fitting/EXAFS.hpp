@@ -115,10 +115,6 @@ public:
     int readParaImage(float* paraData, int paramode);
 };
 
-
-int testEXAFS(vector<FEFF_shell> shells,OCL_platform_device plat_dev_list);
-
-
 int readRawFile(string filepath_input,float *binImgf, int imageSizeM);
 int readRawFile_offset(string filepath_input,float *binImgf, int64_t offset, int64_t size);
 int outputRawFile_stream(string filename,float*data,size_t pnt_size);
