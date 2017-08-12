@@ -109,7 +109,6 @@
 		2E4845281DAB44E500F859AF /* input_parameter_reslice_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EC3E1761C01A30D0039438B /* input_parameter_reslice_class.cpp */; };
 		2E4845291DAB44EE00F859AF /* RegMode_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E1522EB1B1628E200239AA9 /* RegMode_class.cpp */; };
 		2E48452A1DAB44EE00F859AF /* mask_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E48903E1B26898300BC16BB /* mask_class.cpp */; };
-		2E48452B1DAB44EE00F859AF /* imageregistration_kernel_src_old.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EC657B91B3BDD5100463D06 /* imageregistration_kernel_src_old.cl */; };
 		2E48452C1DAB978400F859AF /* CT_imageRegistration_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E434DD11A8AFE15006A3162 /* CT_imageRegistration_ocl.cpp */; };
 		2E48452D1DAB993B00F859AF /* imagingXAFS-CT_registration_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E4845201DAB43FE00F859AF /* imagingXAFS-CT_registration_ocl.cpp */; };
 		2E4890401B26898300BC16BB /* mask_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E48903E1B26898300BC16BB /* mask_class.cpp */; };
@@ -118,7 +117,6 @@
 		2E671AC61EBB89190039840A /* FISTA.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E671AC51EBB89190039840A /* FISTA.cl */; };
 		2E671AC91EBEE08F0039840A /* AART.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E671AC81EBEE08F0039840A /* AART.cl */; };
 		2E7874601E55E087002E9EB5 /* fileIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E3B76141B367F2900BDFBF9 /* fileIO.cpp */; };
-		2E7FA6321C002ED600D56F13 /* imageregistration_kernel_src_old.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EC657B91B3BDD5100463D06 /* imageregistration_kernel_src_old.cl */; };
 		2E8887801F3EC1CB00F5688F /* EXAFS_fitting.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2ECC35841C3A7DC7002215B2 /* EXAFS_fitting.cpp */; };
 		2E8887811F3EC1CE00F5688F /* FEFF_shell_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2ED4401F2B1F100093DA92 /* FEFF_shell_class.cpp */; };
 		2E8887821F3EC1D100F5688F /* shellObject_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2ED4551F2D980D0093DA92 /* shellObject_class.cpp */; };
@@ -142,7 +140,6 @@
 		2E9FAE7B1F1B61A50013001E /* 2D_XANES_fitting_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E4E54071EB36B5C00E990AE /* 2D_XANES_fitting_ocl.cpp */; };
 		2EB338481C77483500DC59FA /* reslice_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E3B76AB1B38572300BDFBF9 /* reslice_ocl.cpp */; };
 		2EB3384A1C784C1C00DC59FA /* rotCenterSearch.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EB338491C784C1C00DC59FA /* rotCenterSearch.cl */; };
-		2EB728431F1DCDE1003C0F2F /* imageregistration_kernel_src_old.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EC657B91B3BDD5100463D06 /* imageregistration_kernel_src_old.cl */; };
 		2EB728471F1DD59B003C0F2F /* readHisRawFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2304351AAB4121005A0A54 /* readHisRawFile.cpp */; };
 		2EB728481F1DD59F003C0F2F /* OCL_platform_device_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E117F0F1AB425850094871E /* OCL_platform_device_class.cpp */; };
 		2EB728491F1DD5A3003C0F2F /* CTXAFS_analysis_share.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E23042F1AA91629005A0A54 /* CTXAFS_analysis_share.cpp */; };
@@ -159,7 +156,6 @@
 		2EC3E1781C01A30D0039438B /* input_parameter_reslice_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EC3E1761C01A30D0039438B /* input_parameter_reslice_class.cpp */; };
 		2EC3E1791C01A30D0039438B /* input_parameter_reslice_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EC3E1761C01A30D0039438B /* input_parameter_reslice_class.cpp */; };
 		2EC3E17A1C01A30D0039438B /* input_parameter_reslice_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EC3E1761C01A30D0039438B /* input_parameter_reslice_class.cpp */; };
-		2EC657BB1B3E662800463D06 /* imageregistration_kernel_src_old.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EC657B91B3BDD5100463D06 /* imageregistration_kernel_src_old.cl */; };
 		2ECC2BF01ECEBB8D0029EE38 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2ECC2BEF1ECEBB8D0029EE38 /* main.cpp */; };
 		2ECC2BF61ECEBCB70029EE38 /* ImagingXAFS_RegAndBkgRemoval.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2ECC2BF51ECEBCB70029EE38 /* ImagingXAFS_RegAndBkgRemoval.cpp */; };
 		2ECC2BF71ECEBFB00029EE38 /* readHisRawFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2304351AAB4121005A0A54 /* readHisRawFile.cpp */; };
@@ -174,7 +170,6 @@
 		2ECC2C021ECED9DC0029EE38 /* RegAndBkgRemoval.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2ECC2C011ECED9DC0029EE38 /* RegAndBkgRemoval.cl */; };
 		2ECC357E1C3A4183002215B2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2ECC357D1C3A4183002215B2 /* main.cpp */; };
 		2ECC35831C3A45AA002215B2 /* EXAFS_fit.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2ECC35821C3A41BF002215B2 /* EXAFS_fit.cl */; };
-		2EE476911C87E7C700B089CC /* imageregistration_kernel_src_old.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EC657B91B3BDD5100463D06 /* imageregistration_kernel_src_old.cl */; };
 		2EE476921C87E7F000B089CC /* reslice.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3B76A91B384CF200BDFBF9 /* reslice.cl */; };
 		2EED26321E5541AE008CFBC5 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EED26311E5541AE008CFBC5 /* main.cpp */; };
 		2EED26381E55A895008CFBC5 /* fitting_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E117F0B1AB2AD240094871E /* fitting_class.cpp */; };
@@ -376,7 +371,7 @@
 		2E3B761D1B383F7500BDFBF9 /* Reslice */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Reslice; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E3B761F1B383F7500BDFBF9 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		2E3B76581B38464B00BDFBF9 /* CT_imageRegistration */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = CT_imageRegistration; sourceTree = BUILT_PRODUCTS_DIR; };
-		2E3B76731B3847C400BDFBF9 /* CT_reconstruction */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = CT_reconstruction; sourceTree = BUILT_PRODUCTS_DIR; };
+		2E3B76731B3847C400BDFBF9 /* CT_reconstruction */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = CT_reconstruction; path = CT_reconst; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E3B76861B384A9400BDFBF9 /* XANES_fitting */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = XANES_fitting; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E3B76881B384A9400BDFBF9 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		2E3B76991B384B8800BDFBF9 /* OpenCL_Device_Info */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = OpenCL_Device_Info; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -433,7 +428,6 @@
 		2EBEB7C71F34625F0068B9D1 /* 3D_FFT_cl.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = 3D_FFT_cl.hpp; sourceTree = "<group>"; };
 		2EBEB7C81F3483220068B9D1 /* 2D_EXAFS_fitting_ocl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = 2D_EXAFS_fitting_ocl.cpp; path = EXAFS_fitting/2D_EXAFS_fitting_ocl.cpp; sourceTree = SOURCE_ROOT; };
 		2EC3E1761C01A30D0039438B /* input_parameter_reslice_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = input_parameter_reslice_class.cpp; sourceTree = "<group>"; };
-		2EC657B91B3BDD5100463D06 /* imageregistration_kernel_src_old.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = imageregistration_kernel_src_old.cl; sourceTree = "<group>"; };
 		2ECC2BED1ECEBB8D0029EE38 /* ImagingXAFS_RegAndBkgRemoval */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ImagingXAFS_RegAndBkgRemoval; sourceTree = BUILT_PRODUCTS_DIR; };
 		2ECC2BEF1ECEBB8D0029EE38 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		2ECC2BF41ECEBBFF0029EE38 /* ImagingXAFS_RegAndBkgRemoval.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ImagingXAFS_RegAndBkgRemoval.hpp; sourceTree = "<group>"; };
@@ -709,7 +703,6 @@
 				2E5065B91B20025F0060C00A /* imageReg.hpp */,
 				2E1522EB1B1628E200239AA9 /* RegMode_class.cpp */,
 				2E48903E1B26898300BC16BB /* mask_class.cpp */,
-				2EC657B91B3BDD5100463D06 /* imageregistration_kernel_src_old.cl */,
 				2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */,
 			);
 			name = "Image registration share";
@@ -1187,7 +1180,6 @@
 			files = (
 				2E3C8B0B1C00EBA300E9CC3C /* input_parameter_fitting_class.cpp in Sources */,
 				2E1522F51B16B22C00239AA9 /* main.cpp in Sources */,
-				2EC657BB1B3E662800463D06 /* imageregistration_kernel_src_old.cl in Sources */,
 				2E1523011B16F6ED00239AA9 /* input_parameter_class.cpp in Sources */,
 				2E1523051B16F87300239AA9 /* imaging2DXAFS_registration.cpp in Sources */,
 				2E1523021B16F6F100239AA9 /* readHisRawFile.cpp in Sources */,
@@ -1294,7 +1286,6 @@
 			files = (
 				2E02DF351E700C68007FDE9A /* reconstShare.cl in Sources */,
 				2E41B2561C73151000EE4B5E /* CTXAFS_analysis_share.cpp in Sources */,
-				2EE476911C87E7C700B089CC /* imageregistration_kernel_src_old.cl in Sources */,
 				2EEF3CA81C91426800BB4E0F /* rotationCenterSearch_ocl.cpp in Sources */,
 				2E41B25A1C73151000EE4B5E /* input_parameter_fitting_class.cpp in Sources */,
 				2E41B2551C73151000EE4B5E /* readHisRawFile.cpp in Sources */,
@@ -1322,7 +1313,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				2E4845231DAB44DC00F859AF /* CTXAFS_analysis_share.cpp in Sources */,
-				2E48452B1DAB44EE00F859AF /* imageregistration_kernel_src_old.cl in Sources */,
 				2E4845271DAB44E500F859AF /* input_parameter_fitting_class.cpp in Sources */,
 				2E8888111F3EE5B500F5688F /* LevenbergMarquardt.cl in Sources */,
 				2E4845221DAB44D900F859AF /* readHisRawFile.cpp in Sources */,
@@ -1347,7 +1337,6 @@
 				2E1F8CA81C5E398500B44B0C /* input_parameter_fitting_class.cpp in Sources */,
 				2E1F8CAB1C5E398D00B44B0C /* OCL_platform_device_class.cpp in Sources */,
 				2EB728501F1DE0C4003C0F2F /* input_parameter_mask_class.cpp in Sources */,
-				2E7FA6321C002ED600D56F13 /* imageregistration_kernel_src_old.cl in Sources */,
 				2E9BFD841C04693F00E08A6C /* XANES_fit.cl in Sources */,
 				2E1F8CAF1C5E39D800B44B0C /* main.cpp in Sources */,
 				2E9FAE7B1F1B61A50013001E /* 2D_XANES_fitting_ocl.cpp in Sources */,
@@ -1394,7 +1383,6 @@
 				2EB728471F1DD59B003C0F2F /* readHisRawFile.cpp in Sources */,
 				2EB7284A1F1DE053003C0F2F /* input_parameter_class.cpp in Sources */,
 				2EB728481F1DD59F003C0F2F /* OCL_platform_device_class.cpp in Sources */,
-				2EB728431F1DCDE1003C0F2F /* imageregistration_kernel_src_old.cl in Sources */,
 				2EB7284B1F1DE058003C0F2F /* input_parameter_mask_class.cpp in Sources */,
 				2EB728531F1DE15F003C0F2F /* main.cpp in Sources */,
 				2EB728561F1DE3F8003C0F2F /* imageBatchBinning.cpp in Sources */,
@@ -2133,6 +2121,7 @@
 				2E88877D1F3EC1B200F5688F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		2EB728401F1DCD86003C0F2F /* Build configuration list for PBXNativeTarget "imageBatchBinning" */ = {
 			isa = XCConfigurationList;

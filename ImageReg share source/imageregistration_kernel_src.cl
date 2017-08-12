@@ -22,6 +22,11 @@
 #endif
 
 
+#ifndef DIFFSTEP
+#define DIFFSTEP 2
+#endif
+
+
 
 //sampler
 __constant sampler_t s_linear = CLK_FILTER_LINEAR|CLK_NORMALIZED_COORDS_FALSE|CLK_ADDRESS_CLAMP;
@@ -350,8 +355,7 @@ __kernel void imageReg1(__read_only image2d_array_t mt_t_img,__read_only image2d
     float4 XYZ, XYZ_s, XYZ_t;
     float4 mt_s, mt_t;
     float mt_xp, mt_xm, mt_yp, mt_ym;
-    int diffStep = 1;
-    float diffweight = 3.0f/(float)diffStep/(diffStep+1.0f)/(2.0f*diffStep+1.0f);
+    float diffweight = 3.0f/(float)DIFFSTEP/(DIFFSTEP+1.0f)/(2.0f*DIFFSTEP+1.0f);
     float dfdx, dfdy;
     float mask;
     float J[PARA_NUM];
@@ -381,7 +385,7 @@ __kernel void imageReg1(__read_only image2d_array_t mt_t_img,__read_only image2d
             mt_xm = 0.0f;
             mt_yp = 0.0f;
             mt_ym = 0.0f;
-            for(int k=1;k<=diffStep;k++){
+            for(int k=1;k<=DIFFSTEP;k++){
                 //Partial differential dF/dx
                 XYZ = (float4)(X+k,Y,Z,0.0f);
                 XYZ_s = k*transXY(XYZ, p_pr, (float)mergeN, REGMODE);
@@ -588,7 +592,7 @@ __kernel void output_imgReg_result(__read_only image2d_array_t mt_img, __global 
         XYZ_s = transXY(XYZ, p_pr, 1, REGMODE);
         ID = X+Y*IMAGESIZE_X+Z*IMAGESIZE_M;
         
-        img = read_imagef(mt_img,s_linear,XYZ);
+        img = read_imagef(mt_img,s_linear,XYZ_s);
         mt_buf[ID]=img.x*img.y;
     }
 }
