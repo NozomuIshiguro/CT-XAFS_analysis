@@ -12,7 +12,7 @@
 #include "OpenCL_analysis.hpp"
 
 int OCL_device_list(vector<OCL_platform_device> *plat_dev_list);
-int readRawFile(string filepath_input,float *binImgf);
+int readRawFile(string filepath_input,float *binImgf,int imageSizeM);
 int outputRawFile_stream(string filename,float*data,size_t pnt_size);
 int imageBatchBinning_OCL(input_parameter inp,OCL_platform_device plat_dev_list);
 

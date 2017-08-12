@@ -69,8 +69,6 @@ int binning_thread(cl::CommandQueue command_queue, CL_objects CLO,
         int endEnergyNo=inp.getEndEnergyNo();
         int num_energy = endEnergyNo - startEnergyNo +1;
         
-        vector<cl::Kernel> kernel=CLO.kernels;
-        
        
         
         //create output_image memory objects
@@ -111,10 +109,11 @@ int binning_thread(cl::CommandQueue command_queue, CL_objects CLO,
             
             
             //merge process by GPU
-            kernel[0].setArg(0, input_image);
-            kernel[0].setArg(1, output_image);
-            kernel[0].setArg(2, mergeN);
-            command_queue.enqueueNDRangeKernel(kernel[0], cl::NullRange, global_item_size, local_item_size, NULL, NULL);
+            cl::Kernel kernel_merge = CLO.getKernel("merge");
+            kernel_merge.setArg(0, input_image);
+            kernel_merge.setArg(1, output_image);
+            kernel_merge.setArg(2, mergeN);
+            command_queue.enqueueNDRangeKernel(kernel_merge, cl::NullRange, global_item_size, local_item_size, NULL, NULL);
             command_queue.finish();
             
             //read output image from GPU
@@ -190,7 +189,7 @@ int data_input_thread(int thread_id, cl::CommandQueue command_queue, CL_objects 
     int num_angle = EndAngleNo -startAngleNo +1;
     for (int i=0; i<num_energy; i++) {
         for (int j=0; j<num_angle; j++) {
-            readRawFile(filepath_input[i][j],mt_vec[i][j]);
+            readRawFile(filepath_input[i][j],mt_vec[i][j],imgSizeM);
         }
     }
     m1.unlock();
@@ -255,13 +254,13 @@ int imageBatchBinning_OCL(input_parameter inp,OCL_platform_device plat_dev_list)
 #else
         cl::Program::Sources source(1,kernel_src);
 #endif
-        cl::Program program(plat_dev_list.context(i), source,&ret);
+        cl::Program program(plat_dev_list.context(i), source);
         //cout << kernel_code<<endl;
         //kernel build
         ret=program.build(option.c_str());
         string logstr=program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(plat_dev_list.context(i).getInfo<CL_CONTEXT_DEVICES>()[0]);
         cout << logstr << endl;
-        CLO[i].kernels.push_back(cl::Kernel(program,"merge", &ret));//0
+        CLO[i].addKernel(program,"merge");
     }
     
     
