@@ -141,6 +141,7 @@
 		2E8888181F3F599300F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
 		2E8888191F3F59EF00F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
 		2E88881A1F3F59F100F5688F /* imageregistration_kernel_src.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */; };
+		2E88881D1F420EB600F5688F /* XANES_fit.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E57CFF11AD237720086362B /* XANES_fit.cl */; };
 		2E8C4EC11E5D97CD003ECC51 /* XAFSreconstFitting.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EED26361E5541F3008CFBC5 /* XAFSreconstFitting.cl */; };
 		2E9BFD841C04693F00E08A6C /* XANES_fit.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E57CFF11AD237720086362B /* XANES_fit.cl */; };
 		2E9FAE7B1F1B61A50013001E /* 2D_XANES_fitting_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E4E54071EB36B5C00E990AE /* 2D_XANES_fitting_ocl.cpp */; };
@@ -705,10 +706,10 @@
 		2E5065B81B2001A50060C00A /* Image registration share */ = {
 			isa = PBXGroup;
 			children = (
-				2E32FBD51A8ED16F00A2927C /* imageregistration_kernel_src_cl.hpp */,
 				2E5065B91B20025F0060C00A /* imageReg.hpp */,
 				2E1522EB1B1628E200239AA9 /* RegMode_class.cpp */,
 				2E48903E1B26898300BC16BB /* mask_class.cpp */,
+				2E32FBD51A8ED16F00A2927C /* imageregistration_kernel_src_cl.hpp */,
 				2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */,
 			);
 			name = "Image registration share";
@@ -719,10 +720,10 @@
 			isa = PBXGroup;
 			children = (
 				2E3BD4211A89DAF40080F906 /* XANES_fitting.hpp */,
-				2E57CFF51AD246F50086362B /* XANES_fit_cl.hpp */,
 				2E3B76881B384A9400BDFBF9 /* main.cpp */,
 				2E4E54071EB36B5C00E990AE /* 2D_XANES_fitting_ocl.cpp */,
 				2E117F0B1AB2AD240094871E /* fitting_class.cpp */,
+				2E57CFF51AD246F50086362B /* XANES_fit_cl.hpp */,
 				2E57CFF11AD237720086362B /* XANES_fit.cl */,
 			);
 			path = XANES_fitting;
@@ -741,8 +742,8 @@
 			children = (
 				2E88878E1F3EC70E00F5688F /* EXAFS_extraction.hpp */,
 				2E88878F1F3EC74400F5688F /* EXAFS_extraction.cpp */,
-				2E8887901F3EC74400F5688F /* EXAFSextraction_cl.hpp */,
 				2E8887971F3EC7CF00F5688F /* main.cpp */,
+				2E8887901F3EC74400F5688F /* EXAFSextraction_cl.hpp */,
 				2E8887911F3EC74400F5688F /* EXAFSextraction.cl */,
 			);
 			path = EXAFS_extraction;
@@ -1378,6 +1379,7 @@
 				2E8887821F3EC1D100F5688F /* shellObject_class.cpp in Sources */,
 				2E8887941F3EC78200F5688F /* EXAFS_extraction.cpp in Sources */,
 				2E88878C1F3EC1F200F5688F /* LevenbergMarquardt.cl in Sources */,
+				2E88881D1F420EB600F5688F /* XANES_fit.cl in Sources */,
 				2E88879A1F3EC8EA00F5688F /* EXAFSextraction.cl in Sources */,
 				2E8887881F3EC1E400F5688F /* input_parameter_class.cpp in Sources */,
 				2E88878B1F3EC1EC00F5688F /* input_parameter_reslice_class.cpp in Sources */,

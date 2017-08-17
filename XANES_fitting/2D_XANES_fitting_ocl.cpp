@@ -225,7 +225,6 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         kernel_LM.setArg(2, dp_img);
         kernel_LM.setArg(3, lambda_buff);
         kernel_LM.setArg(4, freeFix_buff);
-		kernel_LM.setArg(5, inv_tJJ_buff);
         //estimate dL
         kernel_dL.setArg(0, dp_img);
         kernel_dL.setArg(1, tJJ_buff);
@@ -255,37 +254,8 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         kernel_UorH.setArg(1, results_cnd_img);
         kernel_UorH.setArg(2, rho_buff);
         
-        //buffer settings for compressed sensing
-        /*cl::Buffer results_img_org(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M*paramsize, 0, NULL);
-         cl::Buffer alpha(context, CL_MEM_READ_WRITE, sizeof(cl_float)*paramsize, 0, NULL);
-         cl::Buffer epsilon(context, CL_MEM_READ_WRITE, sizeof(cl_float)*paramsize, 0, NULL);
-         kernel_CS.setArg(0, results_img_org);
-         kernel_CS.setArg(1, results_img);
-         kernel_CS.setArg(2, results_cnd_img);
-         kernel_CS.setArg(3, epsilon);
-         kernel_CS.setArg(4, alpha);
-         if(inp.getCSbool()){
-         for (int i=0; i<paramsize; i++) {
-         char buffer;
-         buffer=fiteq.freefix_para()[i];
-         float val = (atoi(&buffer)==1) ? inp.getCSalpha()[i]:0.0f;
-         command_queue.enqueueFillBuffer(alpha, (cl_float)val,sizeof(cl_float)*i,sizeof(cl_float),NULL,NULL);
-         val = inp.getCSepsilon()[i];
-         command_queue.enqueueFillBuffer(epsilon, (cl_float)val,sizeof(cl_float)*i,sizeof(cl_float),NULL,NULL);
-         }
-         }*/
 		errorzone = "setting parameters for CS to GPU";
-        //cl::Buffer sigma_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M*paramsize, 0, NULL);
-        //cl::Buffer sigma_dest_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M*paramsize, 0, NULL);
-        //cl::Buffer results_pre_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M*paramsize, 0, NULL);
-        //cl::Buffer w_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M*paramsize, 0, NULL);
         cl::Buffer Lambda_fista(context, CL_MEM_READ_WRITE, sizeof(cl_float)*paramsize, 0, NULL);
-        //cl::Buffer beta_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M, 0, NULL);
-        //cl::Buffer maxEval_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*IMAGE_SIZE_M, 0, NULL);
-		//command_queue.enqueueFillBuffer(beta_img, (cl_float)0.0f, 0, sizeof(cl_float)*IMAGE_SIZE_M);
-		//command_queue.finish();
-		//command_queue.enqueueCopyBuffer(results_img, results_pre_img, 0, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
-		//command_queue.finish();
 		//cout << paramsize << endl;
 		for (int i=0; i<paramsize; i++) {
             char buffer;
@@ -302,21 +272,9 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         kernel_FISTA1.setArg(0, results_img);
         kernel_FISTA1.setArg(1, dp_img);
         kernel_FISTA1.setArg(2, dp_cnd_img);
-        //kernel_FISTA1.setArg(3, sigma_img);
-        //kernel_FISTA1.setArg(4, sigma_dest_img);
-        kernel_FISTA1.setArg(3, inv_tJJ_buff);
-        //kernel_FISTA1.setArg(6, maxEval_img);
+        kernel_FISTA1.setArg(3, inv_tJJ_buff); //warning!! inv_tJJ_buff is not defined right now
         kernel_FISTA1.setArg(4, freeFix_buff);
         kernel_FISTA1.setArg(5, Lambda_fista);
-        //FISTA update
-        /*kernel_FISTA2.setArg(0, results_img);
-        kernel_FISTA2.setArg(1, results_pre_img);
-        kernel_FISTA2.setArg(2, beta_img);
-        kernel_FISTA2.setArg(3, w_img);*/
-        //power Iteration
-        /*kernel_powIt.setArg(0, inv_tJJ_buff);
-        kernel_powIt.setArg(1, maxEval_img);
-        kernel_powIt.setArg(2, 30);*/
         
         
         //L-M trial
@@ -333,22 +291,12 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
             
 			
             //FISTA1 (Soft Thresholding Function)
-			if(inp.getCSbool()/* && trial>inp.getNumTrial_fit()-4*/){
-				errorzone = "calculating max eval of inv_tJJ";
-				//command_queue.enqueueNDRangeKernel(kernel_powIt, NULL, global_item_size, local_item_size, NULL, NULL);
-				//command_queue.finish();
-
-				//command_queue.enqueueFillBuffer(sigma_img, (cl_float)0.0f, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
-				//command_queue.finish();
-
+			if(inp.getCSbool()){
 				for (int k = 0; k < inp.getCSit(); k++) {
                     errorzone = "FISTA1";
                     command_queue.enqueueNDRangeKernel(kernel_FISTA1, NULL, global_item_size2, local_item_size, NULL, NULL);
                     command_queue.finish();
 
-                    /*errorzone = "copying sigma";
-                    command_queue.enqueueCopyBuffer(sigma_dest_img, sigma_img, 0, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
-                    command_queue.finish();*/
 					errorzone = "updating dp";
 					command_queue.enqueueCopyBuffer(dp_cnd_img, dp_img, 0, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
 					command_queue.finish();
@@ -386,39 +334,8 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
             command_queue.enqueueNDRangeKernel(kernel_UorH, NULL, global_item_size2, local_item_size, NULL, NULL);
             command_queue.finish();
 
-            
-            
-            //FISTA2 (FISTA update)
-            /*if(inp.getCSbool()){
-                command_queue.enqueueNDRangeKernel(kernel_FISTA2, NULL, global_item_size, local_item_size, NULL, NULL);
-                command_queue.finish();
-                    
-                command_queue.enqueueCopyBuffer(results_img, results_pre_img, 0, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
-                    command_queue.finish();
-                
-                command_queue.enqueueCopyBuffer(w_img, results_img, 0, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
-                command_queue.finish();
-            }*/
-            
-            //iterative compressed sensing
-            /*if(inp.getCSbool()&&trial>inp.getNumTrial_fit()/2){
-                command_queue.enqueueCopyBuffer(results_img, results_img_org, 0, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
-                command_queue.finish();
-                
-                for (int j=0; j<inp.getCSit(); j++) {
-                    command_queue.enqueueNDRangeKernel(kernel_CS, NULL, global_item_size2, local_item_size, NULL, NULL);
-                    command_queue.finish();
-                    
-                    command_queue.enqueueCopyBuffer(results_cnd_img, results_img, 0, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
-                    command_queue.finish();
-                }
-                
-            }*/
         }
-        /*if(inp.getCSbool()){
-            command_queue.enqueueCopyBuffer(results_img, w_img, 0, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
-            command_queue.finish();
-        }*/
+
         
 		errorzone = "setting mask";
         //set mask

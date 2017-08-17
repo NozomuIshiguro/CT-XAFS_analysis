@@ -29,8 +29,8 @@ vector<int> GPUmemoryControl(int imageSizeX, int imageSizeY,int ksize,int Rsize,
         usingMemorySize += shellnum*imageSizeX*processImageSizeY[0]*7*sizeof(float);
         //dF_old, dF_new, nyu, lambda, dL, rho
         usingMemorySize += 6*imageSizeX*processImageSizeY[0]*sizeof(float);
-        //tJJ, inv_tJJ
-        usingMemorySize += 2*imageSizeX*processImageSizeY[0]*num_fpara*(num_fpara+1)/2*sizeof(float);
+        //tJJ
+        usingMemorySize += imageSizeX*processImageSizeY[0]*num_fpara*(num_fpara+1)/2*sizeof(float);
         //tJdF, dp, para_backup
          usingMemorySize += 3*imageSizeX*processImageSizeY[0]*num_fpara*sizeof(float);
         
@@ -326,7 +326,6 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
         cl::Buffer dF2_old(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM,0,NULL);
         cl::Buffer dF2_new(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM,0,NULL);
         cl::Buffer tJJ(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*FreeParaSize*(FreeParaSize+1)/2,0,NULL);
-        cl::Buffer inv_tJJ(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*FreeParaSize*(FreeParaSize+1)/2,0,NULL);
         cl::Buffer tJdF(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*FreeParaSize,0,NULL);
         vector<cl::Buffer> Jacobian;
         vector<cl::Buffer> para_backup;
@@ -369,7 +368,6 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
         kernel_LM.setArg(2, dp_img);
         kernel_LM.setArg(3, lambda_buff);
         kernel_LM.setArg(4, p_fix);
-        kernel_LM.setArg(5, inv_tJJ);
         cl::Kernel kernel_dL(program,"estimate_dL");
         kernel_dL.setArg(0, dp_img);
         kernel_dL.setArg(1, tJJ);
@@ -521,15 +519,6 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
             //Levenberg-Marquardt
             queue.enqueueNDRangeKernel(kernel_LM,NULL,global_item_size,local_item_size, NULL, NULL);
             queue.finish();
-            /*float* inv_tJJ_data;
-            inv_tJJ_data = new float[imageSizeM*FreeParaSize*(FreeParaSize+1)/2];
-            queue.enqueueReadBuffer(inv_tJJ, CL_TRUE, 0, sizeof(float)*imageSizeM*FreeParaSize*(FreeParaSize+1)/2, inv_tJJ_data);
-            queue.finish();
-            cout<<"inv_tJdF"<<endl;
-            for (int i=0; i<FreeParaSize*(FreeParaSize+1)/2; i++) {
-                cout <<"inv_tJJ["<<i<<"]: "<<inv_tJJ_data[i*imageSizeM]<<endl;
-            }
-            cout<<endl;*/
             /*float* dp_data;
             dp_data = new float[imageSizeM*FreeParaSize];
             queue.enqueueReadBuffer(dp_img, CL_TRUE, 0, sizeof(float)*imageSizeM*FreeParaSize, dp_data);
@@ -639,7 +628,6 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         cl::Buffer dF2_old(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM,0,NULL);
         cl::Buffer dF2_new(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM,0,NULL);
         cl::Buffer tJJ(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*FreeParaSize*(FreeParaSize+1)/2,0,NULL);
-        cl::Buffer inv_tJJ(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*FreeParaSize*(FreeParaSize+1)/2,0,NULL);
         cl::Buffer tJdF(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*FreeParaSize,0,NULL);
         vector<cl::Buffer> Jacobian;
         vector<cl::Buffer> para_backup;
@@ -683,7 +671,6 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         kernel_LM.setArg(2, dp_img);
         kernel_LM.setArg(3, lambda_buff);
         kernel_LM.setArg(4, p_fix);
-        kernel_LM.setArg(5, inv_tJJ);
         cl::Kernel kernel_dL(program,"estimate_dL");
         kernel_dL.setArg(0, dp_img);
         kernel_dL.setArg(1, tJJ);
@@ -931,7 +918,6 @@ int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         cl::Buffer dF2_old(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM,0,NULL);
         cl::Buffer dF2_new(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM,0,NULL);
         cl::Buffer tJJ(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*FreeParaSize*(FreeParaSize+1)/2,0,NULL);
-        cl::Buffer inv_tJJ(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*FreeParaSize*(FreeParaSize+1)/2,0,NULL);
         cl::Buffer tJdF(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*FreeParaSize,0,NULL);
         vector<cl::Buffer> Jacobian;
         vector<cl::Buffer> para_backup;
@@ -976,7 +962,6 @@ int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         kernel_LM.setArg(2, dp_img);
         kernel_LM.setArg(3, lambda_buff);
         kernel_LM.setArg(4, p_fix);
-        kernel_LM.setArg(5, inv_tJJ);
         cl::Kernel kernel_dL(program,"estimate_dL");
         kernel_dL.setArg(0, dp_img);
         kernel_dL.setArg(1, tJJ);

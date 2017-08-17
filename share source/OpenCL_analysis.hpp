@@ -251,6 +251,7 @@ public:
     float get_qstart();
     float get_qend();
     int get_kw();
+    void set_kend(float val);
     vector<string> getFeffxxxxdatPath();
     int getEXAFSfittingMode();
     vector<string> getShellName();
@@ -273,7 +274,7 @@ public:
     float getPreEdgeEndEnergy();
     float getPostEdgeStartEnergy();
     float getPostEdgeEndEnergy();
-    int getBkgFittingMode();
+    int getPreEdgeFittingMode();
     
     string getFittingOutputDir();
     string getFittingFileBase();

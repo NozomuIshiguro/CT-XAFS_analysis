@@ -12,8 +12,7 @@
 
 
 //simultaneous linear equation
-inline void sim_linear_eq(float *A, float *x, float *inv_A,
-                                 size_t dim,__constant char *p_fix){
+inline void sim_linear_eq(float *A, float *x, int dim, __constant char *p_fix){
     
     float a = 0.0f;
     
@@ -23,11 +22,9 @@ inline void sim_linear_eq(float *A, float *x, float *inv_A,
         
         //devide (i,i) to 1
         a = 1/A[i+i*dim];
-        
         for(int j=0; j<dim; j++){
             if(p_fix[j]== 48) continue;
             A[i+j*dim] *= a;
-            inv_A[i+j*dim] *= a;
         }
         x[i] *= a;
         
@@ -39,7 +36,6 @@ inline void sim_linear_eq(float *A, float *x, float *inv_A,
             for(int k=0; k<dim; k++){
                 if(p_fix[k]== 48) continue;
                 A[j+k*dim] -= a*A[i+k*dim];
-                inv_A[j+k*dim] -= a*inv_A[i+k*dim];
             }
             x[j] -= a*x[i];
         }
@@ -54,7 +50,6 @@ inline void sim_linear_eq(float *A, float *x, float *inv_A,
             for(int k=0; k<dim; k++){
                 if(p_fix[k]== 48) continue;
                 A[k+j*dim] -= a*A[k+i*dim];
-                inv_A[k+j*dim] -= a*inv_A[k+i*dim];
             }
             x[i] -= a*x[j];
         }
@@ -65,7 +60,7 @@ inline void sim_linear_eq(float *A, float *x, float *inv_A,
 
 __kernel void LevenbergMarquardt(__global float* tJdF_img, __global float* tJJ_img,
                                  __global float* dp_img, __global float* lambda_img,
-                                 __constant char *p_fix,__global float* inv_tJJ_img){
+                                 __constant char *p_fix){
     
     const size_t global_x = get_global_id(0);
     const size_t global_y = get_global_id(1);
@@ -75,33 +70,32 @@ __kernel void LevenbergMarquardt(__global float* tJdF_img, __global float* tJJ_i
     const size_t imageSizeM = imageSizeX*imageSizeY;
     
     float dp[PARA_NUM],lambda_diag_tJJ[PARA_NUM],tJdF[PARA_NUM];
-    float tJJ[PARA_NUM_SQ],inv_tJJ[PARA_NUM_SQ];
+    float tJJ[PARA_NUM_SQ];
     float lambda = lambda_img[global_ID];
     
-    int num = 0;
     for(int i=0;i<PARA_NUM;i++){
         tJdF[i] = tJdF_img[global_ID + i*imageSizeM];
         dp[i] = tJdF[i];
         tJJ[i+i*PARA_NUM] = tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*imageSizeM];
         lambda_diag_tJJ[i] = tJJ[i+i*PARA_NUM]*lambda;
         tJJ[i+i*PARA_NUM] *= (1.0f+lambda);
-        inv_tJJ[i+i*PARA_NUM] = 1.0f;
         for(int j=i+1;j<PARA_NUM;j++){
             tJJ[i+j*PARA_NUM] = tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*imageSizeM];
             tJJ[j+i*PARA_NUM] = tJJ[i+j*PARA_NUM];
-            inv_tJJ[i+j*PARA_NUM] = 0.0f;
-            inv_tJJ[j+i*PARA_NUM] = 0.0f;
         }
     }
     
-    sim_linear_eq(tJJ,dp,inv_tJJ,PARA_NUM,p_fix);
+    /*for(int i=0;i<PARA_NUM;i++){
+        for(int j=0;j<PARA_NUM;j++){
+            printf("%f\t",tJJ[i+j*PARA_NUM]);
+        }
+        printf("\n");
+    }*/
+    
+    sim_linear_eq(tJJ,dp,PARA_NUM,p_fix);
     
     for(int i=0;i<PARA_NUM;i++){
         dp_img[global_ID+i*imageSizeM] = dp[i];
-        inv_tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*imageSizeM] = inv_tJJ[i+i*PARA_NUM];
-        for(int j=i+1;j<PARA_NUM;j++){
-            inv_tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*imageSizeM] = inv_tJJ[i+j*PARA_NUM];
-        }
     }
 }
 

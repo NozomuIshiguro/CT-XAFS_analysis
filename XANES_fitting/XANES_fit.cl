@@ -36,8 +36,8 @@
 #define ENERGY_NUM 1
 #endif
 
-#ifndef E0
-#define E0 11559.0f
+#ifndef EZERO
+#define EZERO 11559.0f
 #endif
 
 #ifndef CONSTRAIN_NUM
@@ -60,7 +60,9 @@
 #define EPSILON 1.0f
 #endif
 
-static __constant sampler_t s_linear = CLK_FILTER_LINEAR|CLK_NORMALIZED_COORDS_FALSE|CLK_ADDRESS_CLAMP;
+
+
+static __constant sampler_t s_linearXANES = CLK_FILTER_LINEAR|CLK_NORMALIZED_COORDS_FALSE|CLK_ADDRESS_CLAMP;
 
 
 inline float line(float energy, float* p){
@@ -93,8 +95,8 @@ inline void Jacobian_Victoreen(float* J, float energy, float*p){
     
     J[0] = 1.0f;
     J[1] = e3;
-    J[2] = e4;
-    J[3] = -3.0f*p[1]*e4 -4.0f*p[2]*e5;
+    J[2] = -e4;
+    J[3] = -3.0e-3f*p[1]*e4 + 4.0e-3f*p[2]*e5;
 }
 
 inline float thirdPolynominal(float energy, float* p){
@@ -111,9 +113,9 @@ inline void Jacobian_thirdPolynominal(float* J, float energy, float*p){
 
 inline float McMaster(float energy, float* p){
     
-	float e1 = (energy+p[2])*1.0e-3f;
-	e1 = log(e1);
-	float pow_e = exp(-2.75f*e1);
+    float e1 = (energy+p[2])*1.0e-3f;
+    e1 = log(e1);
+    float pow_e = exp(-2.75f*e1);
     
     return p[0]+p[1]*pow_e;
 }
@@ -121,7 +123,7 @@ inline float McMaster(float energy, float* p){
 inline void Jacobian_McMaster(float* J, float energy, float*p){
     
     float e1 = (energy+p[2])*1.0e-3f;
-	e1 = log(e1);
+    e1 = log(e1);
     float pow_e = exp(-2.75f*e1);
     
     J[0] = 1.0f;
@@ -202,19 +204,19 @@ inline float LCF(float energy, float* p, __read_only image1d_array_t refSpectra,
     float E_pitch = (float)(END_E-START_E)/((float)IMAGESIZE_E);
     float2 XY = (float2)((energy+p[1]-START_E)/E_pitch+0.5f,offset);
     
-    float val = read_imagef(refSpectra,s_linear,XY).x;
+    float val = read_imagef(refSpectra,s_linearXANES,XY).x;
     return p[0]*val;
 }
 
-inline float Jacobian_LCF(float* J, float energy, float* p, __read_only image1d_array_t refSpectra,
+inline void Jacobian_LCF(float* J, float energy, float* p, __read_only image1d_array_t refSpectra,
                           int offset){
     
     float E_pitch = (float)(END_E-START_E)/((float)IMAGESIZE_E);
     float X = (energy+p[1]-START_E)/E_pitch;
     
-    float val = read_imagef(refSpectra,s_linear,(float2)(X,offset)).x;
-    float valp = read_imagef(refSpectra,s_linear,(float2)(X+1.0f,offset)).x;
-    float valm = read_imagef(refSpectra,s_linear,(float2)(X-1.0f,offset)).x;
+    float val = read_imagef(refSpectra,s_linearXANES,(float2)(X,offset)).x;
+    float valp = read_imagef(refSpectra,s_linearXANES,(float2)(X+1.0f,offset)).x;
+    float valm = read_imagef(refSpectra,s_linearXANES,(float2)(X-1.0f,offset)).x;
     
     J[0] = val;
     J[1] = p[0]*(valp-valm)/E_pitch/2.0f;
@@ -264,17 +266,17 @@ inline float mtFit(float* fp, float energy, __constant int* funcModeList,
                 mt += Victoreen(energy,fp+fpOffset);
                 fpOffset +=4;
                 break;
-              
+                
             case 7: //McMaster
                 mt += McMaster(energy,fp+fpOffset);
                 fpOffset +=3;
                 break;
-            
+                
             case 8: //3rd polynominal
                 mt += thirdPolynominal(energy,fp+fpOffset);
                 fpOffset +=4;
                 break;
-
+                
         }
     }
     return mt;
@@ -359,7 +361,7 @@ __kernel void chi2Stack(__global float* mt_img, __global float* fp_img,
         mt_fit = mtFit(fp,energy[en],funcModeList,refSpectra);
         chi2 += (mt_data-mt_fit)*(mt_data-mt_fit);
     }
-
+    
     chi2_img[global_ID] = chi2;
 }
 
@@ -541,19 +543,19 @@ __kernel void redimension_refSpecta(__write_only image1d_array_t refSpectra,
                                     __constant float* energy, int numE, int offset){
     
     float e1, e2, e3;
-	float E_pitch = (float)(END_E-START_E)/((float)IMAGESIZE_E);
+    float E_pitch = (float)(END_E-START_E)/((float)IMAGESIZE_E);
     int n = 0;
     float X;
     float4 img;
     
     for(int en=0; en<numE; en++){
-        e1 = energy[en] - E0;
-        e2 = energy[en+1] - E0;
+        e1 = energy[en] - EZERO;
+        e2 = energy[en+1] - EZERO;
         if(e2>START_E && e1<END_E){
             e3 = START_E+n*E_pitch;
             while(e3<e2){
                 X=en+(e3-e1)/(e2-e1)+0.5f;
-                img = read_imagef(refSpectrum_raw,s_linear,X);
+                img = read_imagef(refSpectrum_raw,s_linearXANES,X);
                 write_imagef(refSpectra,(int2)(n,offset),img);
                 n++;
                 e3 = START_E+n*E_pitch;
@@ -567,8 +569,7 @@ __kernel void redimension_refSpecta(__write_only image1d_array_t refSpectra,
 
 __kernel void SoftThresholdingFunc(__global float* fp_img,
                                    __global float* dp_img,__global float* dp_cnd_img,
-                                   /*__global float* sigma_img,__global float* sigma_dst_img,*/
-                                   __global float* inv_tJJ_img,/* __global float* inv_tJJ_maxEval_img,*/
+                                   __global float* inv_tJJ_img,
                                    __constant char *p_fix,__constant float* lambda_fista){
     
     const int x = get_global_id(0);
@@ -577,36 +578,11 @@ __kernel void SoftThresholdingFunc(__global float* fp_img,
     const size_t global_xy = x+y*IMAGESIZE_X;
     const size_t global_ID = x+y*IMAGESIZE_X+z*IMAGESIZE_M;
     
-    //float inv_tJJ_maxEval = inv_tJJ_maxEval_img[global_ID];
-    //float inv_tJJ[PARA_NUM];
-    //float sigma[PARA_NUM];
-    /*for(int i=0;i<PARA_NUM;i++){
-        //inv_tJJ[i] = inv_tJJ_img[global_xy+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M];
-        sigma[i] = sigma_img[global_xy+i*IMAGESIZE_M];
-    }*/
-	/*float lambda2 = 0.0f;
-    for (int i=0;i<z;i++) {
-		lambda2 += sigma[i]*inv_tJJ_img[global_xy+(PARA_NUM*i-(i+1)*i/2+z)*IMAGESIZE_M]*lambda_fista[i];
-        //inv_tJJ[i] = inv_tJJ_img[global_xy+(PARA_NUM*i-(i+i)*i/2+z)*IMAGESIZE_M];
-    }*/
-    float lambda1 = inv_tJJ_img[global_xy+(PARA_NUM*z-(z-1)*z/2)*IMAGESIZE_M]*lambda_fista[z];//inv_tJJ_maxEval;
-    /*for(int i=z+1;i<PARA_NUM;i++){
-		lambda2 += sigma[i]*inv_tJJ_img[global_xy+(PARA_NUM*i-(i+1)*i/2+z)*IMAGESIZE_M]*lambda_fista[i];
-        //inv_tJJ[i] = inv_tJJ_img[global_xy+(PARA_NUM*z-(z+1)*z/2+i)*IMAGESIZE_M];
-    }
-	lambda2 /= inv_tJJ_maxEval;*/
-    //barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);
-    
-    
-    /*float lambda2 = 0.0f;
-    for(int i=0;i<PARA_NUM;i++){
-		lambda2 += (i == z) ? 0.0f : sigma[i] * inv_tJJ[i]*lambda_fista[i];
-    }*/
-    
-	float fpdp_neighbor[4];
-	int px = x+1;
-	int py = y+1;
-	int mx = x-1;
+    float lambda1 = inv_tJJ_img[global_xy+(PARA_NUM*z-(z-1)*z/2)*IMAGESIZE_M]*lambda_fista[z];//
+    float fpdp_neighbor[4];
+    int px = x+1;
+    int py = y+1;
+    int mx = x-1;
     int my = y-1;
     
     float fp = fp_img[global_ID];
@@ -658,15 +634,7 @@ __kernel void SoftThresholdingFunc(__global float* fp_img,
         dp_new = (fp+dp<fp_range[i]) ? dp_cnd[i+1]:dp_new;
     }
     
-    /*float sigma_new = 4.0f;
-    sigma_new = (fp+dp_new<fpdp_neighbor[0]) ? 2.0f:sigma_new;
-    sigma_new = (fp+dp_new<fpdp_neighbor[1]) ? 0.0f:sigma_new;
-    sigma_new = (fp+dp_new<fpdp_neighbor[2]) ? -2.0f:sigma_new;
-    sigma_new = (fp+dp_new<fpdp_neighbor[3]) ? -4.0f:sigma_new;*/
-	//sigma_new = (p_fix[z] == 48) ? 0.0f:sigma_new;
-
     dp_cnd_img[global_ID] = (p_fix[z]==48) ? 0.0f:dp_new;
-    //sigma_dst_img[global_ID] = sigma_new;
 }
 
 __kernel void FISTAupdate(__global float* fp_new_img,__global float* fp_old_img,
@@ -727,4 +695,3 @@ __kernel void powerIteration(__global float* A_img, __global float* maxEval_img,
     
     maxEval_img[global_ID] = absX;
 }
-

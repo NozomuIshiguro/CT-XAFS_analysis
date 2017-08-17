@@ -69,31 +69,31 @@ string regMode::ofs_transpara(){
     ostringstream oss;
     switch (regModeNo) {
         case 0: //xy shift
-            oss<< "dx\tdx error\tdy\tdy error\t";
+            oss<< "dx\tdx error\tdy\tdy error"<<endl;
             break;
             
         case 1: //rotation+xy shift
-            oss<<"dx\tdx error\tdy\tdy error\td(theta)\td(theta) error\t";
+            oss<<"dx\tdx error\tdy\tdy error\td(theta)\td(theta) error" << endl;
             break;
             
         case 2: //scale+xy shift
-            oss<<"dx\tdx error\tdy\tdy error\tscale(log)\tscale(log) error\t";
+            oss<<"dx\tdx error\tdy\tdy error\tscale(log)\tscale(log) error" << endl;
             break;
             
         case 3: //scale+rotation+xy shift
             oss<<"dx\tdx error\tdy\tdy error\t";
             oss<<"d(theta)\td(theta) error\t";
-            oss<<"scale(log)\tscale(log) error\t";
+            oss<<"scale(log)\tscale(log) error" << endl;
             break;
             
         case 4: //affine+xy shift
             oss<<"dx\tdx error\tdy\tdy error\t";
             oss<<"a11\ta11 error\ta12\ta12 error\t";
-            oss<<"a21\ta21 error\ta22\ta22 error\t";
+            oss<<"a21\ta21 error\ta22\ta22 error" << endl;
             break;
             
         default: //none
-            oss<<"";
+            oss<<"" << endl;
             break;
     }
     return oss.str();

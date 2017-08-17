@@ -10,7 +10,7 @@
 
 static int buffsize=512;
 
-int input_parameter_fitting::getBkgFittingMode(){
+int input_parameter_fitting::getPreEdgeFittingMode(){
     return bkgFittingMode;
 }
 
@@ -470,6 +470,10 @@ float input_parameter_fitting::get_kend(){
     return kend;
 }
 
+void input_parameter_fitting::set_kend(float val){
+    kend = val;
+}
+
 float input_parameter_fitting::get_Rstart(){
     return Rstart;
 }
@@ -816,7 +820,7 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         (*inp_ifs).getline(buffer, buffsize);
         edgeJ_dir_path=buffer;
         cout<<"  "<<edgeJ_dir_path<<endl;
-    }else if((string)buffer=="#EXAFS fiitting mode"){
+    }else if((string)buffer=="#EXAFS fitting mode"){
         cout<<buffer<<endl;
         (*inp_ifs)>>EXAFSfittingMode;
         cout<<"  "<<EXAFSfittingMode<<endl;

@@ -177,7 +177,8 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         cl::Buffer dF2new_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
         cl::Buffer tJdF_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA, 0, NULL);
         cl::Buffer tJJ_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*(p_num+1)/2*dA, 0, NULL);
-        cl::Buffer inv_tJJ_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*(p_num+1)/2*dA, 0, NULL);
+        cl::Buffer mean_sample_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
+        cl::Buffer mean_target_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
         
         
         
@@ -206,11 +207,20 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         delete [] It_img_target;
         
         
+        //estimate mean of mt_target
+        cl::Kernel kernel_mean = CLO.getKernel("estimateImgMean");
+        kernel_mean.setArg(0, mt_sample_image[0]);
+        kernel_mean.setArg(1, mean_target_buffer);
+        kernel_mean.setArg(2, cl::Local(sizeof(cl_float)*WorkGroupSize));
+        command_queue.enqueueNDRangeKernel(kernel_mean, cl::NullRange, global_item_size1, local_item_size1, NULL, NULL);
+        command_queue.finish();
+        
+        
         //target image reg parameter (p_buffer) initialize
 		errorArert = "target parameter initialize";
         for (int k=0; k<dA; k++) {
             for (int p=0; p<p_num; p++) {
-                command_queue.enqueueWriteBuffer(p_target_buffer,CL_TRUE,sizeof(cl_float)*(p+p_num*k), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
+                command_queue.enqueueWriteBuffer(p_target_buffer,CL_TRUE,sizeof(cl_float)*(k+p*dA), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
             }
         }
         command_queue.finish();
@@ -263,7 +273,7 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
             //move target image reg parameter from GPU to memory
             for (int k=0; k<dA; k++) {
                 for (int p=0; p<p_num; p++) {
-                    command_queue.enqueueReadBuffer(p_target_buffer, CL_TRUE, sizeof(cl_float)*(p+p_num*k),sizeof(cl_float),&p_vec[targetEnergyNo-startEnergyNo][p+p_num*k],NULL,NULL);
+                    command_queue.enqueueReadBuffer(p_target_buffer, CL_TRUE, sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_vec[targetEnergyNo-startEnergyNo][p+p_num*k],NULL,NULL);
                 }
             }
 			command_queue.finish();
@@ -292,6 +302,8 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         kernel_imgReg1.setArg(5, dF2old_buffer);
         kernel_imgReg1.setArg(6, tJdF_buffer);
         kernel_imgReg1.setArg(7, tJJ_buffer);
+        kernel_imgReg1.setArg(10, mean_target_buffer);
+        kernel_imgReg1.setArg(11, mean_sample_buffer);
         //kernel setArgs of LM
 		errorArert = "kernel setting LM";
         cl::Kernel kernel_LM = CLO.getKernel("LevenbergMarquardt");
@@ -300,7 +312,6 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         kernel_LM.setArg(2, dp_buffer);
         kernel_LM.setArg(3, lambda_buffer);
         kernel_LM.setArg(4, p_fix_buffer);
-        kernel_LM.setArg(5, inv_tJJ_buffer);
         //kernel setArgs of dL estimation
 		errorArert = "kernel setting dL" ;
         cl::Kernel kernel_dL = CLO.getKernel("estimate_dL");
@@ -322,6 +333,8 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         kernel_imgReg2.setArg(2, p_cnd_buffer);
         kernel_imgReg2.setArg(3, p_target_buffer);
         kernel_imgReg2.setArg(4, dF2new_buffer);
+        kernel_imgReg2.setArg(7, mean_target_buffer);
+        kernel_imgReg2.setArg(8, mean_sample_buffer);
         //evaluate cnd
 		errorArert = "kernel setting eval";
         cl::Kernel kernel_eval = CLO.getKernel("evaluateUpdateCandidate");
@@ -349,6 +362,9 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         kernel_output.setArg(0, mt_sample_outputImg);
         kernel_output.setArg(1, mt_sample_buffer);
         kernel_output.setArg(2, p_buffer);
+        //estimate mt_sample mean
+        kernel_mean.setArg(0, mt_sample_image[0]);
+        kernel_mean.setArg(1, mean_sample_buffer);
         
         
         for (int s=0; s<2; s++) {//1st cycle:i<targetEnergyNo, 2nd cycle:i>targetEnergyNo
@@ -363,7 +379,7 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
 			errorArert = "parameter initialize";
             for (int k=0; k<dA; k++) {
                 for (int p=0; p<p_num; p++) {
-                    command_queue.enqueueWriteBuffer(p_buffer,CL_TRUE,sizeof(cl_float)*(p+p_num*k), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
+                    command_queue.enqueueWriteBuffer(p_buffer,CL_TRUE,sizeof(cl_float)*(k+p*dA), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
                 }
             }
             command_queue.finish();
@@ -374,6 +390,11 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                 //sample mt conversion
 				errorArert = "mt conversion";
                 mt_conversion(command_queue,kernel_mt,dark_buffer,I0_sample_buffers[i-startEnergyNo],mt_sample_buffer,mt_sample_image[0], mt_sample_outputImg,global_item_size1,local_item_size1,It_img_sample[i-startEnergyNo],dA,msk,true,imageSizeM);
+                
+                
+                //estimate mean of mt_sample
+                command_queue.enqueueNDRangeKernel(kernel_mean, cl::NullRange, global_item_size1, local_item_size1, NULL, NULL);
+                command_queue.finish();
                 
         
                 if (regmode.get_regModeNo()>=0) {
@@ -488,7 +509,7 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                     //read p_buffer & p_err_buffer from GPU to memory
                     for (int k=0; k<dA; k++) {
                         for (int p=0; p<p_num; p++) {
-                            command_queue.enqueueReadBuffer(p_buffer, CL_TRUE, sizeof(cl_float)*(p+p_num*k),sizeof(cl_float),&p_vec[i-startEnergyNo][p+p_num*k],NULL,NULL);
+                            command_queue.enqueueReadBuffer(p_buffer, CL_TRUE, sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_vec[i-startEnergyNo][p+k*p_num],NULL,NULL);
                             command_queue.enqueueReadBuffer(p_err_buffer, CL_TRUE, sizeof(cl_float)*(p+p_num*k),sizeof(cl_float),&p_err_vec[i-startEnergyNo][p+p_num*k],NULL,NULL);
                         }
                     }
