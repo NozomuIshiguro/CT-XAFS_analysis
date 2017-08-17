@@ -915,11 +915,11 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         cout<<buffer<<endl;
         (*inp_ifs)>>Rbkg;
         cout<<"  "<<Rbkg<<endl;
-    }else if((string)buffer=="#Pre-edge fitting Energy range"){
+    }else if((string)buffer=="#Pre-edge fitting energy range"){
         cout<<buffer<<endl;
         (*inp_ifs)>>preEdgeStartEnergy; (*inp_ifs).ignore() >> preEdgeEndEnergy;
         cout<<"  "<<preEdgeStartEnergy<<"-"<<preEdgeEndEnergy<<endl;
-    }else if((string)buffer=="#Post-edge fitting Energy range"){
+    }else if((string)buffer=="#Post-edge fitting energy range"){
         cout<<buffer<<endl;
         (*inp_ifs)>>postEdgeStartEnergy; (*inp_ifs).ignore() >> postEdgeEndEnergy;
         cout<<"  "<<postEdgeStartEnergy<<"-"<<postEdgeEndEnergy<<endl;

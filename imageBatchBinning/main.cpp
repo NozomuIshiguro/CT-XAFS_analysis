@@ -1,4 +1,4 @@
-﻿//
+//
 //  main.cpp
 //  imageBatchBinning
 //
@@ -13,6 +13,13 @@ mutex m1,m2;
 vector<thread> input_th, binning_th, output_th;
 
 int main(int argc, const char * argv[]) {
+    
+    cout << "-----------------------------------------------"<<endl<<endl;
+    cout << "               Batch image binning" <<endl<<endl;
+    cout << "         First version: Jul. 18th, 2017"<<endl;
+    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
+    cout << "-----------------------------------------------"<<endl<<endl;
     
     string fp_str;
     if (argc>1) {

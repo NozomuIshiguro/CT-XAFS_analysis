@@ -1,5 +1,5 @@
 ﻿//
-//  2D_XANES_fitting_ocl2.cpp
+//  2D_XANES_fitting_ocl.cpp
 //  CT-XANES_analysis
 //
 //  Created by Nozomu Ishiguro on 2017/04/28.

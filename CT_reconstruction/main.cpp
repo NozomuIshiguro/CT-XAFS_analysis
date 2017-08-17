@@ -53,6 +53,14 @@ int GPU();
 vector<thread> input_th, reconst_th, output_th;
 
 int main(int argc, const char * argv[]) {
+    
+    cout << "-----------------------------------------------"<<endl<<endl;
+    cout << "            Batch CT reconstruction" <<endl<<endl;
+    cout << "         First version: Jun. 19th, 2015"<<endl;
+    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
+    cout << "-----------------------------------------------"<<endl<<endl;
+    
     string inputfile_path;
     if (argc>1) {
         inputfile_path=argv[1];

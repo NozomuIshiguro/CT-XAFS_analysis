@@ -605,13 +605,14 @@
 			path = Reslice;
 			sourceTree = "<group>";
 		};
-		2E3B76591B38464B00BDFBF9 /* CT_imageRegistration */ = {
+		2E3B76591B38464B00BDFBF9 /* CT-XAFS_imageRegistration */ = {
 			isa = PBXGroup;
 			children = (
 				2E10DB271AA584D2006A6905 /* CTXAFS.hpp */,
 				2E434DCC1A8AFDD3006A3162 /* main.cpp */,
 				2E434DD11A8AFE15006A3162 /* CT_imageRegistration_ocl.cpp */,
 			);
+			name = "CT-XAFS_imageRegistration";
 			path = CT_imageRegistration;
 			sourceTree = "<group>";
 		};
@@ -651,9 +652,9 @@
 				2E117F0E1AB4023C0094871E /* CTXAFS share */,
 				2E4370011CEA02BB0031F6E5 /* ImageFilter */,
 				2E41B24E1C7311E400EE4B5E /* RotationCenterSearch */,
-				2E3B76591B38464B00BDFBF9 /* CT_imageRegistration */,
+				2E3B76591B38464B00BDFBF9 /* CT-XAFS_imageRegistration */,
 				2E1522F31B16B22C00239AA9 /* imaging2DXAFS_registration */,
-				2E4845191DAB42FB00F859AF /* imagingXAFS-CT_registration */,
+				2E4845191DAB42FB00F859AF /* XAFS-CT_imageRegistration */,
 				2E5065B81B2001A50060C00A /* Image registration share */,
 				2EB7283D1F1DCD86003C0F2F /* imageBatchBinning */,
 				2E510BB71A6432A1006B342A /* XANES_fitting */,
@@ -693,13 +694,14 @@
 			path = "DerivedData/CT-XANES_analysis/Build/Products/Release";
 			sourceTree = "<group>";
 		};
-		2E4845191DAB42FB00F859AF /* imagingXAFS-CT_registration */ = {
+		2E4845191DAB42FB00F859AF /* XAFS-CT_imageRegistration */ = {
 			isa = PBXGroup;
 			children = (
 				2E48451A1DAB42FB00F859AF /* main.cpp */,
 				2E4845201DAB43FE00F859AF /* imagingXAFS-CT_registration_ocl.cpp */,
 				2E48451F1DAB439700F859AF /* imagingXAFS-CT_registration.hpp */,
 			);
+			name = "XAFS-CT_imageRegistration";
 			path = "imagingXAFS-CT_registration";
 			sourceTree = "<group>";
 		};

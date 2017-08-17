@@ -1,4 +1,4 @@
-﻿//
+//
 //  main.cpp
 //  EXAFS_fitting
 //
@@ -12,6 +12,14 @@ mutex m1,m2;
 vector<thread> input_th,fitting_th, output_th_fit;
 
 int main(int argc, const char * argv[]) {
+    
+    cout << "-----------------------------------------------"<<endl<<endl;
+    cout << "             Imaging EXAFS fittting" <<endl<<endl;
+    cout << "         First version: Aug. 10th, 2017"<<endl;
+    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
+    cout << "-----------------------------------------------"<<endl<<endl;
+    
     string fp_str;
     if (argc>1) {
         fp_str=argv[1];

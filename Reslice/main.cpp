@@ -10,6 +10,14 @@
 vector<thread> input_th, reslice_th, output_th1, output_th2;
 
 int main(int argc, const char * argv[]) {
+    
+    cout << "-----------------------------------------------"<<endl<<endl;
+    cout << "    Reslice projection images to sinograms" <<endl<<endl;
+    cout << "         First version: Jun. 22nd, 2015"<<endl;
+    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
+    cout << "-----------------------------------------------"<<endl<<endl;
+    
     string fp_str;
     if (argc>1) {
         fp_str=argv[1];

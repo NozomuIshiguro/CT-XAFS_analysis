@@ -13,6 +13,13 @@ vector<thread> input_th, imageReg_th, output_th;
 
 int main(int argc, const char * argv[]) {
     
+    cout << "-----------------------------------------------"<<endl<<endl;
+    cout << "          CT-XAFS image registration" <<endl<<endl;
+    cout << "         First version: Feb. 11th, 2015"<<endl;
+    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
+    cout << "-----------------------------------------------"<<endl<<endl;
+    
     string fp_str;
     if (argc>1) {
         fp_str=argv[1];
