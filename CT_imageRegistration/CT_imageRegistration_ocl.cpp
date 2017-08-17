@@ -588,6 +588,10 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ") " <<errorArert<< endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -713,6 +717,13 @@ int imageRegistlation_ocl(string fileName_base, input_parameter inp,
     
     //energy file input & processing
     ifstream energy_ifs(inp.getEnergyFilePath(),ios::in);
+    if (!energy_ifs.is_open()) {
+        cout << "energy file not found" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
+    }
     vector<float> energy;
     int i=startEnergyNo, fittingStartEnergyNo=0, fittingEndEnergyNo=0;
     do {

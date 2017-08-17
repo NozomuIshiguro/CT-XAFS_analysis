@@ -203,6 +203,10 @@ int FFT(cl::Buffer chi, cl::Buffer FTchi,
 	}
 	catch (cl::Error ret) {
 		cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
 	}
 
     
@@ -297,6 +301,10 @@ int IFFT(cl::Buffer FTchi, cl::Buffer chiq,
 	
 	}catch (cl::Error ret) {
 		cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
 	}
 
     return 0;
@@ -596,6 +604,10 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
         
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -884,6 +896,10 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -1220,6 +1236,10 @@ int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -1317,15 +1337,12 @@ int ChiData_R(cl::CommandQueue queue, cl::Program program,
     const cl::NDRange local_item_size(min((int)maxWorkGroupSize,imageSizeX),1,1);
     
     
-    ChiData_k(queue, program, chiData, move(chiData_pointer), kw, kstart, kend, imageSizeX, imageSizeY,
-              imgStckOrChiStck, offsetM);
+    ChiData_k(queue,program,chiData,move(chiData_pointer),kw,kstart,kend,imageSizeX,imageSizeY,imgStckOrChiStck,offsetM);
     
     
     //FFT
     for (int offsetY=0; offsetY<imageSizeY; offsetY += FFTimageSizeY) {
-        FFT(chiData, FTchiData, w_factor, queue, program,
-            imageSizeX, imageSizeY, FFTimageSizeY, offsetY,
-            koffset,ksize,Roffset,Rsize);
+        FFT(chiData,FTchiData,w_factor,queue,program,imageSizeX,imageSizeY,FFTimageSizeY,offsetY,koffset,ksize,Roffset,Rsize);
     }
     
     
@@ -1364,16 +1381,12 @@ int ChiData_q(cl::CommandQueue queue, cl::Program program,
     const cl::NDRange local_item_size(min((int)maxWorkGroupSize,imageSizeX),1,1);
     
     
-    ChiData_R(queue, program, FTchiData, move(chiData_pointer), w_factor, kw,
-              kstart, kend, Rstart, Rend, imageSizeX, imageSizeY, FFTimageSizeY,
-              imgStckOrChiStck, offsetM);
+    ChiData_R(queue, program, FTchiData, move(chiData_pointer), w_factor, kw, kstart, kend, Rstart, Rend, imageSizeX, imageSizeY, FFTimageSizeY, imgStckOrChiStck, offsetM);
     
     
     //IFFT
     for (int offsetY=0; offsetY<imageSizeY; offsetY += FFTimageSizeY) {
-        IFFT(FTchiData, chiqData, w_factor, queue, program,
-             imageSizeX, imageSizeY, FFTimageSizeY, offsetY,
-             Roffset,Rsize,qoffset,qsize);
+        IFFT(FTchiData, chiqData, w_factor, queue, program, imageSizeX, imageSizeY, FFTimageSizeY, offsetY, Roffset,Rsize,qoffset,qsize);
     }
     
     

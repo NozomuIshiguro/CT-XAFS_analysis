@@ -51,7 +51,10 @@ int main(int argc, const char * argv[]) {
     dir=opendir(fileName_base.c_str());
     if (dir==NULL) {
         cout <<"Directory not found."<<endl;
-        return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
     }
     for(dp=readdir(dir);dp!=NULL;dp=readdir(dir)){
         string Edirname = dp->d_name;
@@ -100,7 +103,10 @@ int main(int argc, const char * argv[]) {
     ifstream energy_ifs(inp.getEnergyFilePath(),ios::in);
     if(!energy_ifs) {
         cerr << "   Failed to load energy file" << endl;
-        return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
     }
     
     

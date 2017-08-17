@@ -302,6 +302,10 @@ int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -388,7 +392,7 @@ int reslice_ocl(input_parameter inp,OCL_platform_device plat_dev_list,string fil
     int startAngleNo=inp.getStartAngleNo();
     int endAngleNo=inp.getEndAngleNo();
     float baseup = inp.getBaseup();
-    baseup = (baseup==NAN) ? 0:baseup;
+    baseup = (baseup==NAN) ? 0.0f:baseup;
     string fileName_base_o = inp.getOutputFileBase();
 
     //OpenCL Program Build

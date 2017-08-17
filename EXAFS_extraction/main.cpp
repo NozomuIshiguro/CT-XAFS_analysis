@@ -49,14 +49,17 @@ int main(int argc, const char * argv[]) {
 	dir = opendir(fileName_base.c_str());
 	if (dir == NULL) {
 		cout << "Directory not found." << endl;
-		return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);;
 	}
 	for (dp = readdir(dir); dp != NULL; dp = readdir(dir)) {
 		string Edirname = dp->d_name;
 
 		//Image registration by OpenCL pr
 		if (Edirname.find("0001.raw") != string::npos) {
-			cout << "    raw file found: " << Edirname << endl << endl;
+			cout << "    Edge jump raw image file found: " << Edirname << endl << endl;
 			fileName_base += +"/" + Edirname;
 			fileName_base.erase(fileName_base.size() - 8);
 			fileName_base.erase(0, inp.getInputDir().size() + 4);
@@ -64,8 +67,11 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 	if (dp == NULL) {
-		cout << "No raw file found." << endl;
-		return -1;
+		cout << "No edge jump raw image file found." << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);;
 	}
 	closedir(dir);
 	//cout<<fileName_base;

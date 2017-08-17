@@ -50,7 +50,10 @@ int main(int argc, const char * argv[]) {
     dir=opendir(fileName_base.c_str());
     if (dir==NULL) {
         cout <<"Directory not found."<<endl;
-        return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
     }
     for(dp=readdir(dir);dp!=NULL;dp=readdir(dir)){
         string Edirname = dp->d_name;
@@ -66,7 +69,10 @@ int main(int argc, const char * argv[]) {
     }
     if (dp==NULL) {
         cout <<"No raw file found."<<endl;
-        return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
     }
     closedir(dir);
     //cout<<fileName_base;
@@ -76,7 +82,10 @@ int main(int argc, const char * argv[]) {
 	dir = opendir(fileName_base_ej.c_str());
 	if (dir == NULL) {
 		cout << "Directory not found." << endl;
-		return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
 	}
 	for (dp = readdir(dir); dp != NULL; dp = readdir(dir)) {
 		string Edirname = dp->d_name;
@@ -92,7 +101,10 @@ int main(int argc, const char * argv[]) {
 	}
 	if (dp == NULL) {
 		cout << "No raw file found." << endl;
-		return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
 	}
 	closedir(dir);
 	//cout<<fileName_base;

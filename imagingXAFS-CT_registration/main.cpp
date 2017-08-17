@@ -62,7 +62,10 @@ int main(int argc, const char * argv[]) {
     dir=opendir(inp.getInputDir().c_str());
     if (dir==NULL) {
         cout <<"Directory not found."<<endl;
-        return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
     }
     
     
@@ -78,7 +81,10 @@ int main(int argc, const char * argv[]) {
     }
     if (dp==NULL) {
         cout <<"No his file found."<<endl;
-        return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
     }
     closedir(dir);
     //printf("%s\n",fileName_base);

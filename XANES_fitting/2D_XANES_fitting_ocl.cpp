@@ -373,6 +373,10 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         
     } catch (const cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")"<< errorzone << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -401,6 +405,13 @@ int XANES_fit_ocl(fitting_eq fiteq, input_parameter inp,
     
     //energy file input & processing
     ifstream energy_ifs(inp.getEnergyFilePath(),ios::in);
+    if (!energy_ifs.is_open()) {
+        cout<<"energy file not found."<<endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
+    }
     vector<float> energy;
     int i=0, startEnergyNo=0, endEnergyNo=0;
     do {

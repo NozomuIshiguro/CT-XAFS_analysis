@@ -1,4 +1,4 @@
-﻿//
+//
 //  GPU.cpp
 //  CT_reconstruction
 //
@@ -291,6 +291,10 @@ int OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         }
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -692,6 +696,10 @@ int FBP_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         //delete [] xc;
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -751,6 +759,10 @@ int FBP_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         
     }catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     
@@ -1102,6 +1114,10 @@ int AART_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         }
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -1478,6 +1494,10 @@ int hybrid_thread(cl::CommandQueue command_queue,
         
     }catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     
@@ -2046,6 +2066,10 @@ int powerIteration(cl::CommandQueue command_queue, vector<cl::Kernel> kernels,
 
     }catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
         
     }
     

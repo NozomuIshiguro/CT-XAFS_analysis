@@ -76,7 +76,10 @@ int main(int argc, const char * argv[]) {
     }
     if (dp==NULL) {
         cout <<"No raw file found."<<endl;
-        return -1;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
     }
     closedir(dir);
     //cout<<fileName_base;
@@ -130,7 +133,6 @@ int main(int argc, const char * argv[]) {
     if ((inp.getStartAngleNo()<0)|(inp.getEndAngleNo()<0)) {
         inp.setAngleRangeFromDialog("Set angle num range (ex. 1-1600).\n");
     }
-    
     
     
     time_t start,end;

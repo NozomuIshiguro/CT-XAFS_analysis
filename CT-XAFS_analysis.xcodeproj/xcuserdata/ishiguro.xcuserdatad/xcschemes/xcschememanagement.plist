@@ -4,17 +4,17 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
-		<key>CT_imageReg_XANESfitting.xcscheme</key>
-		<dict>
-			<key>orderHint</key>
-			<integer>7</integer>
-		</dict>
-		<key>CT_imageRegistration.xcscheme</key>
+		<key>CT-XAFS_imageRegistration.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>2</integer>
 		</dict>
-		<key>CT_reconst.xcscheme</key>
+		<key>CT_imageReg_XANESfitting.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>12</integer>
+		</dict>
+		<key>CT_reconstruction.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>9</integer>
@@ -22,17 +22,17 @@
 		<key>EXAFS_extraction.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>11</integer>
+			<integer>6</integer>
 		</dict>
 		<key>EXAFS_fitting.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>12</integer>
+			<integer>7</integer>
 		</dict>
 		<key>ImagingXAFS_RegAndBkgRemoval.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>14</integer>
+			<integer>13</integer>
 		</dict>
 		<key>OpenCL_Device_Info.xcscheme</key>
 		<dict>
@@ -54,30 +54,30 @@
 			<key>orderHint</key>
 			<integer>1</integer>
 		</dict>
-		<key>XAFSreconst_fitting.xcscheme</key>
-		<dict>
-			<key>orderHint</key>
-			<integer>13</integer>
-		</dict>
-		<key>XANES_fitting.xcscheme</key>
-		<dict>
-			<key>orderHint</key>
-			<integer>6</integer>
-		</dict>
-		<key>imageBatchBinning.xcscheme</key>
-		<dict>
-			<key>orderHint</key>
-			<integer>5</integer>
-		</dict>
-		<key>imaging2DXAFS_registration.xcscheme</key>
+		<key>XAFS-CT_imageRegistration.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>3</integer>
 		</dict>
-		<key>imagingXAFS-CT_registration.xcscheme</key>
+		<key>XAFSreconst_fitting.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>11</integer>
+		</dict>
+		<key>XANES_fitting.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>5</integer>
+		</dict>
+		<key>imageBatchBinning.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>4</integer>
+		</dict>
+		<key>imaging2DXAFS_registration.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>14</integer>
 		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>

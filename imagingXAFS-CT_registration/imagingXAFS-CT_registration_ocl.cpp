@@ -63,6 +63,13 @@ int createSmoothedEnergyList(input_parameter *inp){
     
 	cout << (*inp).getRawAngleFilePath() << endl;
     ifstream rawAngle_ifs((*inp).getRawAngleFilePath(),ios::in);
+    if (!rawAngle_ifs.is_open()) {
+        cout<<"Angle file not found."<<endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
+    }
     vector<float> rawAngle;
     int i=0;
 	char* dummy;
@@ -85,7 +92,10 @@ int createSmoothedEnergyList(input_parameter *inp){
 	ifstream parameter_ifs((*inp).getXAFSparameterFilePath(), ios::in);
 	if (!parameter_ifs.is_open()) {
 		cout << "parameter file not found." << endl;
-		exit(-1);
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
 	}
     vector<float> smoothedAngle;
     vector<float> blockStartAngle;

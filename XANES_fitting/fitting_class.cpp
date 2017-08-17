@@ -194,6 +194,13 @@ fitting_eq::fitting_eq(input_parameter inp){
     for (int i=0; i<numLCF; i++) {
 		cout << "Data input of standard XANES spectrum(" << i + 1 << ")" << endl;
 		ifstream energy_ifs(inp.LCFstd_paths[i],ios::in);
+        if (!energy_ifs.is_open()) {
+            cout<<"Standard XAFS file not found."<<endl;
+            cout <<  "Press 'Enter' to quit." << endl;
+            string dummy;
+            getline(cin,dummy);
+            exit(-1);
+        }
         vector<float> energy, mt;
         LCFstd_size.push_back(0);
 		int j = 0;

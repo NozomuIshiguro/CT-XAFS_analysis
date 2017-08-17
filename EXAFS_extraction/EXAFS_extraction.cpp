@@ -327,6 +327,10 @@ int fitting(cl::CommandQueue queue, cl::Program program,
         }
     }catch (const cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")"<< errorzone << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
     }
     
     return 0;
@@ -1103,6 +1107,13 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
     
     //energy file input
     ifstream energy_ifs(inp.getEnergyFilePath(),ios::in);
+    if (!energy_ifs.is_open()) {
+        cout <<"Energy file not found."<<endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
+    }
     vector<float> energy;
     int i=0;
     do {

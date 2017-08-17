@@ -11,6 +11,13 @@ static int buffsize=512;
 
 FEFF_shell::FEFF_shell(string path){
     ifstream feff_ifs(path,ios::in);
+    if (!feff_ifs.is_open()) {
+        cout<<"FEFF file not found."<<endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
+    }
     
     //seeking header
     while (!feff_ifs.eof()) {

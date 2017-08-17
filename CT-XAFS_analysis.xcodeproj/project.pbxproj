@@ -398,7 +398,7 @@
 		2E434DD11A8AFE15006A3162 /* CT_imageRegistration_ocl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CT_imageRegistration_ocl.cpp; path = CT_imageRegistration/CT_imageRegistration_ocl.cpp; sourceTree = SOURCE_ROOT; };
 		2E4370041CEA08930031F6E5 /* imageFilter.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; name = imageFilter.cl; path = ImageFilter/imageFilter.cl; sourceTree = "<group>"; };
 		2E464B4C1A41140900BE6BE0 /* OpenCL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenCL.framework; path = System/Library/Frameworks/OpenCL.framework; sourceTree = SDKROOT; };
-		2E4845181DAB42FB00F859AF /* imagingXAFS-CT_registration */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "imagingXAFS-CT_registration"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2E4845181DAB42FB00F859AF /* XAFS-CT_imageregistration */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "XAFS-CT_imageregistration"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E48451A1DAB42FB00F859AF /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		2E48451F1DAB439700F859AF /* imagingXAFS-CT_registration.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "imagingXAFS-CT_registration.hpp"; sourceTree = "<group>"; };
 		2E4845201DAB43FE00F859AF /* imagingXAFS-CT_registration_ocl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "imagingXAFS-CT_registration_ocl.cpp"; sourceTree = "<group>"; };
@@ -649,23 +649,23 @@
 			isa = PBXGroup;
 			children = (
 				2E464B4C1A41140900BE6BE0 /* OpenCL.framework */,
+				2E3B769A1B384B8800BDFBF9 /* OpenCL_Device_Info */,
 				2E117F0E1AB4023C0094871E /* CTXAFS share */,
 				2E4370011CEA02BB0031F6E5 /* ImageFilter */,
 				2E41B24E1C7311E400EE4B5E /* RotationCenterSearch */,
 				2E3B76591B38464B00BDFBF9 /* CT-XAFS_imageRegistration */,
-				2E1522F31B16B22C00239AA9 /* imaging2DXAFS_registration */,
 				2E4845191DAB42FB00F859AF /* XAFS-CT_imageRegistration */,
 				2E5065B81B2001A50060C00A /* Image registration share */,
 				2EB7283D1F1DCD86003C0F2F /* imageBatchBinning */,
 				2E510BB71A6432A1006B342A /* XANES_fitting */,
-				2EED26301E5541AE008CFBC5 /* XAFSreconst_fitting */,
-				2E7FA6281C002D5400D56F13 /* CT_imageReg_XANESfitting */,
+				2E8142E91E2C6BA400F9B04D /* EXAFS_extraction */,
+				2ECC357C1C3A4183002215B2 /* EXAFS_fitting */,
 				2E3B761E1B383F7500BDFBF9 /* Reslice */,
 				2EFDFD9D1B2A475E00DC2F4A /* CT_reconstruction */,
 				2EEF3C8F1C91250400BB4E0F /* Reslice_CTreconst */,
-				2E3B769A1B384B8800BDFBF9 /* OpenCL_Device_Info */,
-				2ECC357C1C3A4183002215B2 /* EXAFS_fitting */,
-				2E8142E91E2C6BA400F9B04D /* EXAFS_extraction */,
+				2E7FA6281C002D5400D56F13 /* CT_imageReg_XANESfitting */,
+				2EED26301E5541AE008CFBC5 /* XAFSreconst_fitting */,
+				2E1522F31B16B22C00239AA9 /* imaging2DXAFS_registration */,
 				2ECC2BEE1ECEBB8D0029EE38 /* ImagingXAFS_RegAndBkgRemoval */,
 				2E464B431A4113A100BE6BE0 /* Products */,
 			);
@@ -684,7 +684,7 @@
 				2ECC357B1C3A4183002215B2 /* EXAFS_fitting */,
 				2E41B24D1C7311E400EE4B5E /* RotationCenterSearch */,
 				2EEF3C8E1C91250400BB4E0F /* Reslice_CTreconst */,
-				2E4845181DAB42FB00F859AF /* imagingXAFS-CT_registration */,
+				2E4845181DAB42FB00F859AF /* XAFS-CT_imageregistration */,
 				2EED262F1E5541AE008CFBC5 /* XAFSreconst_fitting */,
 				2ECC2BED1ECEBB8D0029EE38 /* ImagingXAFS_RegAndBkgRemoval */,
 				2EB7283C1F1DCD86003C0F2F /* imageBatchBinning */,
@@ -868,9 +868,9 @@
 			productReference = 2E3B761D1B383F7500BDFBF9 /* Reslice */;
 			productType = "com.apple.product-type.tool";
 		};
-		2E3B76571B38464B00BDFBF9 /* CT_imageRegistration */ = {
+		2E3B76571B38464B00BDFBF9 /* CT-XAFS_imageRegistration */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2E3B765C1B38464B00BDFBF9 /* Build configuration list for PBXNativeTarget "CT_imageRegistration" */;
+			buildConfigurationList = 2E3B765C1B38464B00BDFBF9 /* Build configuration list for PBXNativeTarget "CT-XAFS_imageRegistration" */;
 			buildPhases = (
 				2E3B76541B38464B00BDFBF9 /* Sources */,
 				2E3B76551B38464B00BDFBF9 /* Frameworks */,
@@ -880,14 +880,14 @@
 			);
 			dependencies = (
 			);
-			name = CT_imageRegistration;
+			name = "CT-XAFS_imageRegistration";
 			productName = CT_imageRegistration;
 			productReference = 2E3B76581B38464B00BDFBF9 /* CT_imageRegistration */;
 			productType = "com.apple.product-type.tool";
 		};
-		2E3B76721B3847C400BDFBF9 /* CT_reconst */ = {
+		2E3B76721B3847C400BDFBF9 /* CT_reconstruction */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2E3B76771B3847C500BDFBF9 /* Build configuration list for PBXNativeTarget "CT_reconst" */;
+			buildConfigurationList = 2E3B76771B3847C500BDFBF9 /* Build configuration list for PBXNativeTarget "CT_reconstruction" */;
 			buildPhases = (
 				2E3B766F1B3847C400BDFBF9 /* Sources */,
 				2E3B76701B3847C400BDFBF9 /* Frameworks */,
@@ -897,7 +897,7 @@
 			);
 			dependencies = (
 			);
-			name = CT_reconst;
+			name = CT_reconstruction;
 			productName = CT_reconstruction;
 			productReference = 2E3B76731B3847C400BDFBF9 /* CT_reconstruction */;
 			productType = "com.apple.product-type.tool";
@@ -953,9 +953,9 @@
 			productReference = 2E41B24D1C7311E400EE4B5E /* RotationCenterSearch */;
 			productType = "com.apple.product-type.tool";
 		};
-		2E4845171DAB42FB00F859AF /* imagingXAFS-CT_registration */ = {
+		2E4845171DAB42FB00F859AF /* XAFS-CT_imageregistration */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2E48451C1DAB42FB00F859AF /* Build configuration list for PBXNativeTarget "imagingXAFS-CT_registration" */;
+			buildConfigurationList = 2E48451C1DAB42FB00F859AF /* Build configuration list for PBXNativeTarget "XAFS-CT_imageregistration" */;
 			buildPhases = (
 				2E4845141DAB42FB00F859AF /* Sources */,
 				2E4845151DAB42FB00F859AF /* Frameworks */,
@@ -965,9 +965,9 @@
 			);
 			dependencies = (
 			);
-			name = "imagingXAFS-CT_registration";
+			name = "XAFS-CT_imageregistration";
 			productName = "imagingXAFS-CT_registration";
-			productReference = 2E4845181DAB42FB00F859AF /* imagingXAFS-CT_registration */;
+			productReference = 2E4845181DAB42FB00F859AF /* XAFS-CT_imageregistration */;
 			productType = "com.apple.product-type.tool";
 		};
 		2E7FA6261C002D5400D56F13 /* CT_imageReg_XANESfitting */ = {
@@ -1164,20 +1164,20 @@
 			projectRoot = "";
 			targets = (
 				2E3B76981B384B8800BDFBF9 /* OpenCL_Device_Info */,
-				2E3B76571B38464B00BDFBF9 /* CT_imageRegistration */,
-				2E4845171DAB42FB00F859AF /* imagingXAFS-CT_registration */,
-				2E7FA6261C002D5400D56F13 /* CT_imageReg_XANESfitting */,
-				2E3B76851B384A9400BDFBF9 /* XANES_fitting */,
-				2E3B761C1B383F7500BDFBF9 /* Reslice */,
-				2E3B76721B3847C400BDFBF9 /* CT_reconst */,
-				2EEF3C8D1C91250400BB4E0F /* Reslice_CTreconst */,
 				2E41B24C1C7311E400EE4B5E /* RotationCenterSearch */,
-				2ECC357A1C3A4183002215B2 /* EXAFS_fitting */,
+				2E3B76571B38464B00BDFBF9 /* CT-XAFS_imageRegistration */,
+				2E4845171DAB42FB00F859AF /* XAFS-CT_imageregistration */,
 				2EB7283B1F1DCD86003C0F2F /* imageBatchBinning */,
+				2E8887761F3EC1B100F5688F /* EXAFS_extraction */,
+				2E3B76851B384A9400BDFBF9 /* XANES_fitting */,
+				2ECC357A1C3A4183002215B2 /* EXAFS_fitting */,
+				2E3B761C1B383F7500BDFBF9 /* Reslice */,
+				2E3B76721B3847C400BDFBF9 /* CT_reconstruction */,
+				2EEF3C8D1C91250400BB4E0F /* Reslice_CTreconst */,
+				2E7FA6261C002D5400D56F13 /* CT_imageReg_XANESfitting */,
 				2ECC2BEC1ECEBB8D0029EE38 /* ImagingXAFS_RegAndBkgRemoval */,
 				2E1522F11B16B22C00239AA9 /* imaging2DXAFS_registration */,
 				2EED262E1E5541AE008CFBC5 /* XAFSreconst_fitting */,
-				2E8887761F3EC1B100F5688F /* EXAFS_extraction */,
 			);
 		};
 /* End PBXProject section */
@@ -2058,7 +2058,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2E3B765C1B38464B00BDFBF9 /* Build configuration list for PBXNativeTarget "CT_imageRegistration" */ = {
+		2E3B765C1B38464B00BDFBF9 /* Build configuration list for PBXNativeTarget "CT-XAFS_imageRegistration" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2E3B765D1B38464B00BDFBF9 /* Debug */,
@@ -2067,7 +2067,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2E3B76771B3847C500BDFBF9 /* Build configuration list for PBXNativeTarget "CT_reconst" */ = {
+		2E3B76771B3847C500BDFBF9 /* Build configuration list for PBXNativeTarget "CT_reconstruction" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2E3B76781B3847C500BDFBF9 /* Debug */,
@@ -2112,7 +2112,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2E48451C1DAB42FB00F859AF /* Build configuration list for PBXNativeTarget "imagingXAFS-CT_registration" */ = {
+		2E48451C1DAB42FB00F859AF /* Build configuration list for PBXNativeTarget "XAFS-CT_imageregistration" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2E48451D1DAB42FB00F859AF /* Debug */,
