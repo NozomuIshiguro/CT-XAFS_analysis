@@ -35,9 +35,10 @@ int imQXAFSsmooting(cl::CommandQueue queue, cl::Kernel kernel,
 	    const cl::NDRange local_item_size(localsize,1,1);
     
 	    for(int i=0;i<numRawImg;i++){
-	        queue.enqueueWriteBuffer(raw_mt_buffer, CL_TRUE, sizeof(cl_float)*imageSizeM*dA*i, sizeof(cl_float)*imageSizeM*dA, mt_imgs[startRawImg+i],NULL,NULL);
+	        queue.enqueueWriteBuffer(raw_mt_buffer, CL_FALSE, sizeof(cl_float)*imageSizeM*dA*i, sizeof(cl_float)*imageSizeM*dA, mt_imgs[startRawImg+i],NULL,NULL);
 	    }
-    
+        queue.finish();
+        
     
 		kernel.setArg(0, raw_mt_buffer);
 		kernel.setArg(1, smoothed_mt_buffer);
@@ -46,10 +47,15 @@ int imQXAFSsmooting(cl::CommandQueue queue, cl::Kernel kernel,
 		queue.finish();
     
 		queue.enqueueReadBuffer(smoothed_mt_buffer,CL_TRUE,0,sizeof(cl_float)*imageSizeM*dA,smoothed_mt_img,NULL,NULL);
+        queue.finish();
 
 	}
 	catch (cl::Error ret) {
 		cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
 	}
     
     return 0;
@@ -238,15 +244,17 @@ int createSmoothedEnergyList(input_parameter *inp){
 int imXAFSCT_mt_conversion(cl::CommandQueue queue,cl::Kernel kernel,
                   cl::Buffer dark_buffer, cl::Buffer I0_buffer,
                   cl::Buffer mt_buffer,cl::Image2DArray mt_image,cl::Image2DArray mt_outputImg,
-                  const cl::NDRange global_item_size,const cl::NDRange local_item_size,
-                  vector<unsigned short*> It_pointer, int E_num, int dA, mask msk, bool refBool){
+                  const cl::NDRange global_item_size,const cl::NDRange local_item_size,const cl::NDRange global_item_offset,
+                  vector<unsigned short*> It_pointer, int Enum, int dA, mask msk, bool refBool){
     
 	try {
 		cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
-		cl::Buffer It_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_ushort)*(imageSizeM + 32)*dA, 0, NULL);
-		for (int i=0; i<dA; i++) {
-		    queue.enqueueWriteBuffer(It_buffer, CL_TRUE, sizeof(cl_ushort)*(imageSizeM + 32)*i, sizeof(cl_ushort)*(imageSizeM + 32), &It_pointer[i][E_num*(int64_t)(imageSizeM+32)], NULL, NULL);
-		}
+        cl::Buffer It_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_ushort)*(imageSizeM + 32)*dA, 0, NULL);
+        for (int i=0; i<dA; i++) {
+            queue.enqueueWriteBuffer(It_buffer, CL_FALSE, sizeof(cl_ushort)*(imageSizeM + 32)*i, sizeof(cl_ushort)*(imageSizeM + 32), &It_pointer[i][Enum*(int64_t)(imageSizeM+32)], NULL, NULL);
+        }
+		queue.finish();
+        
     
 		kernel.setArg(0, dark_buffer);
 		kernel.setArg(1, I0_buffer);
@@ -270,11 +278,15 @@ int imXAFSCT_mt_conversion(cl::CommandQueue queue,cl::Kernel kernel,
 			kernel.setArg(11, msk.sampleMask_angle);
 		}
 		kernel.setArg(12, 0);
-		queue.enqueueNDRangeKernel(kernel, cl::NullRange, global_item_size, local_item_size, NULL, NULL);
+		queue.enqueueNDRangeKernel(kernel, global_item_offset, global_item_size, local_item_size, NULL, NULL);
 		queue.finish();
 	}
 	catch (cl::Error ret) {
 		cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+		cout << "Press 'Enter' to quit." << endl;
+		string dummy;
+		getline(cin, dummy);
+		exit(ret.err());
 	}
     
     return 0;
@@ -351,8 +363,10 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
         cl::Device device = command_queue.getInfo<CL_QUEUE_DEVICE>();
         string devicename = device.getInfo<CL_DEVICE_NAME>();
+        int numComUnit = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
         size_t WorkGroupSize = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), imageSizeX);
         const int dA=EndAngleNo-startAngleNo+1;
+        int dE = numComUnit/dA;
         const int p_num = regmode.get_p_num();
         cl::ImageFormat format(CL_RG,CL_FLOAT);
         int startEnergyNo=inp.getStartEnergyNo();
@@ -378,46 +392,47 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         cl::Buffer I0_target_buffer = CLO.I0_target_buffer;
         cl::Buffer I0_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_float)*imageSizeM, 0, NULL);
 
-        cl::Buffer mt_target_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*imageSizeM*dA, 0, NULL);
-        cl::Buffer mt_sample_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*imageSizeM*dA, 0, NULL);
+        cl::Buffer mt_target_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*imageSizeM*dA*dE, 0, NULL);
+        cl::Buffer mt_sample_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*imageSizeM*dA*dE, 0, NULL);
         vector<cl::Image2DArray> mt_target_image;
         vector<cl::Image2DArray> mt_sample_image;
         for (int i=0; i<4; i++) {
             int mergeN = 1<<i;
-            mt_target_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dA,
+            mt_target_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dA*dE,
                                                        imageSizeX/mergeN,imageSizeY/mergeN,
                                                        0,0,NULL,NULL));
-            mt_sample_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dA,
+            mt_sample_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dA*dE,
                                                        imageSizeX/mergeN,imageSizeY/mergeN,
                                                        0,0,NULL,NULL));
         }
-        cl::Image2DArray mt_target_outputImg(context, CL_MEM_READ_WRITE,format,dA,imageSizeX,imageSizeY,0,0,NULL,NULL);
-        cl::Image2DArray mt_sample_outputImg(context, CL_MEM_READ_WRITE,format,dA,imageSizeX,imageSizeY,0,0,NULL,NULL);
-        cl::Buffer p_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA, 0, NULL);
-        cl::Buffer dp_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA, 0, NULL);
-        cl::Buffer p_cnd_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA, 0, NULL);
-        cl::Buffer p_err_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA, 0, NULL);
+        cl::Image2DArray mt_target_outputImg(context, CL_MEM_READ_WRITE,format,dA*dE,imageSizeX,imageSizeY,0,0,NULL,NULL);
+        cl::Image2DArray mt_sample_outputImg(context, CL_MEM_READ_WRITE,format,dA*dE,imageSizeX,imageSizeY,0,0,NULL,NULL);
+        cl::Buffer p_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA*dE, 0, NULL);
+        cl::Buffer dp_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA*dE, 0, NULL);
+        cl::Buffer p_cnd_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA*dE, 0, NULL);
+        cl::Buffer p_err_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA*dE, 0, NULL);
         cl::Buffer p_fix_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_char)*p_num, 0, NULL);
-        cl::Buffer p_target_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_float)*p_num*dA, 0, NULL);
-        cl::Buffer lambda_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
-        cl::Buffer nyu_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
-        cl::Buffer dL_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
-        cl::Buffer rho_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
+        cl::Buffer p_target_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_float)*p_num*dA*dE, 0, NULL);
+        cl::Buffer lambda_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA*dE, 0, NULL);
+        cl::Buffer nyu_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA*dE, 0, NULL);
+        cl::Buffer dL_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA*dE, 0, NULL);
+        cl::Buffer rho_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA*dE, 0, NULL);
         cl::Buffer dF2old_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
-        cl::Buffer dF2new_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
-        cl::Buffer tJdF_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA, 0, NULL);
-        cl::Buffer tJJ_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*(p_num+1)/2*dA, 0, NULL);
-        cl::Buffer mean_sample_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
-        cl::Buffer mean_target_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA, 0, NULL);
+        cl::Buffer dF2new_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA*dE, 0, NULL);
+        cl::Buffer tJdF_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA*dE, 0, NULL);
+        cl::Buffer tJJ_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*(p_num+1)/2*dA*dE, 0, NULL);
+        cl::Buffer mean_sample_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA*dE, 0, NULL);
+        cl::Buffer mean_target_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*dA*dE, 0, NULL);
 		
         
         //kernel dimension declaration
-        const cl::NDRange global_item_size1(WorkGroupSize*dA,imageSizeY,1);
+		const cl::NDRange global_item_size0(WorkGroupSize*dA, imageSizeY, 1);
+		const cl::NDRange global_item_size1(WorkGroupSize*dA*dE,imageSizeY,1);
         const cl::NDRange local_item_size1(WorkGroupSize,1,1);
 		const cl::NDRange global_item_size4(imageSizeX,imageSizeY, 1);
-        const cl::NDRange global_item_size2(dA,1,1);
+        const cl::NDRange global_item_size2(dA*dE,1,1);
         const cl::NDRange local_item_size2(1,1,1);
-        const cl::NDRange global_item_size3(dA,1,p_num);
+        const cl::NDRange global_item_size3(dA*dE,1,p_num);
         const cl::NDRange local_item_size3(1,1,1);
         
         //Energy loop setting
@@ -429,9 +444,14 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         
         //target mt conversion
         cl::Kernel kernel_mt = CLO.getKernel("mt_conversion");
-        imXAFSCT_mt_conversion(command_queue,kernel_mt,dark_buffer,I0_target_buffer,
-                      mt_target_buffer,mt_target_image[0], mt_target_outputImg,
-                      global_item_size1,local_item_size1,It_img_target,0,dA,msk,true);
+        for (int en=0; en<dE; en++) {
+            cl::NDRange global_item_offset(WorkGroupSize*en*dA,0,0);
+            imXAFSCT_mt_conversion(command_queue,kernel_mt,dark_buffer,I0_target_buffer,
+                                   mt_target_buffer,mt_target_image[0], mt_target_outputImg,
+                                   global_item_size0,local_item_size1,global_item_offset,
+                                   It_img_target,0,dA,msk,true);
+        }
+        
         for (int i=0; i<dA; i++) {
             delete [] It_img_target[i];
         }
@@ -439,7 +459,7 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         
         //estimate mean of mt_target
         cl::Kernel kernel_mean = CLO.getKernel("estimateImgMean");
-        kernel_mean.setArg(0, mt_sample_image[0]);
+        kernel_mean.setArg(0, mt_target_image[0]);
         kernel_mean.setArg(1, mean_target_buffer);
         kernel_mean.setArg(2, cl::Local(sizeof(cl_float)*WorkGroupSize));
         command_queue.enqueueNDRangeKernel(kernel_mean, cl::NullRange, global_item_size1, local_item_size1, NULL, NULL);
@@ -449,31 +469,31 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         
         //target image reg parameter (p_target_buffer) initialize
         //free(1)/fix(0) settings of image reg parameter (p_fix_buffer)
-        for (int k=0; k<dA; k++) {
+        for (int k=0; k<dA*dE; k++) {
             for (int p=0; p<p_num; p++) {
-                command_queue.enqueueWriteBuffer(p_target_buffer, CL_TRUE, sizeof(cl_float)*(k+p*dA), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
-                command_queue.finish();
+                command_queue.enqueueWriteBuffer(p_target_buffer, CL_FALSE, sizeof(cl_float)*(k+p*dA*dE), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
             }
+            command_queue.finish();
         }
         command_queue.enqueueWriteBuffer(p_fix_buffer, CL_TRUE, 0, sizeof(cl_char)*p_num,regmode.p_fix,NULL,NULL);
+        command_queue.finish();
         
         
-        
-        //It_target merged image create
+        //mt_target merged image create
         cl::Kernel kernel_merge = CLO.getKernel("merge");
         if (regmode.get_regModeNo()>=0) {
             for (int i=3; i>0; i--) {
                 int mergeN = 1<<i;
                 int localsize = min((int)WorkGroupSize,imageSizeX/mergeN);
-                const cl::NDRange global_item_size_merge(localsize*dA,1,1);
+                const cl::NDRange global_item_size_merge(localsize*dA*dE,1,1);
                 const cl::NDRange local_item_size_merge(localsize,1,1);
                 
                 kernel_merge.setArg(0, mt_target_image[0]);
                 kernel_merge.setArg(1, mt_target_image[i]);
                 kernel_merge.setArg(2, mergeN);
                 command_queue.enqueueNDRangeKernel(kernel_merge, cl::NullRange, global_item_size_merge, local_item_size_merge, NULL, NULL);
+                command_queue.finish();
             }
-            command_queue.finish();
         }
         
         
@@ -492,16 +512,18 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                 command_queue.finish();
             }
             
+            
+            //read mt data from GPU
             command_queue.enqueueReadBuffer(mt_target_buffer, CL_TRUE, 0, sizeof(cl_float)*imageSizeM*dA, mt_sample_img[targetEnergyNo-startEnergyNo], NULL, NULL);
             command_queue.finish();
             
-            
+            //read fp_target from GPU
             for (int k=0; k<dA; k++) {
                 for (int p=0; p<p_num; p++) {
-                    command_queue.enqueueReadBuffer(p_target_buffer,CL_TRUE,sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_vec[targetEnergyNo-startEnergyNo][p+k*p_num],NULL,NULL);
-                    command_queue.finish();
+                    command_queue.enqueueReadBuffer(p_target_buffer,CL_FALSE,sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_vec[targetEnergyNo-startEnergyNo][p+k*p_num],NULL,NULL);
                 }
             }
+            command_queue.finish();
             
             ostringstream oss;
             for (int j=startAngleNo; j<=EndAngleNo; j++) {
@@ -600,20 +622,24 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
             }
             
             //image reg parameter (p_buffer) initialize
-            for (int k=0; k<dA; k++) {
+            for (int k=0; k<dA*dE; k++) {
                 for (int p=0; p<p_num; p++) {
-                    command_queue.enqueueWriteBuffer(p_buffer, CL_TRUE, sizeof(cl_float)*(k+p*dA), sizeof(cl_float), &regmode.p_ini[p],NULL,NULL);
+                    command_queue.enqueueWriteBuffer(p_buffer, CL_TRUE, sizeof(cl_float)*(k+p*dA*dE), sizeof(cl_float), &regmode.p_ini[p],NULL,NULL);
                     command_queue.finish();
                 }
             }
 
             
             int ds = (LoopStartenergyNo[s]==targetEnergyNo) ? di:0;
-            for (int i=LoopStartenergyNo[s]+ds; i*di<=LoopEndenergyNo[s]*di; i+=di) {
+            for (int i=LoopStartenergyNo[s]+ds; i*di<=LoopEndenergyNo[s]*di; i+=di*dE) {
                 
                 //sample mt conversion
 				mergeRawhisBuffers(command_queue,kernel_mergeHis, global_item_size4, local_item_size1, &I0_imgs[(imageSizeM + 32)*(int64_t)(i - startEnergyNo)], I0_buffer, 1,imageSizeM);
-                imXAFSCT_mt_conversion(command_queue,kernel_mt,dark_buffer,I0_buffer,mt_sample_buffer,mt_sample_image[0], mt_sample_outputImg,global_item_size1,local_item_size1, It_img_sample,i-startEnergyNo, dA,msk,true);
+                for (int en=0; en<dE; en++) {
+                    if(i*di+en>LoopEndenergyNo[s]*di) break;
+                    cl::NDRange global_item_offset(WorkGroupSize*en*dA,0,0);
+                    imXAFSCT_mt_conversion(command_queue,kernel_mt,dark_buffer,I0_buffer,mt_sample_buffer,mt_sample_image[0], mt_sample_outputImg,global_item_size0,local_item_size1, global_item_offset, It_img_sample,i-startEnergyNo+en*di,dA,msk,true);
+                }
                 
                 
                 //estimate mean of mt_sample
@@ -627,7 +653,7 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                     for (int j=3; j>0; j--) {
                         unsigned int mergeN = 1<<j;
                         int localsize = min((unsigned int)WorkGroupSize,imageSizeX/mergeN);
-                        const cl::NDRange global_item_size_merge(localsize*dA,1,1);
+                        const cl::NDRange global_item_size_merge(localsize*dA*dE,1,1);
                         const cl::NDRange local_item_size_merge(localsize,1,1);
                         kernel_merge.setArg(1, mt_sample_image[j]);
                         kernel_merge.setArg(2, mergeN);
@@ -637,7 +663,7 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                     
                     
                     //lambda_buffer reset
-                    command_queue.enqueueFillBuffer(lambda_buffer, (cl_float)lambda, 0, sizeof(cl_float)*dA,NULL,NULL);
+                    command_queue.enqueueFillBuffer(lambda_buffer, (cl_float)lambda, 0, sizeof(cl_float)*dA*dE,NULL,NULL);
                     command_queue.finish();
                     
                     
@@ -647,7 +673,7 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                         //cout<<mergeN<<endl;
                         errorArert = "imagereg setting";
                         int localsize = min((int)WorkGroupSize,imageSizeX/(int)mergeN);
-                        const cl::NDRange global_item_size_reg(localsize*dA,1,1);
+                        const cl::NDRange global_item_size_reg(localsize*dA*dE,1,1);
                         const cl::NDRange local_item_size_reg(localsize,1,1);
                         kernel_imgReg1.setArg(0, mt_target_image[j]);
                         kernel_imgReg1.setArg(1, mt_sample_image[j]);
@@ -675,7 +701,7 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                             
                             //estimate parameter cnd
                             errorArert = "cnd";
-                            command_queue.enqueueCopyBuffer(p_buffer, p_cnd_buffer, 0, 0, sizeof(cl_float)*p_num*dA);
+                            command_queue.enqueueCopyBuffer(p_buffer, p_cnd_buffer, 0, 0, sizeof(cl_float)*p_num*dA*dE);
                             command_queue.enqueueNDRangeKernel(kernel_cnd, NULL, global_item_size3, local_item_size3, NULL, NULL);
                             command_queue.finish();
                             
@@ -708,49 +734,61 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                     
                     
                     //read p_buffer & p_err_buffer
-                    for (int k=0; k<dA; k++) {
-                        for (int p=0; p<p_num; p++) {
-                            command_queue.enqueueReadBuffer(p_buffer,CL_TRUE,sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_vec[i-startEnergyNo][p+k*p_num],NULL,NULL);
-                            command_queue.enqueueReadBuffer(p_err_buffer,CL_TRUE,sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_err_vec[i-startEnergyNo][p+k*p_num],NULL,NULL);
-                            command_queue.finish();
+                    for (int en=0; en<dE; en++) {
+                        if(i*di+en>LoopEndenergyNo[s]*di) break;
+                        for (int k=0; k<dA; k++) {
+                            for (int p=0; p<p_num; p++) {
+                                command_queue.enqueueReadBuffer(p_buffer,CL_FALSE,sizeof(cl_float)*(k+(en+p)*dA),sizeof(cl_float),&p_vec[i-startEnergyNo+en*di][p+k*p_num],NULL,NULL);
+                                command_queue.enqueueReadBuffer(p_err_buffer,CL_FALSE,sizeof(cl_float)*(k+(en+p)*dA),sizeof(cl_float),&p_err_vec[i-startEnergyNo+en*di][p+k*p_num],NULL,NULL);
+                                command_queue.finish();
+                            }
                         }
                     }
+                    command_queue.finish();
+                    
                     
                 }
                 
                 
                 ostringstream oss;
-                for (int k=0; k<dA; k++) {
-                    if (startAngleNo+k>EndAngleNo) {
-                        break;
-                    }
-                    int *p_precision, *p_err_precision;
-                    p_precision=new int[p_num];
-                    p_err_precision=new int[p_num];
-                    for (int n=0; n<p_num; n++) {
-                        int a = (int)floor(log10(abs(p_vec[i-startEnergyNo][n+k*p_num])));
-                        int b = (int)floor(log10(abs(p_err_vec[i-startEnergyNo][n+k*p_num])));
-                        p_err_precision[n] = max(0,b)+1;
-                        
-                        if(regmode.p_fix[n]==0.0f) p_precision[n]=3;
-                        if (a>0) {
-                            int c = (int)floor(log10(pow(10,a+1)-0.5));
-                            if(a>c) a++;
-                            
-                            p_precision[n] = a+1 - min(0,b);
-                        }else if(a<b){
-                            p_precision[n] = 1;
-                        }else{
-                            p_precision[n]= a - max(-3,b) + 1;
+                for (int en=0; en<dE; en++) {
+                    if(i*di+en>LoopEndenergyNo[s]*di) break;
+                    
+                    for (int k=0; k<dA; k++) {
+                        if (startAngleNo+k>EndAngleNo) {
+                            break;
                         }
+                        int *p_precision, *p_err_precision;
+                        p_precision=new int[p_num];
+                        p_err_precision=new int[p_num];
+                        for (int n=0; n<p_num; n++) {
+                            int a = (int)floor(log10(abs(p_vec[i-startEnergyNo+en*di][n+k*p_num])));
+                            int b = (int)floor(log10(abs(p_err_vec[i-startEnergyNo+en*di][n+k*p_num])));
+                            p_err_precision[n] = max(0,b)+1;
+                            
+                            if(regmode.p_fix[n]==0.0f) p_precision[n]=3;
+                            if (a>0) {
+                                int c = (int)floor(log10(pow(10,a+1)-0.5));
+                                if(a>c) a++;
+                                
+                                p_precision[n] = a+1 - min(0,b);
+                            }else if(a<b){
+                                p_precision[n] = 1;
+                            }else{
+                                p_precision[n]= a - max(-3,b) + 1;
+                            }
+                        }
+                        oss << "Device(" << thread_id+1 << "): " << devicename << ", angle: " << startAngleNo + k << ", energy: " << i + en*di << endl;
+                        oss << regmode.oss_sample(p_vec[i-startEnergyNo+en*di]+p_num*k, p_err_vec[i-startEnergyNo+en*di]+p_num*k,p_precision,p_err_precision);
                     }
-                    oss << "Device(" << thread_id+1 << "): " << devicename << ", angle: " << startAngleNo + k << ", energy: " << i << endl;
-                    oss << regmode.oss_sample(p_vec[i-startEnergyNo]+p_num*k, p_err_vec[i-startEnergyNo]+p_num*k,p_precision,p_err_precision);
                 }
                 cout << oss.str();
                 
                 //read output buffer
-                command_queue.enqueueReadBuffer(mt_sample_buffer, CL_TRUE, 0, sizeof(cl_float)*imageSizeM*dA, mt_sample_img[i - startEnergyNo], NULL, NULL);
+                for (int en=0; en<dE; en++) {
+					if (i*di + en>LoopEndenergyNo[s] * di) break;
+                    command_queue.enqueueReadBuffer(mt_sample_buffer, CL_FALSE, sizeof(cl_float)*imageSizeM*dA*en, sizeof(cl_float)*imageSizeM*dA, mt_sample_img[i - startEnergyNo+en*di], NULL, NULL);
+                }
                 command_queue.finish();
             }
         }

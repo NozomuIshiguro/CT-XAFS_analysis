@@ -209,7 +209,7 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         
         //estimate mean of mt_target
         cl::Kernel kernel_mean = CLO.getKernel("estimateImgMean");
-        kernel_mean.setArg(0, mt_sample_image[0]);
+        kernel_mean.setArg(0, mt_target_image[0]);
         kernel_mean.setArg(1, mean_target_buffer);
         kernel_mean.setArg(2, cl::Local(sizeof(cl_float)*WorkGroupSize));
         command_queue.enqueueNDRangeKernel(kernel_mean, cl::NullRange, global_item_size1, local_item_size1, NULL, NULL);
@@ -220,10 +220,11 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
 		errorArert = "target parameter initialize";
         for (int k=0; k<dA; k++) {
             for (int p=0; p<p_num; p++) {
-                command_queue.enqueueWriteBuffer(p_target_buffer,CL_TRUE,sizeof(cl_float)*(k+p*dA), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
+                command_queue.enqueueWriteBuffer(p_target_buffer,CL_FALSE,sizeof(cl_float)*(k+p*dA), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
             }
+            command_queue.finish();
         }
-        command_queue.finish();
+        
         
         
         //set p_fix
@@ -246,8 +247,8 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                 kernel_merge.setArg(1, mt_target_image[i]);
                 kernel_merge.setArg(2, mergeN);
                 command_queue.enqueueNDRangeKernel(kernel_merge, cl::NullRange, global_item_size_merge, local_item_size_merge, NULL, NULL);
+                command_queue.finish();
             }
-            command_queue.finish();
 		}
 		
         
@@ -273,7 +274,7 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
             //move target image reg parameter from GPU to memory
             for (int k=0; k<dA; k++) {
                 for (int p=0; p<p_num; p++) {
-                    command_queue.enqueueReadBuffer(p_target_buffer, CL_TRUE, sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_vec[targetEnergyNo-startEnergyNo][p+p_num*k],NULL,NULL);
+                    command_queue.enqueueReadBuffer(p_target_buffer, CL_FALSE, sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_vec[targetEnergyNo-startEnergyNo][p+p_num*k],NULL,NULL);
                 }
             }
 			command_queue.finish();
@@ -379,10 +380,10 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
 			errorArert = "parameter initialize";
             for (int k=0; k<dA; k++) {
                 for (int p=0; p<p_num; p++) {
-                    command_queue.enqueueWriteBuffer(p_buffer,CL_TRUE,sizeof(cl_float)*(k+p*dA), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
+                    command_queue.enqueueWriteBuffer(p_buffer,CL_FALSE,sizeof(cl_float)*(k+p*dA), sizeof(cl_float),&regmode.p_ini[p],NULL,NULL);
                 }
+                command_queue.finish();
             }
-            command_queue.finish();
             
             int ds = (LoopStartenergyNo[s]==targetEnergyNo) ? di:0;
             for (int i=LoopStartenergyNo[s]+ds; i*di<=LoopEndenergyNo[s]*di; i+=di) {
@@ -509,8 +510,8 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                     //read p_buffer & p_err_buffer from GPU to memory
                     for (int k=0; k<dA; k++) {
                         for (int p=0; p<p_num; p++) {
-                            command_queue.enqueueReadBuffer(p_buffer, CL_TRUE, sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_vec[i-startEnergyNo][p+k*p_num],NULL,NULL);
-                            command_queue.enqueueReadBuffer(p_err_buffer, CL_TRUE, sizeof(cl_float)*(p+p_num*k),sizeof(cl_float),&p_err_vec[i-startEnergyNo][p+p_num*k],NULL,NULL);
+                            command_queue.enqueueReadBuffer(p_buffer, CL_FALSE, sizeof(cl_float)*(k+p*dA),sizeof(cl_float),&p_vec[i-startEnergyNo][p+k*p_num],NULL,NULL);
+                            command_queue.enqueueReadBuffer(p_err_buffer, CL_FALSE, sizeof(cl_float)*(p+p_num*k),sizeof(cl_float),&p_err_vec[i-startEnergyNo][p+p_num*k],NULL,NULL);
                         }
                     }
                     command_queue.finish();
@@ -901,13 +902,14 @@ int imageRegistlation_ocl(string fileName_base, input_parameter inp,
         
 
         //write buffers
-        plat_dev_list.queue(i,0).enqueueWriteBuffer(CLO[i].energy_buffer, CL_TRUE, 0, sizeof(cl_float)*num_energy, &energy[0], NULL, NULL);
+        plat_dev_list.queue(i,0).enqueueWriteBuffer(CLO[i].energy_buffer, CL_FALSE, 0, sizeof(cl_float)*num_energy, &energy[0], NULL, NULL);
         for (int j = 0; j < contrainsize; j++) {
-            plat_dev_list.queue(i, 0).enqueueWriteBuffer(CLO[i].C_matrix_buffer, CL_TRUE, sizeof(cl_float)*j*paramsize, sizeof(cl_float)*paramsize, &(fiteq.C_matrix[j][0]), NULL, NULL);
+            plat_dev_list.queue(i, 0).enqueueWriteBuffer(CLO[i].C_matrix_buffer, CL_FALSE, sizeof(cl_float)*j*paramsize, sizeof(cl_float)*paramsize, &(fiteq.C_matrix[j][0]), NULL, NULL);
         }
-        plat_dev_list.queue(i,0).enqueueWriteBuffer(CLO[i].D_vector_buffer, CL_TRUE, 0, sizeof(cl_float)*contrainsize, &fiteq.D_vector[0], NULL, NULL);
-        plat_dev_list.queue(i,0).enqueueWriteBuffer(CLO[i].freeFix_buffer, CL_TRUE, 0, sizeof(cl_char)*paramsize, fiteq.freefix_para(), NULL, NULL);
-        plat_dev_list.queue(i,0).enqueueWriteBuffer(CLO[i].funcMode_buffer, CL_TRUE, 0, sizeof(cl_int)*fiteq.numFunc, &(fiteq.funcmode[0]), NULL, NULL);
+        plat_dev_list.queue(i,0).enqueueWriteBuffer(CLO[i].D_vector_buffer, CL_FALSE, 0, sizeof(cl_float)*contrainsize, &fiteq.D_vector[0], NULL, NULL);
+        plat_dev_list.queue(i,0).enqueueWriteBuffer(CLO[i].freeFix_buffer, CL_FALSE, 0, sizeof(cl_char)*paramsize, fiteq.freefix_para(), NULL, NULL);
+        plat_dev_list.queue(i,0).enqueueWriteBuffer(CLO[i].funcMode_buffer, CL_FALSE, 0, sizeof(cl_int)*fiteq.numFunc, &(fiteq.funcmode[0]), NULL, NULL);
+        plat_dev_list.queue(i, 0).finish();
         
         //write buffers for LCF
         cl::Kernel kernel_LCFstd(CLO[i].program,"redimension_refSpecta");
@@ -923,8 +925,9 @@ int imageRegistlation_ocl(string fileName_base, input_parameter inp,
             cl::Buffer refSpectraRawE(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_float)*fiteq.LCFstd_size[j], 0, NULL);
             
             region[0] = fiteq.LCFstd_size[j];
-            plat_dev_list.queue(i,0).enqueueWriteImage(refSpectraRaw,CL_TRUE,origin,region,0,0,&(fiteq.LCFstd_mt[j][0]));
-            plat_dev_list.queue(i,0).enqueueWriteBuffer(refSpectraRawE, CL_TRUE,0,sizeof(cl_float)*fiteq.LCFstd_size[j], &(fiteq.LCFstd_E[j][0]));
+            plat_dev_list.queue(i,0).enqueueWriteImage(refSpectraRaw,CL_FALSE,origin,region,0,0,&(fiteq.LCFstd_mt[j][0]));
+            plat_dev_list.queue(i,0).enqueueWriteBuffer(refSpectraRawE, CL_FALSE,0,sizeof(cl_float)*fiteq.LCFstd_size[j], &(fiteq.LCFstd_E[j][0]));
+            plat_dev_list.queue(i, 0).finish();
             
             kernel_LCFstd.setArg(0, CLO[i].refSpectra);
             kernel_LCFstd.setArg(1, refSpectraRaw);

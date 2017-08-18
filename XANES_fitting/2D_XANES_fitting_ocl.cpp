@@ -148,7 +148,6 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         cl::Buffer results_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM*paramsize, 0, NULL);
         cl::Buffer results_cnd_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM*paramsize, 0, NULL);
         cl::Buffer dp_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM*paramsize, 0, NULL);
-        cl::Buffer dp_cnd_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM*paramsize, 0, NULL);
         cl::Buffer mt_img(context, CL_MEM_READ_ONLY, sizeof(cl_float)*imgSizeM*num_energy, 0, NULL);
 		cl::Buffer dL_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM, 0, NULL);
         cl::Buffer rho_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM, 0, NULL);
@@ -166,9 +165,7 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         cl::Kernel kernel_mask(program,"setMask");
         cl::Kernel kernel_threshold(program,"applyMask");
         cl::Kernel kernel_CS(program,"partialDerivativeOfGradiant");
-        cl::Kernel kernel_FISTA1(program,"SoftThresholdingFunc");
-        //cl::Kernel kernel_FISTA2(program,"FISTAupdate");
-        //cl::Kernel kernel_powIt(program,"powerIteration");
+        cl::Kernel kernel_FISTA(program,"FISTA");
 
 		
         
@@ -269,12 +266,13 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
 		}
         
         //Soft Thresholding Function
-        kernel_FISTA1.setArg(0, results_img);
-        kernel_FISTA1.setArg(1, dp_img);
-        kernel_FISTA1.setArg(2, dp_cnd_img);
-        kernel_FISTA1.setArg(3, inv_tJJ_buff); //warning!! inv_tJJ_buff is not defined right now
-        kernel_FISTA1.setArg(4, freeFix_buff);
-        kernel_FISTA1.setArg(5, Lambda_fista);
+        kernel_FISTA.setArg(0, results_img);
+        kernel_FISTA.setArg(1, dp_img);
+        kernel_FISTA.setArg(2, tJJ_buff);
+        kernel_FISTA.setArg(3, tJdF_buff);
+        kernel_FISTA.setArg(4, freeFix_buff);
+        kernel_FISTA.setArg(5, lambda_buff);
+        kernel_FISTA.setArg(6, Lambda_fista);
         
         
         //L-M trial
@@ -290,16 +288,12 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
             command_queue.finish();
             
 			
-            //FISTA1 (Soft Thresholding Function)
+            //FISTA (Soft Thresholding Function)
 			if(inp.getCSbool()){
-				for (int k = 0; k < inp.getCSit(); k++) {
-                    errorzone = "FISTA1";
-                    command_queue.enqueueNDRangeKernel(kernel_FISTA1, NULL, global_item_size2, local_item_size, NULL, NULL);
+				errorzone = "FISTA";
+                for (int k = 0; k < inp.getCSit(); k++) {
+                    command_queue.enqueueNDRangeKernel(kernel_FISTA, NULL, global_item_size, local_item_size, NULL, NULL);
                     command_queue.finish();
-
-					errorzone = "updating dp";
-					command_queue.enqueueCopyBuffer(dp_cnd_img, dp_img, 0, 0, sizeof(cl_float)*IMAGE_SIZE_M*paramsize);
-					command_queue.finish();
                 }
             }
             

@@ -172,8 +172,9 @@ __kernel void mt_conversion(__global float *dark, __global float *I0,
     const size_t local_ID = get_local_id(0);
     const size_t localsize = get_local_size(0);
     const size_t Z = get_group_id(0);
+    const size_t Zoffset = get_global_offset(0)/localsize;
     const size_t Y = get_global_id(1);
-    int X,ID,IDxy;
+    int X,ID,IDxy,IDIt;
     int4 XYZ;
     float4 mt_f1,mt_f2;
     float mask=1.0f;
@@ -184,9 +185,10 @@ __kernel void mt_conversion(__global float *dark, __global float *I0,
     
     for(size_t i=0;i<IMAGESIZE_X/localsize;i++){
         X=local_ID+i*localsize;
-        ID=X+IMAGESIZE_X*Y+Z*IMAGESIZE_M;
+        IDIt = X+IMAGESIZE_X*Y+Z*IMAGESIZE_M;
+        ID   = X+IMAGESIZE_X*Y+(Z+Zoffset)*IMAGESIZE_M;
         IDxy=X+IMAGESIZE_X*Y;
-        XYZ=(int4)(X,Y,Z,0);
+        XYZ=(int4)(X,Y,Z+Zoffset,0);
         
         absX = (X-startpntX)*cos(angle/180*(float)PI)-(Y-startpntY)*sin(angle/180*(float)PI);
         absX = fabs(absX);
@@ -207,14 +209,14 @@ __kernel void mt_conversion(__global float *dark, __global float *I0,
                 break;
         }
         
-        It = (float)It_buffer[ID+32*Z];
+        It = (float)It_buffer[IDIt+32*Z];
         dark1 = dark[IDxy];
         trans = (I0[IDxy]-dark1)/(It-dark1);
         trans = (trans < 1.0E-5f) ? 1.0E-5f:trans;
         trans = (trans > 1.0E7f) ? 1.0E7f:trans;
         trans = isnan(trans) ? 1.0f:trans;
         mt = log(trans);
-        mt = isnan(mt) ? 0.0f:trans;
+        mt = isnan(mt) ? 0.0f:mt;
         
         switch(evaluatemode){
             case 0: //mt
@@ -342,7 +344,7 @@ __kernel void imageReg1(__read_only image2d_array_t mt_t_img,__read_only image2d
     const size_t globalsize = get_global_size(0);
     const size_t localsize = get_local_size(0);
     const size_t Z = get_group_id(0);
-    const size_t Zsize = globalsize/localsize;
+    const size_t Zsize = get_num_groups(0);
     
     
     //copy data from global p to private p_pr
@@ -488,7 +490,7 @@ __kernel void imageReg2(__read_only image2d_array_t mt_t_img,__read_only image2d
     const size_t globalsize = get_global_size(0);
     const size_t localsize = get_local_size(0);
     const size_t Z = get_group_id(0);
-    const size_t Zsize = globalsize/localsize;
+    const size_t Zsize = get_num_groups(0);
     
     
     //copy data from global p to private p_pr
@@ -575,7 +577,7 @@ __kernel void output_imgReg_result(__read_only image2d_array_t mt_img, __global 
     const size_t Z = get_group_id(0);
     const size_t Y = get_global_id(1);
     const size_t globalsize = get_global_size(0);
-    const size_t Zsize = globalsize/localsize;
+    const size_t Zsize = get_num_groups(0);
     
     size_t X,ID;
     float4 XYZ, XYZ_s, img;
@@ -666,7 +668,7 @@ __kernel void estimateImgMean(__read_only image2d_array_t img, __global float *m
     const size_t globalsize = get_global_size(0);
     const size_t localsize = get_local_size(0);
     const size_t Z = get_group_id(0);
-    const size_t Zsize = globalsize/localsize;
+    const size_t Zsize = get_num_groups(0);
     
     int X,Y;
     float val=0.0f;

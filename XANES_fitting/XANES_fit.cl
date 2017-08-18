@@ -607,7 +607,7 @@ __kernel void SoftThresholdingFunc(__global float* fp_img,
         fpdp_neighbor[biggerN] = fp1;
     }
     
-    //not going well if non-diag factors are considered
+    //not going well if non-diag(lambda) factors are considered
     float dp_cnd[9];
     dp_cnd[0] = dp - 4.0f*lambda1;// - lambda2;
     dp_cnd[1] = fpdp_neighbor[0] - fp;
@@ -637,61 +637,3 @@ __kernel void SoftThresholdingFunc(__global float* fp_img,
     dp_cnd_img[global_ID] = (p_fix[z]==48) ? 0.0f:dp_new;
 }
 
-__kernel void FISTAupdate(__global float* fp_new_img,__global float* fp_old_img,
-                          __global float* beta_img,__global float* w_img){
-    
-    const size_t global_x = get_global_id(0);
-    const size_t global_y = get_global_id(1);
-    const size_t global_ID = global_x+global_y*IMAGESIZE_X;
-    
-    //update of beta image
-    float beta = beta_img[global_ID];
-    float beta_new = beta*beta*4.0f + 1.0f;
-    beta_new = (sqrt(beta_new) + 1.0f)*0.5f;
-    beta_img[global_ID] = beta_new;
-    
-    //update of w img
-    float w_new;
-    for(int i=0;i<PARA_NUM;i++){
-        w_new= fp_new_img[global_ID+i*IMAGESIZE_M] + (beta - 1.0f)*(fp_new_img[global_ID+i*IMAGESIZE_M]-fp_old_img[global_ID+i*IMAGESIZE_M])/beta_new;
-        w_img[global_ID+i*IMAGESIZE_M]=w_new;
-    }
-    
-}
-
-__kernel void powerIteration(__global float* A_img, __global float* maxEval_img,
-                             int iter){
-    
-    const size_t global_x = get_global_id(0);
-    const size_t global_y = get_global_id(1);
-    const size_t global_ID = global_x+global_y*IMAGESIZE_X;
-    
-    float A[PARA_NUM_SQ];
-    float x1[PARA_NUM], x2[PARA_NUM];;
-    for(int i=0;i<PARA_NUM;i++){
-        A[i+i*PARA_NUM] = A_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M];
-        for(int j=i+1;j<PARA_NUM;j++){
-            A[i+j*PARA_NUM] = A_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*IMAGESIZE_M];
-            A[j+i*PARA_NUM] = A[i+j*PARA_NUM];
-        }
-        x1[i]=1.0f;
-    }
-    
-    float absX;
-    for(int k=0;k<iter;k++){
-        absX = 0.0f;
-        for(int i=0;i<PARA_NUM;i++){
-            x2[i]=0.0f;
-            for(int j=0;j<PARA_NUM;j++){
-                x2[i] += A[i+j*PARA_NUM]*x1[j];
-            }
-            absX += x2[i]*x2[i];
-        }
-        
-        for(int i=0;i<PARA_NUM;i++){
-            x1[i] = x2[i]/absX;
-        }
-    }
-    
-    maxEval_img[global_ID] = absX;
-}

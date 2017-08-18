@@ -41,10 +41,11 @@ int mergeRawhisBuffers(cl::CommandQueue queue, cl::Kernel kernel,
                        unsigned short *img, cl::Buffer img_buffer,int mergeN, int imageSizeM);
 
 int imXAFSCT_mt_conversion(cl::CommandQueue queue,cl::Kernel kernel,
-                  cl::Buffer dark_buffer, cl::Buffer I0_buffer,
-                  cl::Buffer mt_buffer,cl::Image2DArray mt_image,cl::Image2DArray mt_outputImg,
-                  const cl::NDRange global_item_size,const cl::NDRange local_item_size,
-                  vector<unsigned short*> It_pointer,int E_num,int dA, mask msk, bool refBool);
+                           cl::Buffer dark_buffer, cl::Buffer I0_buffer,
+                           cl::Buffer mt_buffer,cl::Image2DArray mt_image,
+                           cl::Image2DArray mt_outputImg,const cl::NDRange global_item_size,
+                           const cl::NDRange local_item_size,const cl::NDRange global_item_offset,
+                           vector<unsigned short*> It_pointer,int Enum,int dA, mask msk, bool refBool);
 
 #endif
 
