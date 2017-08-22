@@ -85,8 +85,9 @@ int his_data_input(OCL_platform_device plat_dev_list,
 		int step = min(di,dA-i);
         mt_conversion(queue,kernels[1],dark_buffer,I0_target_buffer,mt_target_buffer,mt_target_image,mt_target_outputImg,cl::NDRange(maxWorkSize*step,imageSizeY,1),cl::NDRange(maxWorkSize,1,1),It_img_target+(imageSizeM+32)*(int64_t)i,step,msk,false,imageSizeM);
 		for (int j = 0; j < step; j++) {
-			queue.enqueueReadBuffer(mt_target_buffer, CL_TRUE, sizeof(cl_float)*imageSizeM*j, sizeof(cl_float)*imageSizeM, mt_target_img[i + j], NULL, NULL);
+			queue.enqueueReadBuffer(mt_target_buffer, CL_FALSE, sizeof(cl_float)*imageSizeM*j, sizeof(cl_float)*imageSizeM, mt_target_img[i + j], NULL, NULL);
 		}
+        queue.finish()
     }
 	cout << "done." << endl << endl;
     
@@ -135,6 +136,7 @@ int rotCenterShift(OCL_platform_device plat_dev_list,cl::Kernel kernel,
         queue.finish();
         
         queue.enqueueReadImage(prj_output_img, CL_TRUE, origin, region, imageSizeX*sizeof(float), 0, rotCntShft_img_vec[i] ,NULL,NULL);
+        queue.finish();
     }
     
     return 0;

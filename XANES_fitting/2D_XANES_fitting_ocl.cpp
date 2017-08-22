@@ -254,18 +254,14 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
 		errorzone = "setting parameters for CS to GPU";
         cl::Buffer Lambda_fista(context, CL_MEM_READ_WRITE, sizeof(cl_float)*paramsize, 0, NULL);
 		//cout << paramsize << endl;
-		for (int i=0; i<paramsize; i++) {
-            char buffer;
-            buffer=fiteq.freefix_para()[i];
-			if (inp.getCSbool()) {
-				float val;
-				val = (atoi(&buffer) == 1) ? inp.getCSepsilon()[i] : 0.0f;
+		if (inp.getCSbool()) {
+			for (int i=0; i<paramsize; i++) {
+				float val = (fiteq.freefix_para()[i] == 49) ? inp.getCSepsilon()[i] : 0.0f;
 				command_queue.enqueueFillBuffer(Lambda_fista, (cl_float)val, sizeof(cl_float)*i, sizeof(cl_float), NULL, NULL);
 				command_queue.finish();
 			}
 		}
-        
-        //Soft Thresholding Function
+        //FISTA
         kernel_FISTA.setArg(0, results_img);
         kernel_FISTA.setArg(1, dp_img);
         kernel_FISTA.setArg(2, tJJ_buff);

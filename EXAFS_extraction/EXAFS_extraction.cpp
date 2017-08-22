@@ -958,9 +958,9 @@ int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
     for (int offset=0; offset<imageSizeM; offset+=processImageSizeM) {
 		//transfer mt data to GPU
         for (int en=0; en<numEnergy; en++) {
-            queue.enqueueWriteBuffer(mt_img, CL_TRUE, en*sizeof(cl_float)*processImageSizeM, sizeof(cl_float)*processImageSizeM, &mt_vec[en][offset]);
-            queue.finish();
+            queue.enqueueWriteBuffer(mt_img, CL_FALSE, en*sizeof(cl_float)*processImageSizeM, sizeof(cl_float)*processImageSizeM, &mt_vec[en][offset]);
         }
+        queue.finish();
         
         //set mask
         cl::Kernel kernel_mask(program[0],"setMask");
@@ -995,12 +995,10 @@ int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
         
         //transfer chi, bkg, edgeJ data to memory
         for (int kn=0; kn<koffset+ksize; kn++) {
-            queue.enqueueReadBuffer(chi_img, CL_TRUE, sizeof(cl_float)*processImageSizeM*kn, sizeof(cl_float)*processImageSizeM, &chiData[offset+kn*imageSizeM]);
-            queue.finish();
+            queue.enqueueReadBuffer(chi_img, CL_FALSE, sizeof(cl_float)*processImageSizeM*kn, sizeof(cl_float)*processImageSizeM, &chiData[offset+kn*imageSizeM]);
         }
-        queue.enqueueReadBuffer(bkg_img, CL_TRUE, 0, sizeof(cl_float)*processImageSizeM, &bkgData[offset]);
-        queue.finish();
-        queue.enqueueReadBuffer(edgeJ_img, CL_TRUE, 0, sizeof(cl_float)*processImageSizeM, &edgeJData[offset]);
+        queue.enqueueReadBuffer(bkg_img, CL_FALSE, 0, sizeof(cl_float)*processImageSizeM, &bkgData[offset]);
+        queue.enqueueReadBuffer(edgeJ_img, CL_FALSE, 0, sizeof(cl_float)*processImageSizeM, &edgeJData[offset]);
         queue.finish();
     }
     

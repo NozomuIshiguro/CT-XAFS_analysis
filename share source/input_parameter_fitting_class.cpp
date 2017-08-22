@@ -732,19 +732,6 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         }
         CSepsilon.push_back(a);
         cout<<a<<endl;
-    }else if((string)buffer=="#Update factor CS-based iteration for XANES fitting"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
-        float a;
-        int i;
-        cout<<"  ";
-        for (iss>>a,i=0; (!iss.eof())&&(i<numParameter); iss.ignore()>>a,i++) {
-            CSalpha.push_back(a);
-            cout<<a<<",";
-        }
-        CSalpha.push_back(a);
-        cout<<a<<endl;
     }else if((string)buffer=="#Iteration number of CS-based iteration for XANES fitting"){
         cout<<buffer<<endl;
         (*inp_ifs)>>CSit;
@@ -927,5 +914,28 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         cout<<buffer<<endl;
         (*inp_ifs)>>bkgFittingMode;
         cout<<"  "<<bkgFittingMode<<endl;
+    }else if((string)buffer=="#CS-based iteration for EXAFS fitting"){
+        cout<<buffer<<endl;
+        int dummy;
+        (*inp_ifs)>>dummy;
+        CSbool = (dummy==1) ? true:false;
+        cout<<"  "<< boolalpha <<CSbool<<endl;
+    }else if((string)buffer=="#Noise factor of CS-based iteration for EXAFS fitting"){
+        cout<<buffer<<endl;
+        (*inp_ifs).getline(buffer, buffsize);
+        istringstream iss(buffer);
+        float a;
+        int i;
+        cout<<"  ";
+        for (iss>>a,i=0; (!iss.eof())&&(i<numParameter); iss.ignore()>>a,i++) {
+            CSepsilon.push_back(a);
+            cout<<a<<",";
+        }
+        CSepsilon.push_back(a);
+        cout<<a<<endl;
+    }else if((string)buffer=="#Iteration number of CS-based iteration for EXAFS fitting"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>CSit;
+        cout<<"  "<<CSit<<endl;
     }
 }
