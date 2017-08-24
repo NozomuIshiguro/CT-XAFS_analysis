@@ -87,6 +87,7 @@ int mt_conversion(cl::CommandQueue queue,cl::Kernel kernel,
     
 	cl::Buffer It_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_ushort)*(imageSizeM+32)*dA, 0, NULL);
 	queue.enqueueWriteBuffer(It_buffer, CL_TRUE, 0, sizeof(cl_ushort)*(imageSizeM+32)*dA, It_pointer, NULL, NULL);
+    queue.finish();
 	kernel.setArg(0, dark_buffer);
     kernel.setArg(1, I0_buffer);
     kernel.setArg(2, It_buffer);
@@ -158,17 +159,17 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         cl::Buffer dark_buffer=CLO.dark_buffer;
         cl::Buffer I0_target_buffer=CLO.I0_target_buffer;
         vector<cl::Buffer> I0_sample_buffers=CLO.I0_sample_buffers;
-		cl::Buffer mt_target_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*imageSizeM*dA, 0, NULL);
-		cl::Buffer mt_sample_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*imageSizeM*dA, 0, NULL);
+		cl::Buffer mt_target_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*imageSizeM*dA*dE, 0, NULL);
+		cl::Buffer mt_sample_buffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float)*imageSizeM*dA*dE, 0, NULL);
         vector<cl::Image2DArray> mt_target_image;
         vector<cl::Image2DArray> mt_sample_image;
         vector<cl::Buffer> devX, dF2X, tJJX, tJdFX;
         for (int i=0; i<=3; i++) {
             int mergeN = 1<<i;
-            mt_target_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dA,
+            mt_target_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dA*dE,
                                                        imageSizeX/mergeN,imageSizeY/mergeN,
                                                        0,0,NULL,NULL));
-            mt_sample_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dA,
+            mt_sample_image.push_back(cl::Image2DArray(context, CL_MEM_READ_WRITE,format,dA*dE,
                                                        imageSizeX/mergeN,imageSizeY/mergeN,
                                                        0,0,NULL,NULL));
             devX.push_back(cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeY/mergeN*dA*dE,0,NULL));
@@ -176,8 +177,8 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
             tJJX.push_back(cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeY/mergeN*dA*dE*p_num*(p_num+1)/2,0,NULL));
             tJdFX.push_back(cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeY/mergeN*dA*dE*p_num,0,NULL));
         }
-        cl::Image2DArray mt_target_outputImg(context, CL_MEM_READ_WRITE,format,dA,imageSizeX,imageSizeY,0,0,NULL,NULL);
-        cl::Image2DArray mt_sample_outputImg(context, CL_MEM_READ_WRITE,format,dA,imageSizeX,imageSizeY,0,0,NULL,NULL);
+        cl::Image2DArray mt_target_outputImg(context, CL_MEM_READ_WRITE,format,dA*dE,imageSizeX,imageSizeY,0,0,NULL,NULL);
+        cl::Image2DArray mt_sample_outputImg(context, CL_MEM_READ_WRITE,format,dA*dE,imageSizeX,imageSizeY,0,0,NULL,NULL);
         cl::Buffer p_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA*dE, 0, NULL);
         cl::Buffer dp_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA*dE, 0, NULL);
         cl::Buffer p_cnd_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*p_num*dA*dE, 0, NULL);
@@ -756,6 +757,7 @@ int mergeRawhisBuffers(cl::CommandQueue queue, cl::Kernel kernel,
     cl::Buffer rawhis_buffer(context, CL_MEM_READ_ONLY, sizeof(cl_ushort)*(imageSizeM+32)*mergeN, 0, NULL);
     
     queue.enqueueWriteBuffer(rawhis_buffer, CL_TRUE, 0, sizeof(cl_ushort)*(imageSizeM+32)*mergeN, img, NULL, NULL);
+    queue.finish();
     kernel.setArg(0, rawhis_buffer);
     kernel.setArg(1, img_buffer);
     kernel.setArg(2, mergeN);
