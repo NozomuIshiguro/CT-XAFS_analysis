@@ -1,4 +1,4 @@
-﻿//
+//
 //  main.cpp
 //  RotationCenterSearch
 //
@@ -56,7 +56,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "         Rotation center search for CT" <<endl<<endl;
     cout << "         First version: Feb. 16th, 2016"<<endl;
-    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "         Last update: Aug. 24th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     

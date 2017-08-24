@@ -1,4 +1,4 @@
-﻿//
+//
 //  main.cpp
 //  CT_imageRegistration
 //
@@ -16,7 +16,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "          CT-XAFS image registration" <<endl<<endl;
     cout << "         First version: Feb. 11th, 2015"<<endl;
-    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "         Last update: Aug. 24th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     

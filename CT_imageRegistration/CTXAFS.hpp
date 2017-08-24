@@ -32,7 +32,8 @@ int mergeRawhisBuffers(cl::CommandQueue queue, cl::Kernel kernel,
 int mt_conversion(cl::CommandQueue queue,cl::Kernel kernel,
                   cl::Buffer dark_buffer,cl::Buffer I0_buffer,
                   cl::Buffer mt_buffer,cl::Image2DArray mt_image,cl::Image2DArray mt_outputImg,
-                  const cl::NDRange global_item_size,const cl::NDRange local_item_size,
-                  unsigned short *It_pointer,int dA, mask msk, bool refBool, int imageSizeM);
+                  const cl::NDRange global_item_size,const cl::NDRange local_item_size,const
+                  cl::NDRange global_item_offset, unsigned short *It_pointer,
+                  int dA, mask msk, bool refBool, int imageSizeM);
 
 #endif

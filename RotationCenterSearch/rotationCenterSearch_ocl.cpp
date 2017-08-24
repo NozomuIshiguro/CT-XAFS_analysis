@@ -83,11 +83,15 @@ int his_data_input(OCL_platform_device plat_dev_list,
 	mask msk(inp);
     for (int i=0; i<dA; i+=di) {
 		int step = min(di,dA-i);
-        mt_conversion(queue,kernels[1],dark_buffer,I0_target_buffer,mt_target_buffer,mt_target_image,mt_target_outputImg,cl::NDRange(maxWorkSize*step,imageSizeY,1),cl::NDRange(maxWorkSize,1,1),It_img_target+(imageSizeM+32)*(int64_t)i,step,msk,false,imageSizeM);
+        mt_conversion(queue,kernels[1],dark_buffer,I0_target_buffer,
+                      mt_target_buffer,mt_target_image,mt_target_outputImg,
+                      cl::NDRange(maxWorkSize*step,imageSizeY,1),cl::NDRange(maxWorkSize,1,1),
+                      cl::NDRange(0,0,0),It_img_target+(imageSizeM+32)*(int64_t)i,
+                      step,msk,false,imageSizeM);
 		for (int j = 0; j < step; j++) {
 			queue.enqueueReadBuffer(mt_target_buffer, CL_FALSE, sizeof(cl_float)*imageSizeM*j, sizeof(cl_float)*imageSizeM, mt_target_img[i + j], NULL, NULL);
 		}
-        queue.finish()
+        queue.finish();
     }
 	cout << "done." << endl << endl;
     
