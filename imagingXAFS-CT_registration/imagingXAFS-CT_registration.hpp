@@ -23,7 +23,7 @@ int imXAFSCT_Registration_ocl(string fileName_base, input_parameter inp,
 int mt_output_thread(int startAngleNo, int EndAngleNo,
                      input_parameter inp,
                      vector<float*> mt_outputs, vector<float*> p, vector<float*> p_err,
-                     regMode regmode,int thread_id);
+                     regMode regmode,int thread_id,bool cnt);
 
 int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                     vector<unsigned short*> It_img_target,vector<unsigned short*> It_img_sample,

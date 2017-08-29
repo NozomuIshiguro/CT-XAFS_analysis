@@ -15,9 +15,11 @@ class regMode{
     string regModeName;
     string oss_target;
     int p_num;
+    int diffstep;
+    bool displayCnt;
     
 public:
-    regMode(int regmodeNumber);
+    regMode(int regmodeNumber,int cntFitmode);
     int get_regModeNo();
     string ofs_transpara();
     string get_regModeName();
@@ -27,12 +29,12 @@ public:
     string oss_sample(float *transpara,float *transpara_error,
                       int *p_precision,int *p_err_precision);
     int get_p_num();
-
+    bool getCntBool();
 	void set_pfix(input_parameter inp);
     cl::Program buildImageRegProgram(cl::Context context, int imageSizeX, int imageSizeY);
     
     float *p_ini;
-    float *p_fix;
+    char *p_fix;
 };
 
 class mask{
@@ -52,5 +54,20 @@ public:
     float sampleMask_angle;
 };
 
+int imageRegistration(cl::CommandQueue command_queue, CL_objects CLO,
+                      vector<cl::Image2DArray> mt_target_image,
+                      vector<cl::Image2DArray> mt_sample_image,
+                      vector<cl::Image2DArray> weight_image,
+                      cl::Image2DArray mt_sample_outputImg, cl::Buffer mt_sample_buffer,
+                      cl::Buffer p_buffer, cl::Buffer p_target_buffer, cl::Buffer p_fix_buffer,
+                      cl::Buffer p_cnd_buffer, cl::Buffer p_err_buffer,
+                      cl::Buffer dF2old_buffer,cl::Buffer dF2new_buffer,cl::Buffer dF_buffer,
+                      cl::Buffer tJJ_buffer, cl::Buffer tJdF_buffer, cl::Buffer dev_buffer,
+                      cl::Buffer dp_buffer, cl::Buffer lambda_buffer, cl::Buffer dL_buffer,
+                      cl::Buffer nyu_buffer, cl::Buffer rho_buffer,
+                      vector<cl::Buffer> dF2X,vector<cl::Buffer> dFX, vector<cl::Buffer> tJJX,
+                      vector<cl::Buffer> tJdFX, vector<cl::Buffer> devX,
+                      int mergeLevel, int imageSizeX, int imageSizeY, int p_num, int dZ, float CI,
+                      int num_trial, float lambda);
 
 #endif

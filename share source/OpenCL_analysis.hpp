@@ -1,4 +1,4 @@
-﻿//
+//
 //  OpenCL_analysis.hpp
 //  CT-XANES_analysis
 //
@@ -420,7 +420,7 @@ class input_parameter : public input_parameter_mask,public input_parameter_fitti
     
     int numParallel;
     vector<float> reg_inipara;
-	vector<float> reg_fixpara;
+	vector<char> reg_fixpara;
     
     string rawAngleFilePath;
     string XAFSparameterFilePath;
@@ -428,9 +428,11 @@ class input_parameter : public input_parameter_mask,public input_parameter_fitti
     
     int imageSizeX;
     int imageSizeY;
+    int cntFit;
     
 public:
     input_parameter(string inputfile_path);
+    int getCntFitMode();
     string getPlatDevList();
     void setPlatDevList(string inp_str);
     string getInputDir();
@@ -453,7 +455,7 @@ public:
 	int getScanN();
     int getMergeN();
     vector<float> getReg_inipara();
-	vector<float> getReg_fixpara();
+	vector<char> getReg_fixpara();
     string getRawAngleFilePath();
     string getSmoothedEnergyFilePath();
     string getXAFSparameterFilePath();

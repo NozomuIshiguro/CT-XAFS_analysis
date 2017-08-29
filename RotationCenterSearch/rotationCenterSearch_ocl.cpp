@@ -6,7 +6,7 @@
 //  Copyright © 2016年 Nozomu Ishiguro. All rights reserved.
 //
 
-#include "CTXAFS.hpp"
+#include "CT-XAFS_imageRegistration.hpp"
 #include "reslice.hpp"
 #include "CT_reconstruction.hpp"
 #include "rotCenterSerch_cl.hpp"
@@ -427,7 +427,7 @@ int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang){
     
     //program build (mt conversion, reslice)
     cl_int ret;
-    regMode regmode(0);
+    regMode regmode(0,0);
     cl::Program program=regmode.buildImageRegProgram(plat_dev_list.context(0),imageSizeX,imageSizeY);
     vector<cl::Kernel> kernels;
     kernels.push_back(cl::Kernel(program,"merge_rawhisdata", &ret));//0

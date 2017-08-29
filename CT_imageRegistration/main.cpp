@@ -6,7 +6,7 @@
 //  Copyright (c) 2015年 Nozomu Ishiguro. All rights reserved.
 //
 
-#include "CTXAFS.hpp"
+#include "CT-XAFS_imageRegistration.hpp"
 
 mutex m1,m2;
 vector<thread> input_th, imageReg_th, output_th;
@@ -16,7 +16,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "          CT-XAFS image registration" <<endl<<endl;
     cout << "         First version: Feb. 11th, 2015"<<endl;
-    cout << "         Last update: Aug. 24th, 2017"<<endl<<endl;
+    cout << "         Last update: Aug. 28th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     
@@ -149,7 +149,7 @@ int main(int argc, const char * argv[]) {
     
     
     //select regmode
-    regMode regmode(inp.getRegMode());
+    regMode regmode(inp.getRegMode(),inp.getCntFitMode());
     buffer = output_flag("-rm", argc, argv);
     if (buffer.length()>0) {
         inp.setRegMode(buffer);

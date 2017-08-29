@@ -16,7 +16,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "           XAFS-CT image registration" <<endl<<endl;
     cout << "         First version: Oct. 10th, 2016"<<endl;
-    cout << "         Last update: Aug. 24th, 2017"<<endl<<endl;
+    cout << "         Last update: Aug. 28th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     
@@ -152,7 +152,7 @@ int main(int argc, const char * argv[]) {
     
     
     //select regmode
-    regMode regmode(0);
+    regMode regmode(0,2);
     buffer = output_flag("-rm", argc, argv);
     if (buffer.length()>0) {
         inp.setRegMode(buffer);
@@ -164,9 +164,9 @@ int main(int argc, const char * argv[]) {
         inp.setRegModeFromDialog("Set Registration mode. \n\
                                  (0:xy shift, 1:rotation+xy shift, 2:scale+xy shift, \
                                  3:rotation+scale + xy shift, 4:affine + xy shift,-1:none)\n");
-        regmode=regMode(inp.getRegMode());
+        regmode=regMode(inp.getRegMode(),inp.getCntFitMode());
     }
-    regmode=regMode(inp.getRegMode());
+    regmode=regMode(inp.getRegMode(),inp.getCntFitMode());
     
     //set image reg fixed parameter
     if(inp.getReg_fixpara().size()==0){

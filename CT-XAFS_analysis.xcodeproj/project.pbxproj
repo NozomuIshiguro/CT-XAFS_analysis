@@ -13,6 +13,9 @@
 		2E02DF391E7016E9007FDE9A /* input_parameter_fitting_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E3C8B091C00EBA300E9CC3C /* input_parameter_fitting_class.cpp */; };
 		2E02DF3A1E7016ED007FDE9A /* input_parameter_reslice_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EC3E1761C01A30D0039438B /* input_parameter_reslice_class.cpp */; };
 		2E02DF3B1E7016F1007FDE9A /* OCL_platform_device_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E117F0F1AB425850094871E /* OCL_platform_device_class.cpp */; };
+		2E0631FB1F54049700589079 /* imageRegCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E0631FA1F54049700589079 /* imageRegCore.cpp */; };
+		2E0631FC1F54049700589079 /* imageRegCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E0631FA1F54049700589079 /* imageRegCore.cpp */; };
+		2E0631FD1F5420E100589079 /* imageRegCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E0631FA1F54049700589079 /* imageRegCore.cpp */; };
 		2E1522F51B16B22C00239AA9 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E1522F41B16B22C00239AA9 /* main.cpp */; };
 		2E1523001B16C16400239AA9 /* RegMode_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E1522EB1B1628E200239AA9 /* RegMode_class.cpp */; };
 		2E1523011B16F6ED00239AA9 /* input_parameter_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E117F131AB428B60094871E /* input_parameter_class.cpp */; };
@@ -351,7 +354,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		2E10DB271AA584D2006A6905 /* CTXAFS.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = CTXAFS.hpp; path = CT_imageRegistration/CTXAFS.hpp; sourceTree = SOURCE_ROOT; };
+		2E0631FA1F54049700589079 /* imageRegCore.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = imageRegCore.cpp; sourceTree = "<group>"; };
+		2E10DB271AA584D2006A6905 /* CT-XAFS_imageRegistration.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = "CT-XAFS_imageRegistration.hpp"; path = "CT_imageRegistration/CT-XAFS_imageRegistration.hpp"; sourceTree = SOURCE_ROOT; };
 		2E117F0B1AB2AD240094871E /* fitting_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fitting_class.cpp; sourceTree = "<group>"; };
 		2E117F0F1AB425850094871E /* OCL_platform_device_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = OCL_platform_device_class.cpp; path = "share source/OCL_platform_device_class.cpp"; sourceTree = SOURCE_ROOT; };
 		2E117F131AB428B60094871E /* input_parameter_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = input_parameter_class.cpp; path = "../share source/input_parameter_class.cpp"; sourceTree = "<group>"; };
@@ -608,7 +612,7 @@
 		2E3B76591B38464B00BDFBF9 /* CT-XAFS_imageRegistration */ = {
 			isa = PBXGroup;
 			children = (
-				2E10DB271AA584D2006A6905 /* CTXAFS.hpp */,
+				2E10DB271AA584D2006A6905 /* CT-XAFS_imageRegistration.hpp */,
 				2E434DCC1A8AFDD3006A3162 /* main.cpp */,
 				2E434DD11A8AFE15006A3162 /* CT_imageRegistration_ocl.cpp */,
 			);
@@ -711,6 +715,7 @@
 				2E5065B91B20025F0060C00A /* imageReg.hpp */,
 				2E1522EB1B1628E200239AA9 /* RegMode_class.cpp */,
 				2E48903E1B26898300BC16BB /* mask_class.cpp */,
+				2E0631FA1F54049700589079 /* imageRegCore.cpp */,
 				2E32FBD51A8ED16F00A2927C /* imageregistration_kernel_src_cl.hpp */,
 				2E3FC9781F3CA50000B6CD75 /* imageregistration_kernel_src.cl */,
 			);
@@ -1232,6 +1237,7 @@
 				2E3B76651B38469E00BDFBF9 /* RegMode_class.cpp in Sources */,
 				2E1F8CA01C5C753600B44B0C /* CT_imageRegistration_ocl.cpp in Sources */,
 				2E3B765F1B38466C00BDFBF9 /* main.cpp in Sources */,
+				2E0631FB1F54049700589079 /* imageRegCore.cpp in Sources */,
 				2E3B76641B38467200BDFBF9 /* input_parameter_class.cpp in Sources */,
 				2E3C8B021C00D41900E9CC3C /* input_parameter_mask_class.cpp in Sources */,
 				2E3FC97A1F3CA69D00B6CD75 /* imageregistration_kernel_src.cl in Sources */,
@@ -1308,6 +1314,7 @@
 				2E41B2541C73150400EE4B5E /* input_parameter_reslice_class.cpp in Sources */,
 				2EB3384A1C784C1C00DC59FA /* rotCenterSearch.cl in Sources */,
 				2E41B2581C73151000EE4B5E /* input_parameter_class.cpp in Sources */,
+				2E0631FD1F5420E100589079 /* imageRegCore.cpp in Sources */,
 				2EE476921C87E7F000B089CC /* reslice.cl in Sources */,
 				2E41B25E1C731A9900EE4B5E /* GPU.cpp in Sources */,
 				2EEF3C991C9125BC00BB4E0F /* FBP.cl in Sources */,
@@ -1334,6 +1341,7 @@
 				2EBB68CE1F4D1ABE000F2398 /* CT_imageRegistration_ocl.cpp in Sources */,
 				2E4845291DAB44EE00F859AF /* RegMode_class.cpp in Sources */,
 				2E4845251DAB44E500F859AF /* input_parameter_class.cpp in Sources */,
+				2E0631FC1F54049700589079 /* imageRegCore.cpp in Sources */,
 				2E4845261DAB44E500F859AF /* input_parameter_mask_class.cpp in Sources */,
 				2E48452D1DAB993B00F859AF /* imagingXAFS-CT_registration_ocl.cpp in Sources */,
 				2E4845281DAB44E500F859AF /* input_parameter_reslice_class.cpp in Sources */,

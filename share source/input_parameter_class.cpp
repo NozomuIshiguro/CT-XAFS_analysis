@@ -10,6 +10,10 @@
 
 int buffsize=512;
 
+int input_parameter::getCntFitMode(){
+    return cntFit;
+}
+
 
 void input_parameter::setRegModeFromDialog(string message){
     cout << message;
@@ -197,7 +201,7 @@ vector<float> input_parameter::getReg_inipara(){
     return reg_inipara;
 }
 
-vector<float> input_parameter::getReg_fixpara() {
+vector<char> input_parameter::getReg_fixpara() {
 
 	return reg_fixpara;
 }
@@ -266,7 +270,7 @@ void input_parameter::setReg_fixparaFromDialog(string message) {
 	buffer = new char[buffsize];
 	cin.getline(buffer, buffsize);
 	istringstream iss(buffer);
-	float b;
+	char b;
 	for (iss >> b; !iss.eof(); iss.ignore() >> b) {
 		reg_fixpara.push_back(b);
 	}
@@ -287,6 +291,7 @@ input_parameter::input_parameter(string inputfile_path){
     targetEnergyNo=-1;
     targetAngleNo=-1;
     mergeN=1;
+    cntFit=2;
     
     imageSizeX=2048;
     imageSizeY=2048;
@@ -401,10 +406,10 @@ input_parameter::input_parameter(string inputfile_path){
 				cout << buffer << endl;
 				inp_ifs.getline(buffer, buffsize);
 				istringstream iss(buffer);
-				float a;
+				char a;
 				cout << "  ";
 				for (iss >> a; !iss.eof(); iss.ignore() >> a) {
-					reg_fixpara.push_back(a);
+                    reg_fixpara.push_back(a);
 					cout << a << ",";
 				}
 				reg_fixpara.push_back(a);
@@ -456,6 +461,10 @@ input_parameter::input_parameter(string inputfile_path){
                 cout<<buffer<<endl;
                 inp_ifs>>mergeN;
                 cout<<"  "<<mergeN<<endl;
+            }else if((string)buffer=="#Contrast adjustment"){
+                cout<<buffer<<endl;
+                inp_ifs>>cntFit;
+                cout<<"  "<<cntFit<<endl;
             }
             
         }

@@ -93,21 +93,40 @@ __kernel void LevenbergMarquardt(__global float* tJdF_img, __global float* tJJ_i
     const size_t global_ID = global_x+global_y*imageSizeX;
     const size_t imageSizeM = imageSizeX*imageSizeY;
     
-    float dp[PARA_NUM],lambda_diag_tJJ[PARA_NUM],tJdF[PARA_NUM];
+    float dp[PARA_NUM],lambda_diag_tJJ[PARA_NUM];
     float tJJ[PARA_NUM_SQ];
     float lambda = lambda_img[global_ID];
+    float wgt[PARA_NUM];
     
     for(int i=0;i<PARA_NUM;i++){
-        tJdF[i] = tJdF_img[global_ID + i*imageSizeM];
-        dp[i] = tJdF[i];
+        if(p_fix[i]==48) continue;
+        
         tJJ[i+i*PARA_NUM] = tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*imageSizeM];
-        lambda_diag_tJJ[i] = tJJ[i+i*PARA_NUM]*lambda;
         tJJ[i+i*PARA_NUM] *= (1.0f+lambda);
+        wgt[i] = 1.0f/sqrt(tJJ[i+i*PARA_NUM]);
+        lambda_diag_tJJ[i] = tJJ[i+i*PARA_NUM]*lambda;
+        dp[i] = tJdF_img[global_ID + i*imageSizeM];
+        
         for(int j=i+1;j<PARA_NUM;j++){
+            if(p_fix[j]==48) continue;
+            
             tJJ[i+j*PARA_NUM] = tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*imageSizeM];
             tJJ[j+i*PARA_NUM] = tJJ[i+j*PARA_NUM];
         }
     }
+    
+    
+    for(int i=0;i<PARA_NUM;i++){
+        if(p_fix[i]==48) continue;
+        
+        dp[i] *= wgt[i];
+        for(int j=0;j<PARA_NUM;j++){
+            if(p_fix[j]==48) continue;
+            
+            tJJ[i+j*PARA_NUM] *= wgt[i]*wgt[j];
+        }
+    }
+    
     
     /*for(int i=0;i<PARA_NUM;i++){
         for(int j=0;j<PARA_NUM;j++){
@@ -119,6 +138,10 @@ __kernel void LevenbergMarquardt(__global float* tJdF_img, __global float* tJJ_i
     sim_linear_eq(tJJ,dp,PARA_NUM,p_fix);
     
     for(int i=0;i<PARA_NUM;i++){
+        dp[i] = (p_fix[i]==48) ? 0.0f:dp[i]*wgt[i];
+        dp[i] = isnan(dp[i]) ? 0.0f:dp[i];
+        dp[i] = isinf(dp[i]) ? 0.0f:dp[i];
+        
         dp_img[global_ID+i*imageSizeM] = dp[i];
     }
 }

@@ -18,14 +18,8 @@
 #endif
 
 #ifndef PARA_NUM
-#define PARA_NUM 2
+#define PARA_NUM 4
 #endif
-
-
-#ifndef DIFFSTEP
-#define DIFFSTEP 1
-#endif
-
 
 
 //sampler
@@ -296,7 +290,7 @@ __kernel void mt_transfer(__global float *mt_buffer,
 }
 
 
-//create merged image
+//create merged image (mean)
 __kernel void merge(__read_only image2d_array_t input_img, __write_only image2d_array_t output_img,
                     unsigned int mergeN){
     
@@ -326,10 +320,11 @@ __kernel void merge(__read_only image2d_array_t input_img, __write_only image2d_
 
 //imageReg1: estimate dF2(old), tJJ, tJdF
 __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2d_array_t mt_s_img,
-                        __constant float *p,__constant float *p_target,__constant char *p_fix,
-                        __global float *dF2X, __global float *tJdFX, __global float *tJJX,
-                        __global float* devX, int mergeN, __local float* loc_mem,
-                        __constant float* mean_t, __constant float* mean_s){
+                         __write_only image2d_array_t weight_img,
+                         __constant float* dF2, __constant float* dF, float CI,
+                         __constant float *p,__constant float *p_target,__constant char *p_fix,
+                         __global float *dF2X, __global float *tJdFX, __global float *tJJX,
+                         __global float* devX, int mergeN, __local float* loc_mem, int difstep){
     
     const size_t local_ID = get_local_id(0);
     const size_t localsize = get_local_size(0);
@@ -348,20 +343,22 @@ __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2
     
     size_t X;
     float4 XYZ, XYZ_s, XYZ_t;
+    int4 XYZ_i;
     float4 mt_s, mt_t;
-    float mt_xp, mt_xm, mt_yp, mt_ym;
-    float diffweight = 3.0f/(float)DIFFSTEP/(DIFFSTEP+1.0f)/(2.0f*DIFFSTEP+1.0f);
+    float Smtx, Smty, Sxx, Syy;
     float dfdx, dfdy;
     float mask;
     float J[PARA_NUM];
-    float dF;
-    float dF2[2];
+    float dF_pr;
+    float dF2_pr[2];
     float tJdF_pr[PARA_NUM*2];
     float tJJ_pr[PARA_NUM*(PARA_NUM+1)];
     float dev[2];
+    float weight;
+    float weight_thd = sqrt(dF2[Z] - dF[Z]*dF[Z])*CI;
     
-    dF2[0]=0.0f;
-    dF2[1]=0.0f;
+    dF2_pr[0]=0.0f;
+    dF2_pr[1]=0.0f;
     dev[0]=0.0f;
     dev[1]=0.0f;
     
@@ -379,29 +376,25 @@ __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2
         for(int i=0;i<2;i++){
             X=local_ID + i*localsize + j;
             
-            mt_xp = 0.0f;
-            mt_xm = 0.0f;
-            mt_yp = 0.0f;
-            mt_ym = 0.0f;
-            for(int k=1;k<=DIFFSTEP;k++){
+            Smtx = 0.0f;
+            Smty = 0.0f;
+            Sxx  = 0.0f;
+            Syy  = 0.0f;
+            for(int k=-difstep;k<=difstep;k++){
                 //Partial differential dF/dx
-                XYZ = (float4)(X+(float)k/mergeN,Y,Z,0.0f);
+                XYZ = (float4)(X+k,Y,Z,0.0f);
                 XYZ_s = transXY(XYZ, p_pr, (float)mergeN, REGMODE);
-                mt_xp += k*read_imagef(mt_s_img,s_linear_cEdge,XYZ_s).x;
-                XYZ = (float4)(X-(float)k/mergeN,Y,Z,0.0f);
-                XYZ_s = transXY(XYZ, p_pr, (float)mergeN, REGMODE);
-                mt_xm += k*read_imagef(mt_s_img,s_linear_cEdge,XYZ_s).x;
+                Smtx += k*read_imagef(mt_s_img,s_linear_cEdge,XYZ_s).x;
+                Sxx  += k*k;
                 
                 //Partial differential dF/dy
-                XYZ = (float4)(X,Y+(float)k/mergeN,Z,0.0f);
+                XYZ = (float4)(X,Y+k,Z,0.0f);
                 XYZ_s = transXY(XYZ, p_pr, (float)mergeN, REGMODE);
-                mt_yp += k*read_imagef(mt_s_img,s_linear_cEdge,XYZ_s).x;
-                XYZ = (float4)(X,Y-(float)k/mergeN,Z,0.0f);
-                XYZ_s = transXY(XYZ, p_pr, (float)mergeN, REGMODE);
-                mt_ym += k*read_imagef(mt_s_img,s_linear_cEdge,XYZ_s).x;
+                Smty += k*read_imagef(mt_s_img,s_linear_cEdge,XYZ_s).x;
+                Syy  += k*k;
             }
-            dfdx = (mt_xp - mt_xm)*diffweight;
-            dfdy = (mt_yp - mt_ym)*diffweight;
+            dfdx = Smtx/Sxx*exp(p_pr[PARA_NUM-2]);
+            dfdy = Smty/Syy*exp(p_pr[PARA_NUM-2]);
             
             
             //dF
@@ -411,21 +404,29 @@ __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2
             mt_s = read_imagef(mt_s_img,s_linear_cEdge,XYZ_s);
             mt_t = read_imagef(mt_t_img,s_linear_cEdge,XYZ_t);
             mask = mt_t.y*mt_s.y;
-            dF = (mt_t.x - mt_s.x - mean_t[Z] + mean_s[Z])*mask;
+            dF_pr = (mt_t.x - (mt_s.x+p_pr[PARA_NUM-1])*exp(p_pr[PARA_NUM-2]))*mask;
             
+            //weight
+            XYZ_i = (int4)(X,Y,Z,0);
+            weight = (dF_pr-dF[Z])/weight_thd;
+            weight = (fabs(weight)<=1.0f) ? (1.0f - weight*weight):0.0f;
+            weight = weight*weight*mask;
+            write_imagef(weight_img,XYZ_i,(float4)(weight,0.0f,0.0f,0.0f));
             
             //Jacobian
             Jacobian_transXY(J,XYZ_s,p_pr,dfdx,dfdy,mask,(float)mergeN,REGMODE);
+            J[PARA_NUM-2] = (mt_s.x+p_pr[PARA_NUM-1])*exp(p_pr[PARA_NUM-2])*mask;
+            J[PARA_NUM-1] = exp(p_pr[PARA_NUM-2])*mask;
             
             
-            dev[i] += mask;
-            dF2[i] += dF*dF;
+            dev[i] += weight*mask;
+            dF2_pr[i] += weight*dF_pr*dF_pr;
             for(int n=0;n<PARA_NUM;n++){
                 if(p_fix[n]==48) continue;
-                tJdF_pr[n + i*PARA_NUM] += J[n]*dF;
+                tJdF_pr[n + i*PARA_NUM] += weight*J[n]*dF_pr;
                 for(int m=n; m<PARA_NUM;m++){
                     if(p_fix[m]==48) continue;
-                    tJJ_pr[n*PARA_NUM-n*(n+1)/2+m + i*PARA_NUM*(PARA_NUM+1)/2] += J[n]*J[m];
+                    tJJ_pr[n*PARA_NUM-n*(n+1)/2+m + i*PARA_NUM*(PARA_NUM+1)/2] += weight*J[n]*J[m];
                 }
             }
         }
@@ -440,10 +441,10 @@ __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2
     dev[0] = reduction(loc_mem,local_ID,localsize);
     barrier(CLK_LOCAL_MEM_FENCE);
     //reduction of dF2
-    loc_mem[local_ID] = dF2[0];
-    loc_mem[local_ID+localsize] = dF2[1];
+    loc_mem[local_ID] = dF2_pr[0];
+    loc_mem[local_ID+localsize] = dF2_pr[1];
     barrier(CLK_LOCAL_MEM_FENCE);
-    dF2[0] = reduction(loc_mem,local_ID,localsize);
+    dF2_pr[0] = reduction(loc_mem,local_ID,localsize);
     barrier(CLK_LOCAL_MEM_FENCE);
     //reduction of tJdF
     for(int i=0;i<PARA_NUM;i++){
@@ -465,7 +466,7 @@ __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2
     
     //output dF2, tJJ, tJdF to global memory
     if(local_ID==0){
-        dF2X[Y + Z*IMAGESIZE_Y/mergeN] = dF2[0];
+        dF2X[Y + Z*IMAGESIZE_Y/mergeN] = dF2_pr[0];
         devX[Y + Z*IMAGESIZE_Y/mergeN] = dev[0];
         for(int i=0;i<PARA_NUM;i++){
             tJdFX[Y + Z*IMAGESIZE_Y/mergeN + i*IMAGESIZE_Y/mergeN*Zsize] = tJdF_pr[i];
@@ -480,7 +481,7 @@ __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2
 
 __kernel void imageReg1Y(__global float *dF2X, __global float *tJdFX, __global float *tJJX,
                          __global float* devX, __global float *dF2, __global float *tJdF,
-                         __global float *tJJ, int mergeN, __local float* loc_mem){
+                         __global float *tJJ, __global float *dev, int mergeN, __local float* loc_mem){
     const size_t local_ID = get_local_id(0);
     const size_t localsize = get_local_size(0);
     const size_t Z = get_global_id(1);
@@ -505,8 +506,8 @@ __kernel void imageReg1Y(__global float *dF2X, __global float *tJdFX, __global f
         tJJ_pr[i]=0.0f;
     }
     
-    const imageSizeY = IMAGESIZE_Y/mergeN;
-    const imageSizeM = imageSizeY*Zsize;
+    const size_t imageSizeY = IMAGESIZE_Y/mergeN;
+    const size_t imageSizeM = imageSizeY*Zsize;
     
     for(int j=0;j<imageSizeY;j+=localsize*2){
         ID1 = j             + Z*imageSizeY;
@@ -562,6 +563,7 @@ __kernel void imageReg1Y(__global float *dF2X, __global float *tJdFX, __global f
     //output dF2, tJJ, tJdF to global memory
     if(local_ID==0){
         dF2[Z] = dF2_pr[0]/dev_pr[0];
+        dev[Z] = dev_pr[0];
         for(int i=0;i<PARA_NUM;i++){
             tJdF[Z + i*Zsize] = tJdF_pr[i]/dev_pr[0];
         }
@@ -575,10 +577,10 @@ __kernel void imageReg1Y(__global float *dF2X, __global float *tJdFX, __global f
 
 //imageReg2: estimate dF2(new)
 __kernel void imageReg2X(__read_only image2d_array_t mt_t_img,__read_only image2d_array_t mt_s_img,
+                         __read_only image2d_array_t weight_img,
                         __constant float *p,__constant float *p_target,
-                        __global float *dF2X, __global float *devX,
-                         int mergeN, __local float* loc_mem,
-                        __constant float* mean_t, __constant float* mean_s){
+                        __global float *dF2X, __global float *dFX, __global float *devX,
+                         int mergeN, __local float* loc_mem){
     
     const size_t local_ID = get_local_id(0);
     const size_t localsize = get_local_size(0);
@@ -600,12 +602,16 @@ __kernel void imageReg2X(__read_only image2d_array_t mt_t_img,__read_only image2
     float4 mt_s, mt_t;
     float mask;
     float dF;
+    float sum_dF[2];
     float dF2[2];
     float dev[2];
+    sum_dF[0]=0.0f;
+    sum_dF[1]=0.0f;
     dF2[0]=0.0f;
     dF2[1]=0.0f;
     dev[0]=0.0f;
     dev[1]=0.0f;
+    float weight;
     
     
     //estimate tJJ, tJdF, dF2
@@ -620,10 +626,12 @@ __kernel void imageReg2X(__read_only image2d_array_t mt_t_img,__read_only image2
             mt_s = read_imagef(mt_s_img,s_linear_cEdge,XYZ_s);
             mt_t = read_imagef(mt_t_img,s_linear_cEdge,XYZ_t);
             mask = mt_t.y*mt_s.y;
-            dF = (mt_t.x - mt_s.x - mean_t[Z] + mean_s[Z])*mask;
-            dF2[i] += dF*dF;
+            dF = (mt_t.x - (mt_s.x+p_pr[PARA_NUM-1])*exp(p_pr[PARA_NUM-2]))*mask;
+            weight = read_imagef(weight_img,s_linear_cEdge,XYZ).x;
             
-            dev[i] += mask;
+            sum_dF[i] += dF*weight;
+            dF2[i] += dF*dF*weight;
+            dev[i] += mask*weight;
         }
     }
     barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);
@@ -640,11 +648,17 @@ __kernel void imageReg2X(__read_only image2d_array_t mt_t_img,__read_only image2
     loc_mem[local_ID+localsize] = dF2[1];
     barrier(CLK_LOCAL_MEM_FENCE);
     dF2[0] = reduction(loc_mem,local_ID,localsize);
+    //reduction of dF
+    loc_mem[local_ID] = sum_dF[0];
+    loc_mem[local_ID+localsize] = sum_dF[1];
+    barrier(CLK_LOCAL_MEM_FENCE);
+    sum_dF[0] = reduction(loc_mem,local_ID,localsize);
     barrier(CLK_LOCAL_MEM_FENCE);
     
     
     //output dF2 to global memory
     if(local_ID==0){
+        dFX[Y + Z*IMAGESIZE_Y/mergeN] = sum_dF[0];
         dF2X[Y + Z*IMAGESIZE_Y/mergeN] = dF2[0];
         devX[Y + Z*IMAGESIZE_Y/mergeN] = dev[0];
     }
@@ -652,26 +666,31 @@ __kernel void imageReg2X(__read_only image2d_array_t mt_t_img,__read_only image2
 }
 
 
-__kernel void imageReg2Y(__global float *dF2X, __global float* devX,__global float *dF2,
-                         int mergeN, __local float* loc_mem){
+__kernel void imageReg2Y(__global float *dF2X, __global float *dFX, __global float* devX,
+                         __global float *dF2, __global float *dF, int mergeN, __local float* loc_mem){
     const size_t local_ID = get_local_id(0);
     const size_t localsize = get_local_size(0);
     const size_t Z = get_global_id(1);
     
     
     size_t ID1, ID2;
+    float dF_pr[2];
     float dF2_pr[2];
     float dev_pr[2];
+    dF_pr[0]=0.0f;
+    dF_pr[1]=0.0f;
     dF2_pr[0]=0.0f;
     dF2_pr[1]=0.0f;
     dev_pr[0]=0.0f;
     dev_pr[1]=0.0f;
     
-    const imageSizeY = IMAGESIZE_Y/mergeN;
+    const size_t imageSizeY = IMAGESIZE_Y/mergeN;
     for(int i=0;i<imageSizeY;i+=localsize*2){
         ID1 = i             + Z*imageSizeY;
         ID2 = i + localsize + Z*imageSizeY;
         
+        dF_pr[0] += dFX[ID1];
+        dF_pr[1] += dFX[ID2];
         dF2_pr[0] += dF2X[ID1];
         dF2_pr[1] += dF2X[ID2];
         dev_pr[0] += devX[ID1];
@@ -692,16 +711,24 @@ __kernel void imageReg2Y(__global float *dF2X, __global float* devX,__global flo
     barrier(CLK_LOCAL_MEM_FENCE);
     dF2_pr[0] = reduction(loc_mem,local_ID,localsize);
     barrier(CLK_LOCAL_MEM_FENCE);
+    //reduction of dF
+    loc_mem[local_ID] = dF_pr[0];
+    loc_mem[local_ID+localsize] = dF_pr[1];
+    barrier(CLK_LOCAL_MEM_FENCE);
+    dF_pr[0] = reduction(loc_mem,local_ID,localsize);
+    barrier(CLK_LOCAL_MEM_FENCE);
     
     //output dF2, tJJ, tJdF to global memory
     if(local_ID==0){
         dF2[Z] = dF2_pr[0]/dev_pr[0];
+        dF[Z]  = dF_pr[0]/dev_pr[0];
     }
     barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);
 }
 
 
-__kernel void estimateParaError(__global float* p_error, __global float* tJdF){
+__kernel void estimateParaError(__global float* p_error, __global float* tJdF_img,
+                                __global float* tJJ_img, __global float* dev_img){
     const size_t X = get_global_id(0); //angle dimension
     const size_t Y = get_global_id(1);
     const size_t Z = get_global_id(2); //parameter dimension
@@ -709,12 +736,17 @@ __kernel void estimateParaError(__global float* p_error, __global float* tJdF){
     const size_t sizeY = get_global_size(1);
     const size_t ID = X + Y*sizeX;
     const size_t ID1 = ID + Z*sizeX*sizeY;
-    //const size_t ID2 = ID + Z*(2*PARA_NUM-Z+1)/2*sizeX*sizeY;
+    const size_t ID2 = ID + Z*(2*PARA_NUM-Z+1)/2*sizeX*sizeY;
     
-    float error =2.0*tJdF[ID1];
-    error =fabs(error);
-    p_error[ID1] = fmax(error,0.01f);
-    //p_error[ID1] = fmax(sqrt(1.0f/tJJ[ID2]),0.01f);
+    float tJdF = tJdF_img[ID1];
+    float tJJ  = tJJ_img[ID2];
+    float dev  = dev_img[ID];
+    float error = sqrt(tJdF*tJdF + tJJ/dev);
+    float error1 = fabs(tJdF + error)/tJJ;
+    float error2 = fabs(tJdF - error)/tJJ;
+    //p_error[ID1] = fmax(error,0.01f);
+    //p_error[ID1] = fmax(sqrt(1.0f/dev/tJJ),0.01f);
+    p_error[ID1] = fmin(fmax(fmax(error1,error2),0.01f),1000.0f);
 }
 
 
@@ -807,72 +839,52 @@ __kernel void imQXAFS_smoothing(__global float *rawmtdata, __global float *outpu
 }
 
 
-__kernel void estimateImgMeanX(__read_only image2d_array_t img, __global float *meanX, __local float* loc_mem){
+
+
+
+//update weight
+__kernel void updateWeight(__read_only image2d_array_t mt_t_img,__read_only image2d_array_t mt_s_img,
+                           __write_only image2d_array_t weight_img,
+                           __constant float* dF2, __constant float* dF, float CI,
+                           __constant float *p,__constant float *p_target, int mergeN){
     
-    const size_t local_ID = get_local_id(0);
-    const size_t localsize = get_local_size(0);
+    const size_t X = get_global_id(0);
     const size_t Y = get_global_id(1);
     const size_t Z = get_global_id(2);
+    const size_t Zsize = get_global_size(2);
     
-    int X1,X2;
-    float val_a=0.0f;
-    float val_b=0.0f;
-    float4 val4_a, val4_b;
-    float4 XYZ1, XYZ2;
-    for(int j=0; j<IMAGESIZE_X; j+=2*localsize){
-        X1 = local_ID + j;
-        XYZ1 = (float4)(X1,Y,Z,0.0f);
-            
-        X2 = local_ID + localsize + j;
-        XYZ2 = (float4)(X2,Y,Z,0.0f);
-            
-        val4_a = read_imagef(img,s_linear_cEdge,XYZ1);
-        val_a += val4_a.x*val4_a.y;
-            
-        val4_b = read_imagef(img,s_linear_cEdge,XYZ2);
-        val_b += val4_b.x*val4_b.y;
+    
+    //copy data from global p to private p_pr
+    float p_pr[PARA_NUM], p_target_pr[PARA_NUM];
+    for(int i=0;i<PARA_NUM;i++){
+        p_pr[i]=p[Z+i*Zsize];
+        p_target_pr[i]=p_target[Z+i*Zsize];
     }
     barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);
     
-    //reduction of dF2
-    loc_mem[local_ID] = val_a;
-    loc_mem[local_ID+localsize] = val_b;
-    barrier(CLK_LOCAL_MEM_FENCE);
-    val_a = reduction(loc_mem,local_ID,localsize);
-    barrier(CLK_LOCAL_MEM_FENCE);
     
+    float4 XYZ, XYZ_s, XYZ_t;
+    int4 XYZ_i;
+    float4 mt_s, mt_t;
+    float mask;
+    float weight, dF_pr;
+    float weight_thd = sqrt(dF2[Z] - dF[Z]*dF[Z])*CI;
     
-    //output dF2 to global memory
-    if(local_ID==0){
-        meanX[Y+Z*IMAGESIZE_Y] = val_a;
-    }
-    barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);
-    
-}
-
-__kernel void estimateImgMeanY(__global float* meanX, __global float* mean, __local float* loc_mem){
-    const size_t local_ID = get_local_id(0);
-    const size_t localsize = get_local_size(0);
-    const size_t Z = get_global_id(1);
-    
-    loc_mem[local_ID]=0.0f;
-    loc_mem[local_ID+localsize]=0.0f;
-    size_t ID1, ID2;
-    float val;
-    for(int i=0;i<IMAGESIZE_Y;i+=localsize*2){
-        ID1 = i + Z*IMAGESIZE_Y;
-        ID2 = i + localsize + Z*IMAGESIZE_Y;
         
-        loc_mem[local_ID]           += meanX[ID1];
-        loc_mem[local_ID+localsize] += meanX[ID2];
-    }
+    //dF
+    XYZ = (float4)(X,Y,Z,0.0f);
+    XYZ_s = transXY(XYZ, p_pr, (float)mergeN, REGMODE);
+    XYZ_t = transXY(XYZ, p_target_pr, (float)mergeN, REGMODE);
+    mt_s = read_imagef(mt_s_img,s_linear_cEdge,XYZ_s);
+    mt_t = read_imagef(mt_t_img,s_linear_cEdge,XYZ_t);
+    mask = mt_t.y*mt_s.y;
+    dF_pr = (mt_t.x - (mt_s.x+p_pr[PARA_NUM-1])*exp(p_pr[PARA_NUM-2]))*mask;
     
-    barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);
-    val = reduction(loc_mem,local_ID,localsize);
-    barrier(CLK_LOCAL_MEM_FENCE);
     
-    if(local_ID==0){
-        mean[Z] = val/IMAGESIZE_M;  //definitly it must be devided by masked area
-    }
-    barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);
+    //weight
+    XYZ_i = (int4)(X,Y,Z,0);
+    weight = (dF_pr-dF[Z])/weight_thd;
+    weight = (fabs(weight)<=1.0f) ? (1.0f - weight*weight):0.0f;
+    weight = weight*weight*mask;
+    write_imagef(weight_img,XYZ_i,(float4)(weight,0.0f,0.0f,0.0f));
 }

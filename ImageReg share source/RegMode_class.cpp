@@ -12,7 +12,7 @@
 #include "LevenbergMarquardt_cl.hpp"
 
 
-regMode::regMode(int regmodeNumber){
+regMode::regMode(int regmodeNumber,int cntFitmode){
     regModeNo=regmodeNumber;
     
     switch (regModeNo) {
@@ -53,11 +53,48 @@ regMode::regMode(int regmodeNumber){
             break;
     }
     
-    p_ini = new float[p_num];
-    p_fix = new float[p_num];
+    diffstep = 5;
+    p_ini = new float[p_num+2];
+    p_fix = new char[p_num+2];
     for (int i=0; i<p_num; i++) {
         p_ini[i]=0.0f;
-        p_fix[i]=1.0f;
+        p_fix[i]=49;
+    }
+    p_ini[p_num]    = 0.0f; //cnt mult
+    p_ini[p_num+1]  = 0.0f; //cnt offset
+    
+    
+    
+    switch (cntFitmode) {
+        case 0:
+            p_fix[p_num]    = 48;   //cnt mult
+            p_fix[p_num+1]  = 48;   //cnt offset
+            displayCnt=false;
+            break;
+            
+        case 1:
+            p_fix[p_num]    = 49;   //cnt mult
+            p_fix[p_num+1]  = 49;   //cnt offset
+            displayCnt=true;
+            break;
+            
+        case 2:
+            p_fix[p_num]    = 48;   //cnt mult
+            p_fix[p_num+1]  = 49;   //cnt offset
+            displayCnt=true;
+            break;
+        
+        case 3:
+            p_fix[p_num]    = 49;   //cnt mult
+            p_fix[p_num+1]  = 48;   //cnt offset
+            displayCnt=true;
+            break;
+            
+        default:
+            p_fix[p_num]    = 48;   //cnt mult
+            p_fix[p_num+1]  = 49;   //cnt offset
+            displayCnt=true;
+            break;
     }
 }
 
@@ -69,32 +106,37 @@ string regMode::ofs_transpara(){
     ostringstream oss;
     switch (regModeNo) {
         case 0: //xy shift
-            oss<< "dx\tdx error\tdy\tdy error"<<endl;
+            oss<< "dx\tdx error\tdy\tdy error";
             break;
             
         case 1: //rotation+xy shift
-            oss<<"dx\tdx error\tdy\tdy error\td(theta)\td(theta) error" << endl;
+            oss<<"dx\tdx error\tdy\tdy error\td(theta)\td(theta) error";
             break;
             
         case 2: //scale+xy shift
-            oss<<"dx\tdx error\tdy\tdy error\tscale(log)\tscale(log) error" << endl;
+            oss<<"dx\tdx error\tdy\tdy error\tscale(log)\tscale(log) error";
             break;
             
         case 3: //scale+rotation+xy shift
             oss<<"dx\tdx error\tdy\tdy error\t";
             oss<<"d(theta)\td(theta) error\t";
-            oss<<"scale(log)\tscale(log) error" << endl;
+            oss<<"scale(log)\tscale(log) error";
             break;
             
         case 4: //affine+xy shift
             oss<<"dx\tdx error\tdy\tdy error\t";
             oss<<"a11\ta11 error\ta12\ta12 error\t";
-            oss<<"a21\ta21 error\ta22\ta22 error" << endl;
+            oss<<"a21\ta21 error\ta22\ta22 error";
             break;
             
         default: //none
             oss<<"" << endl;
             break;
+    }
+    if (displayCnt) {
+        oss<<"cLnMult\tcLnMult error\tcBkg\tcBkg error\t"<<endl;
+    }else{
+        oss<<endl;
     }
     return oss.str();
 }
@@ -223,7 +265,7 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
             oss<<p[0];
-            if(p_fix[0]>0.0f){
+            if(p_fix[0]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[0]);
@@ -231,19 +273,18 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", dy=";
             oss.precision(p_precision[1]);
             oss<<p[1];
-            if(p_fix[1]>0.0f){
+            if(p_fix[1]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[1]);
             }
-            oss<<endl;
             break;
         
         case 1: //rotation+xy shift
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
             oss<<p[0];
-            if(p_fix[0]>0.0f){
+            if(p_fix[0]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[0]);
@@ -251,7 +292,7 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", dy=";
             oss.precision(p_precision[1]);
             oss<<p[1];
-            if(p_fix[1]>0.0f){
+            if(p_fix[1]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[1]);
@@ -259,19 +300,18 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", d(theta)=";
             oss.precision(p_precision[2]);
             oss<<p[2];
-            if(p_fix[2]>0.0f){
+            if(p_fix[2]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[2]);
             }
-            oss<<endl;
             break;
         
         case 2: //scale+xy shift
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
             oss<<p[0];
-            if(p_fix[0]>0.0f){
+            if(p_fix[0]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[0]);
@@ -279,7 +319,7 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", dy=";
             oss.precision(p_precision[1]);
             oss<<p[1];
-            if(p_fix[1]>0.0f){
+            if(p_fix[1]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[1]);
@@ -287,19 +327,18 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", scale(log)=";
             oss.precision(p_precision[2]);
             oss<<p[2];
-            if(p_fix[2]>0.0f){
+            if(p_fix[2]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[2]);
             }
-            oss<<endl;
             break;
         
         case 3: //scale+rotation+xy shift
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
             oss<<p[0];
-            if(p_fix[0]>0.0f){
+            if(p_fix[0]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[0]);
@@ -307,7 +346,7 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", dy=";
             oss.precision(p_precision[1]);
             oss<<p[1];
-            if(p_fix[1]>0.0f){
+            if(p_fix[1]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[1]);
@@ -315,7 +354,7 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", d(theta)=";
             oss.precision(p_precision[2]);
             oss<<p[2];
-            if(p_fix[2]>0.0f){
+            if(p_fix[2]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[2]);
@@ -323,19 +362,18 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", scale(log)=";
             oss.precision(p_precision[3]);
             oss<<p[3];
-            if(p_fix[3]>0.0f){
+            if(p_fix[3]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[3]);
             }
-            oss<<endl;
             break;
         
         case 4: //affine+xy shift
             oss<<"    registration shift: dx=";
             oss.precision(p_precision[0]);
             oss<<p[0];
-            if(p_fix[0]>0.0f){
+            if(p_fix[0]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[0]);
@@ -343,7 +381,7 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", dy=";
             oss.precision(p_precision[1]);
             oss<<p[1];
-            if(p_fix[1]>0.0f){
+            if(p_fix[1]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[1]);
@@ -351,7 +389,7 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", a11=";
             oss.precision(p_precision[2]);
             oss<<p[2]+1;
-            if(p_fix[2]>0.0f){
+            if(p_fix[2]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[2]);
@@ -359,7 +397,7 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", a12=";
             oss.precision(p_precision[3]);
             oss<<p[3];
-            if(p_fix[3]>0.0f){
+            if(p_fix[3]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[3]);
@@ -367,7 +405,7 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", a21=";
             oss.precision(p_precision[4]);
             oss<<p[4];
-            if(p_fix[4]>0.0f){
+            if(p_fix[4]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[4]);
@@ -375,18 +413,39 @@ string regMode::oss_sample(float *p,float *p_error,
             oss<<", a22=";
             oss.precision(p_precision[5]);
             oss<<p[5]+1;
-            if(p_fix[5]>0.0f){
+            if(p_fix[5]==49){
                 oss<<" +/- ";
                 oss.precision(1);
                 oss<<abs(p_error[5]);
             }
-            oss<<endl;
             break;
         
         default:
             oss<<"";
             break;
     }
+    if (displayCnt) {
+        oss<<", cLnMult=";
+        oss.precision(p_precision[p_num]);
+        oss<<p[p_num];
+        if(p_fix[p_num]==49){
+            oss<<" +/- ";
+            oss.precision(1);
+            oss<<abs(p_error[p_num]);
+        }oss<<", cBkg=";
+        oss.precision(p_precision[p_num+1]);
+        oss<<p[p_num+1];
+        if(p_fix[p_num+1]==49){
+            oss<<" +/- ";
+            oss.precision(1);
+            oss<<abs(p_error[p_num+1]);
+        }
+        oss<<endl;
+    }else{
+        oss<<endl;
+    }
+    
+    
     oss<<endl;
     return oss.str();
 }
@@ -426,23 +485,23 @@ cl::Program regMode::buildImageRegProgram(cl::Context context, int imageSizeX, i
 	option += "-D DIFFSTEP=1 ";
     switch (regModeNo) {
         case 0: //XY
-            option += "-D REGMODE=0 -D PARA_NUM=2 -D PARA_NUM_SQ=4";
+            option += "-D REGMODE=0 -D PARA_NUM=4 -D PARA_NUM_SQ=16 -D REG_PARA_NUM=2";
             break;
             
         case 1: //XY+rotation
-            option += "-D REGMODE=1 -D PARA_NUM=3 -D PARA_NUM_SQ=9";
+            option += "-D REGMODE=1 -D PARA_NUM=5 -D PARA_NUM_SQ=25 -D REG_PARA_NUM=3";
             break;
             
         case 2: //XY+scale
-            option += "-D REGMODE=2 -D PARA_NUM=3 -D PARA_NUM_SQ=9";
+            option += "-D REGMODE=2 -D PARA_NUM=5 -D PARA_NUM_SQ=25 -D REG_PARA_NUM=3";
             break;
             
         case 3: //XY+rotation+scale
-            option += "-D REGMODE=3 -D PARA_NUM=4 -D PARA_NUM_SQ=16";
+            option += "-D REGMODE=3 -D PARA_NUM=6 -D PARA_NUM_SQ=36 -D REG_PARA_NUM=4";
             break;
             
         case 4: //XY+affine
-            option += "-D REGMODE=4 -D PARA_NUM=6 -D PARA_NUM_SQ=36";
+            option += "-D REGMODE=4 -D PARA_NUM=8 -D PARA_NUM_SQ=64 -D REG_PARA_NUM=6";
             break;
             
         default:
