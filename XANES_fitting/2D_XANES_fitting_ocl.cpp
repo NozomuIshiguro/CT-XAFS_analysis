@@ -10,6 +10,61 @@
 #include "XANES_fit_cl.hpp"
 #include "LevenbergMarquardt_cl.hpp"
 
+int XANESGPUmemoryControl(int imageSizeX, int imageSizeY,
+                                  int num_energy, fitting_eq fiteq, cl::CommandQueue queue){
+    
+    int processImageSizeY = imageSizeY;
+    
+    size_t GPUmemorySize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
+    
+    size_t usingMemorySize;
+    size_t paraN = fiteq.ParaSize();
+    int numFunc = fiteq.numFunc;
+    int numLCF = fiteq.numLCF;
+    size_t numContrain = fiteq.constrain_size;
+    do {
+        usingMemorySize =0;
+        //energy
+        usingMemorySize += num_energy*sizeof(float);
+        // Cmatrix
+        usingMemorySize += paraN*numContrain*sizeof(float);
+        //Dvector
+        usingMemorySize += numContrain*sizeof(float);
+        //Funcmode
+        usingMemorySize += numFunc*sizeof(float);
+        //refspectra
+        usingMemorySize += numLCF*IMAGE_SIZE_E*sizeof(float);
+        
+        //mt_data
+        usingMemorySize += imageSizeX*processImageSizeY*num_energy*sizeof(float);
+        //mt fit
+        usingMemorySize += imageSizeX*processImageSizeY*sizeof(float);
+        //Jacobian
+        usingMemorySize += imageSizeX*processImageSizeY*sizeof(float);
+        //tJJ, inv_tJJ
+        usingMemorySize += imageSizeX*processImageSizeY*paraN*(paraN+1)/2*sizeof(float);
+        //tJdF, dp, fp, fp_cnd
+        usingMemorySize += 4*imageSizeX*processImageSizeY*paraN*sizeof(float);
+        //dF2_old, dF2_new, lambda, nyu, dL, rho
+        usingMemorySize += 6*imageSizeX*processImageSizeY*sizeof(float);
+        
+        if(GPUmemorySize<usingMemorySize){
+            processImageSizeY /=2;
+        }else{
+            break;
+        }
+        
+    } while (processImageSizeY>1);
+    
+#ifdef DEBUG
+    cout << "image size X: "<<imageSizeX<<endl;
+    cout << "processing image size Y: " << processImageSizeY <<endl;
+    cout << "GPU mem size "<<GPUmemorySize <<" bytes >= using mem size " << usingMemorySize<<" bytes"<<endl<<endl;
+#endif
+    
+    return processImageSizeY;
+}
+
 string kernel_preprocessor_nums(fitting_eq fiteq,input_parameter inp){
     ostringstream OSS;
     
@@ -33,9 +88,9 @@ string kernel_preprocessor_nums(fitting_eq fiteq,input_parameter inp){
     OSS<<" -D IMAGESIZE_Y="<< inp.getImageSizeY();
     OSS<<" -D IMAGESIZE_M="<< inp.getImageSizeM();
     
-
-	if (inp.getCSbool()) OSS << " -D EPSILON="<<0.01f*(inp.getFittingEndEnergyNo() - inp.getFittingStartEnergyNo() + 1);
-	else OSS << " -D EPSILON="<<0.0f;
+    
+    if (inp.getCSbool()) OSS << " -D EPSILON="<<0.01f*(inp.getFittingEndEnergyNo() - inp.getFittingStartEnergyNo() + 1);
+    else OSS << " -D EPSILON="<<0.0f;
     
     return OSS.str();
 }
@@ -139,7 +194,6 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         cl::Buffer Jacobian_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM*paramsize, 0, NULL);
         cl::Buffer tJdF_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM*paramsize, 0, NULL);
         cl::Buffer tJJ_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM*paramsize*(paramsize+1)/2, 0, NULL);
-        cl::Buffer inv_tJJ_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM*paramsize*(paramsize+1)/2, 0, NULL);
         cl::Buffer nyu_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM, 0, NULL);
         cl::Buffer lambda_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM, 0, NULL);
         cl::Buffer chi2_old_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imgSizeM, 0, NULL);
