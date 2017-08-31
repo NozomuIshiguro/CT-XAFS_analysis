@@ -57,7 +57,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "            Batch CT reconstruction" <<endl<<endl;
     cout << "         First version: Jun. 19th, 2015"<<endl;
-    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "         Last update: Aug. 31st, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     
@@ -76,7 +76,14 @@ int main(int argc, const char * argv[]) {
     time(&g_t0);
     g_ang = new float[(unsigned long)g_pa];
     read_log(g_f3, g_pa);
-    MKDIR(g_d2.c_str());  //reconstディレクトリ
+	int ret=MKDIR(g_d2.c_str());  //reconstディレクトリ
+	if (ret == ENOENT) {
+		cerr << "Failed to create directory " << g_d2 <<"."<< endl;
+		cout << "Press 'Enter' to quit." << endl;
+		string dummy;
+		getline(cin, dummy);
+		exit(ret);
+	}
 	/*for (int i= 0; i < g_pa; i++) {
 		cout << g_ang[i] << endl;
 	}*/

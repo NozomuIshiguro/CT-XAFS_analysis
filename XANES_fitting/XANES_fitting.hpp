@@ -24,7 +24,7 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
                      fitting_eq fiteq,int AngleNo, int thread_id,input_parameter inp,
                      cl::Buffer energy, cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff,
                      cl::Buffer freeFix_buff, cl::Image1DArray refSpectra, cl::Buffer funcMode_buff,
-                     vector<float*> mt_vec, int64_t offset);
+                     vector<float*> mt_vec, int64_t offset, int processImageSizeY);
 int readRawFile(string filepath_input,float *binImgf,int imageSizeM);
 int outputRawFile_stream(string filename,float*data,size_t pnt_size);
 string kernel_preprocessor_nums(fitting_eq fiteq,input_parameter inp);

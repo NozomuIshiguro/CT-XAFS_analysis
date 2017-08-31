@@ -343,7 +343,8 @@ inline void Jacobian(float* J, float* fp, float energy,
 __kernel void chi2Stack(__global float* mt_img, __global float* fp_img,
                         __read_only image1d_array_t refSpectra, __global float* chi2_img,
                         __constant float* energy, __constant int* funcModeList,
-                        int startEnum, int endEnum){
+                        int startEnum, int endEnum,
+                        __global float* weight_img, __global float* weight_thd_img, float CI){
     
     const size_t global_x = get_global_id(0);
     const size_t global_y = get_global_id(1);
@@ -355,12 +356,20 @@ __kernel void chi2Stack(__global float* mt_img, __global float* fp_img,
     }
     
     float chi2=0.0f;
-    float mt_data,mt_fit;
+    float chi=0.0f;
+    float mt_data,mt_fit,weight;
+    
     for(int en=startEnum; en<=endEnum; en++){
         mt_data = mt_img[global_ID+en*IMAGESIZE_M];
         mt_fit = mtFit(fp,energy[en],funcModeList,refSpectra);
-        chi2 += (mt_data-mt_fit)*(mt_data-mt_fit);
+        weight = weight_img[global_ID+en*IMAGESIZE_M];
+        
+        chi  += (mt_data-mt_fit)*weight;
+        chi2 += (mt_data-mt_fit)*(mt_data-mt_fit)*weight;
     }
+    
+    float weight_thd = fabs(chi)+sqrt(max(0.0f,chi2 - chi*chi))*CI;
+    weight_thd_img[global_ID] = weight_thd;
     
     chi2_img[global_ID] = chi2;
 }
@@ -371,7 +380,8 @@ __kernel void chi2_tJdF_tJJ_Stack(__global float* mt_img, __global float* fp_img
                                   __global float* chi2_img, __global float* tJdF_img,
                                   __global float* tJJ_img,
                                   __constant float* energy, __constant int* funcModeList,
-                                  __constant char *p_fix, int startEnum, int endEnum){
+                                  __constant char *p_fix, int startEnum, int endEnum,
+                                  __global float* weight_img, __global float* weight_thd_img){
     
     const size_t global_x = get_global_id(0);
     const size_t global_y = get_global_id(1);
@@ -380,7 +390,8 @@ __kernel void chi2_tJdF_tJJ_Stack(__global float* mt_img, __global float* fp_img
     
     //initialization
     float chi2=0.0f;
-    float val;
+    float weight_thd = weight_thd_img[global_ID];
+    float val,weight;
     float J[PARA_NUM],tJdF[PARA_NUM],tJJ[PARA_NUM*(PARA_NUM+1)/2];
     float fp[PARA_NUM];
     for(int i=0; i<PARA_NUM; i++){
@@ -398,29 +409,33 @@ __kernel void chi2_tJdF_tJJ_Stack(__global float* mt_img, __global float* fp_img
         mt_data = mt_img[global_ID+en*IMAGESIZE_M];
         mt_fit = mtFit(fp,energy[en],funcModeList,refSpectra);
         val = (mt_data-mt_fit);
+        weight = val/weight_thd;
+        weight = (fabs(weight)<=1.0f) ? (1.0f - weight*weight):0.0f;
+        weight = 1.0f;
         
         Jacobian(J,fp,energy[en],funcModeList,refSpectra);
         
-        chi2 += val*val;
+        chi2 += val*val*weight;
         for(int i=0; i<PARA_NUM; i++){
             if(p_fix[i] == 48) continue;
             
-            tJdF[i] += J[i]*val;
-            tJJ[PARA_NUM*i-(i-1)*i/2] += J[i]*J[i];
-            for(int j=i+1; j<PARA_NUM; j++){
+            tJdF[i] += J[i]*val*weight;
+            for(int j=i; j<PARA_NUM; j++){
                 if(p_fix[j] == 48) continue;
-                tJJ[PARA_NUM*i-(i+1)*i/2+j] += J[i]*J[j];
+                tJJ[PARA_NUM*i-(i+1)*i/2+j] += J[i]*J[j]*weight;
             }
         }
+        weight_img[global_ID+en*IMAGESIZE_M]=weight;
     }
     
     
     //write to global memory
     chi2_img[global_ID] = chi2;
+    
     for(int i=0; i<PARA_NUM; i++){
         tJdF_img[global_ID+i*IMAGESIZE_M] = tJdF[i];
         tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M] = tJJ[PARA_NUM*i-(i-1)*i/2];
-        for(int j=i+1; j<PARA_NUM; j++){
+        for(int j=i; j<PARA_NUM; j++){
             tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*IMAGESIZE_M] = tJJ[PARA_NUM*i-(i+1)*i/2+j];
         }
     }

@@ -110,7 +110,6 @@ int mt_conversion(cl::CommandQueue queue,cl::Kernel kernel,
             kernel.setArg(10, msk.sampleMask_height);
             kernel.setArg(11, msk.sampleMask_angle);
         }
-        kernel.setArg(12, 0);
         queue.enqueueNDRangeKernel(kernel, global_item_offset, global_item_size, local_item_size, NULL, NULL);
         queue.finish();
     
@@ -151,7 +150,7 @@ int imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         int targetEnergyNo=inp.getTargetEnergyNo();
         float lambda=inp.getLambda_t();
         int Num_trial=inp.getNumTrial();
-        float CI=2.0f;
+        float CI=10.0f;
         int mergeLevel=3;
         
         

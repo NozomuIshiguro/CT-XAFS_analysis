@@ -284,7 +284,6 @@ int imXAFSCT_mt_conversion(cl::CommandQueue queue,cl::Kernel kernel,
 			kernel.setArg(10, msk.sampleMask_height);
 			kernel.setArg(11, msk.sampleMask_angle);
 		}
-		kernel.setArg(12, 0);
 		queue.enqueueNDRangeKernel(kernel, global_item_offset, global_item_size, local_item_size, NULL, NULL);
 		queue.finish();
 	}
@@ -381,7 +380,7 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
         int targetEnergyNo=inp.getTargetEnergyNo();
         float lambda=inp.getLambda_t();
         int Num_trial=inp.getNumTrial();
-        float CI=2.0f;
+        float CI=10.0f;
         int mergeLevel=2;
         
        
@@ -591,7 +590,7 @@ int imXAFSCT_imageReg_thread(cl::CommandQueue command_queue, CL_objects CLO,
                 for (int en=0; en<dE; en++) {
                     if(i*di+en>LoopEndenergyNo[s]*di) break;
                     cl::NDRange global_item_offset(0,0,en*dA);
-                    imXAFSCT_mt_conversion(command_queue,kernel_mt,dark_buffer,I0_buffer,mt_sample_buffer,mt_sample_image[0], mt_sample_outputImg, global_item_size0,local_item_size0, global_item_offset, It_img_sample,i-startEnergyNo+en*di,dA,msk,true);
+                    imXAFSCT_mt_conversion(command_queue,kernel_mt,dark_buffer,I0_buffer,mt_sample_buffer,mt_sample_image[0], mt_sample_outputImg, global_item_size0,local_item_size0, global_item_offset, It_img_sample,i-startEnergyNo+en*di,dA,msk,false);
                 }
 
                 

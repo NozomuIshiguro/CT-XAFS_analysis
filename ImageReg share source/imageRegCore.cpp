@@ -152,6 +152,15 @@ int imageRegistration(cl::CommandQueue command_queue, CL_objects CLO,
     command_queue.finish();
     command_queue.enqueueNDRangeKernel(kernel_imgReg2Y, NULL, global_item_size_RY, local_item_size_RY, NULL, NULL);
     command_queue.finish();
+	/*float* dF2i;
+	float* dFi;
+	dFi = new float[dZ];
+	dF2i = new float[dZ];
+	command_queue.enqueueReadBuffer(dF2new_buffer, CL_TRUE, 0, sizeof(cl_float)*dZ, dF2i);
+	command_queue.enqueueReadBuffer(dF_buffer, CL_TRUE, 0, sizeof(cl_float)*dZ, dFi);
+	for (int i = 0; i < dZ; i++) {
+		cout << sqrt(max(0.0f,dF2i[i] - dFi[i] * dFi[i]))*CI << endl;
+	}*/
     
     
     //Image registration
@@ -224,6 +233,16 @@ int imageRegistration(cl::CommandQueue command_queue, CL_objects CLO,
             command_queue.finish();
             command_queue.enqueueNDRangeKernel(kernel_imgReg2Y, NULL, global_item_size_reg2, local_item_size_reg2, NULL, NULL);
             command_queue.finish();
+			/*float* dF2;
+			float* dF;
+			dF = new float[dZ];
+			dF2 = new float[dZ];
+			command_queue.enqueueReadBuffer(dF2new_buffer, CL_TRUE, 0, sizeof(cl_float)*dZ, dF2);
+			command_queue.enqueueReadBuffer(dF_buffer, CL_TRUE, 0, sizeof(cl_float)*dZ, dF);
+			for (int i = 0; i < dZ; i++) {
+				cout << sqrt(max(0.0f, dF2i[i] - dFi[i] * dFi[i]))*CI <<endl;
+			}*/
+
             
             //evaluate cnd
             command_queue.enqueueNDRangeKernel(kernel_eval, NULL, global_item_size2, local_item_size2, NULL, NULL);

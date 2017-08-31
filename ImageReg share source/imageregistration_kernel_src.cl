@@ -86,8 +86,8 @@ inline float4 transXY(float4 XYZ, float* p, float mergeN, int transMode){
 
 
 inline void Jacobian_XYshift(float* J,float4 XYZ,float* p,float dfdx,float dfdy,float mask,float mergeN){
-    J[0] = dfdx*mask;
-    J[1] = dfdy*mask;
+    J[0] = dfdx*mask/mergeN;
+    J[1] = dfdy*mask/mergeN;
 }
 
 
@@ -96,15 +96,15 @@ inline void Jacobian_Rot(float* J,float4 XYZ,float* p,float dfdx,float dfdy,floa
     float DxDth = -XYZ.x*sin(p[2])-XYZ.y*cos(p[2]);
     float DyDth =  XYZ.x*cos(p[2])-XYZ.y*sin(p[2]);
     
-    J[0] = dfdx*mask;
-    J[1] = dfdy*mask;
+    J[0] = dfdx*mask/mergeN;
+    J[1] = dfdy*mask/mergeN;
     J[2] = (dfdx*DxDth+dfdy*DyDth)*mask;
 }
 
 
 inline void Jacobian_Scale(float* J,float4 XYZ,float* p,float dfdx,float dfdy,float mask,float mergeN){
-    J[0] = dfdx*mask;
-    J[1] = dfdy*mask;
+    J[0] = dfdx*mask/mergeN;
+    J[1] = dfdy*mask/mergeN;
     J[2] = exp(p[2])*(dfdx*XYZ.x+dfdy*XYZ.y)*mask;
 }
 
@@ -117,16 +117,16 @@ inline void Jacobian_RotScale(float* J,float4 XYZ,float* p,float dfdx,float dfdy
     float DxDs  = ( XYZ.x*cos(p[2])-XYZ.y*sin(p[2]))*exp(g);
     float DyDs  = ( XYZ.x*sin(p[2])+XYZ.y*cos(p[2]))*exp(g);
     
-    J[0] = dfdx*mask;
-    J[1] = dfdy*mask;
+    J[0] = dfdx*mask/mergeN;
+    J[1] = dfdy*mask/mergeN;
     J[2] = (dfdx*DxDth+dfdy*DxDth)*mask;
     J[3] = (dfdx*DxDs+dfdy*DyDs)*mask;
 }
 
 
 inline void Jacobian_Affine(float* J,float4 XYZ,float* p,float dfdx,float dfdy,float mask,float mergeN){
-    J[0] = dfdx*mask;
-    J[1] = dfdy*mask;
+    J[0] = dfdx*mask/mergeN;
+    J[1] = dfdy*mask/mergeN;
     J[2] = dfdx*XYZ.x*mask;
     J[3] = dfdx*XYZ.y*mask;
     J[4] = dfdy*XYZ.x*mask;
@@ -162,7 +162,7 @@ __kernel void mt_conversion(__global float *dark, __global float *I0,
                             __write_only image2d_array_t mt_img1,
                             __write_only image2d_array_t mt_img2,
                             int shapeNo,int startpntX, int startpntY,
-                            uint width, uint height, float angle, int evaluatemode){
+                            uint width, uint height, float angle){
     const size_t X = get_global_id(0);
     const size_t Y = get_global_id(1);
     const size_t Z = get_global_id(2);
@@ -185,13 +185,13 @@ __kernel void mt_conversion(__global float *dark, __global float *I0,
     XYZ=(int4)(X,Y,Z,0);
     
     //mask
-    absX = (X-startpntX)*cos(angle/180*(float)PI)-(Y-startpntY)*sin(angle/180*(float)PI);
+    absX = (X-startpntX)*cos(angle/180.0f*(float)PI)-(Y-startpntY)*sin(angle/180.0f*(float)PI);
     absX = fabs(absX);
-    absY = (X-startpntX)*sin(angle/180*(float)PI)+(Y-startpntY)*cos(angle/180*(float)PI);
+    absY = (X-startpntX)*sin(angle/180.0f*(float)PI)+(Y-startpntY)*cos(angle/180.0f*(float)PI);
     absY = fabs(absY);
     switch(shapeNo){
         case 0: //square or rectangle
-            mask=(absX<=width/2 & absY<=height/2) ? 1.0f:0.0f;
+            mask=(absX<=width/2.0f & absY<=height/2.0f) ? 1.0f:0.0f;
             break;
                 
         case 1: //circle or orval
@@ -212,24 +212,7 @@ __kernel void mt_conversion(__global float *dark, __global float *I0,
     trans = isnan(trans) ? 1.0f:trans;
     mt = log(trans);
     mt = isnan(mt) ? 0.0f:mt;
-        
-    switch(evaluatemode){
-        case 0: //mt
-            mt_f1 = (float4)(mt,mask,0.0f,0.0f);
-            break;
-                
-        case 1: // trans^(-1)-1
-            mt_f1 = (float4)(1/trans-1,mask,0.0f,0.0f);
-            break;
-                
-        case 2: // It
-            mt_f1 = (float4)(1/It,mask,0.0f,0.0f);
-            break;
-                
-        default: //mt
-            mt_f1 = (float4)(mt,mask,0.0f,0.0f);
-            break;
-    }
+    
     mt_f1 = (float4)(mt,mask,0.0f,0.0f);
     mt_f2 = (float4)(mt,1.0f,0.0f,0.0f);
     write_imagef(mt_img1,XYZ,mt_f1);
@@ -238,6 +221,83 @@ __kernel void mt_conversion(__global float *dark, __global float *I0,
 
 }
 
+
+__kernel void mt_conversion_binning(__global float *dark_buffer, __global float *I0_buffer,
+                                    __global ushort *It_buffer, __global float *mt_buffer,
+                                    __write_only image2d_array_t mt_img1,
+                                    __write_only image2d_array_t mt_img2,
+                                    int shapeNo,int startpntX, int startpntY,
+                                    uint width, uint height, float angle, int binningN){
+    const size_t X = get_global_id(0);
+    const size_t Y = get_global_id(1);
+    const size_t Z = get_global_id(2);
+    const size_t Zoffset = get_global_offset(2);
+    
+    
+    
+    int ID,IDxy,IDIt;
+    int4 XYZ;
+    float4 mt_f1,mt_f2;
+    float mask=1.0f;
+    float radius2=0;
+    float trans, mt, It, I0, dark;
+    float absX, absY;
+    
+    
+    IDxy = X + IMAGESIZE_X*Y;
+    IDIt = IDxy + (Z-Zoffset)*(IMAGESIZE_M+32);
+    ID   = IDxy + Z*IMAGESIZE_M;
+    XYZ=(int4)(X,Y,Z,0);
+    
+    //mask
+    absX = (X-startpntX)*cos(angle/180.0f*(float)PI)-(Y-startpntY)*sin(angle/180.0f*(float)PI);
+    absX = fabs(absX);
+    absY = (X-startpntX)*sin(angle/180.0f*(float)PI)+(Y-startpntY)*cos(angle/180.0f*(float)PI);
+    absY = fabs(absY);
+    switch(shapeNo){
+        case 0: //square or rectangle
+            mask=(absX<=width/2.0f & absY<=height/2.0f) ? 1.0f:0.0f;
+            break;
+            
+        case 1: //circle or orval
+            radius2=(float)(absX*absX)/width/width+(float)(absY*absY)/height/height;
+            mask=(radius2<=0.25f) ? 1.0f:0.0f;
+            break;
+            
+        default:
+            mask=1.0f;
+            break;
+    }
+    
+    It=0.0f;
+    I0=0.0f;
+    for(int i=0;i<binningN;i++){
+        for(int j=0;j<binningN;j++){
+            IDxy = (X*binningN+j) + IMAGESIZE_X*(Y*binningN+i);
+            IDIt = IDxy + (Z-Zoffset)*(IMAGESIZE_M+32);
+            ID   = IDxy + Z*IMAGESIZE_M;
+            XYZ=(int4)(X,Y,Z,0);
+            
+            dark = dark_buffer[IDxy];
+            I0 += I0_buffer[IDxy] - dark;
+            It += (float)It_buffer[IDIt] - dark;
+        }
+    }
+
+    trans = I0/It;
+    trans = (trans < 1.0E-5f) ? 1.0E-5f:trans;
+    trans = (trans > 1.0E7f) ? 1.0E7f:trans;
+    trans = isnan(trans) ? 1.0f:trans;
+    mt = log(trans);
+    mt = isnan(mt) ? 0.0f:mt;
+    
+    mt_f1 = (float4)(mt,mask,0.0f,0.0f);
+    mt_f2 = (float4)(mt,1.0f,0.0f,0.0f);
+    write_imagef(mt_img1,XYZ,mt_f1);
+    write_imagef(mt_img2,XYZ,mt_f2);
+    mt_buffer[ID]=mt;
+    
+}
 
 //mt transfer
 __kernel void mt_transfer(__global float *mt_buffer,
@@ -355,7 +415,7 @@ __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2
     float tJJ_pr[PARA_NUM*(PARA_NUM+1)];
     float dev[2];
     float weight;
-    float weight_thd = sqrt(dF2[Z] - dF[Z]*dF[Z])*CI;
+    float weight_thd = max(0.5f,fabs(dF[Z]) + sqrt(max(0.0f,dF2[Z] - dF[Z]*dF[Z]))*CI);
     
     dF2_pr[0]=0.0f;
     dF2_pr[1]=0.0f;
@@ -408,9 +468,10 @@ __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2
             
             //weight
             XYZ_i = (int4)(X,Y,Z,0);
-            weight = (dF_pr-dF[Z])/weight_thd;
-            weight = (fabs(weight)<=1.0f) ? (1.0f - weight*weight):0.0f;
-            weight = weight*weight*mask;
+            weight = dF_pr/weight_thd;
+            //weight = (fabs(weight)<=1.0f) ? (1.0f - weight*weight):0.0f;
+            //weight = weight*weight*mask;
+            weight = exp(-weight*weight)*mask;
             write_imagef(weight_img,XYZ_i,(float4)(weight,0.0f,0.0f,0.0f));
             
             //Jacobian
@@ -419,7 +480,7 @@ __kernel void imageReg1X(__read_only image2d_array_t mt_t_img,__read_only image2
             J[PARA_NUM-1] = exp(p_pr[PARA_NUM-2])*mask;
             
             
-            dev[i] += weight*mask;
+            dev[i] += weight;
             dF2_pr[i] += weight*dF_pr*dF_pr;
             for(int n=0;n<PARA_NUM;n++){
                 if(p_fix[n]==48) continue;
@@ -562,13 +623,13 @@ __kernel void imageReg1Y(__global float *dF2X, __global float *tJdFX, __global f
     
     //output dF2, tJJ, tJdF to global memory
     if(local_ID==0){
-        dF2[Z] = dF2_pr[0]/dev_pr[0];
+        dF2[Z] = dF2_pr[0]/max(dev_pr[0],1.0f);
         dev[Z] = dev_pr[0];
         for(int i=0;i<PARA_NUM;i++){
-            tJdF[Z + i*Zsize] = tJdF_pr[i]/dev_pr[0];
+            tJdF[Z + i*Zsize] = tJdF_pr[i]/max(dev_pr[0],1.0f);
         }
         for(int i=0;i<PARA_NUM*(PARA_NUM+1)/2;i++){
-            tJJ[Z + i*Zsize] = tJJ_pr[i]/dev_pr[0];
+            tJJ[Z + i*Zsize] = tJJ_pr[i]/max(dev_pr[0],1.0f);
         }
     }
     barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);
@@ -627,7 +688,7 @@ __kernel void imageReg2X(__read_only image2d_array_t mt_t_img,__read_only image2
             mt_t = read_imagef(mt_t_img,s_linear_cEdge,XYZ_t);
             mask = mt_t.y*mt_s.y;
             dF = (mt_t.x - (mt_s.x+p_pr[PARA_NUM-1])*exp(p_pr[PARA_NUM-2]))*mask;
-            weight = read_imagef(weight_img,s_linear_cEdge,XYZ).x;
+            weight = read_imagef(weight_img,s_linear_cEdge,XYZ).x*mask;
             
             sum_dF[i] += dF*weight;
             dF2[i] += dF*dF*weight;
@@ -720,8 +781,8 @@ __kernel void imageReg2Y(__global float *dF2X, __global float *dFX, __global flo
     
     //output dF2, tJJ, tJdF to global memory
     if(local_ID==0){
-        dF2[Z] = dF2_pr[0]/dev_pr[0];
-        dF[Z]  = dF_pr[0]/dev_pr[0];
+        dF2[Z] = dF2_pr[0]/max(dev_pr[0],1.0f);
+        dF[Z]  = dF_pr[0]/max(dev_pr[0],1.0f);
     }
     barrier(CLK_LOCAL_MEM_FENCE|CLK_GLOBAL_MEM_FENCE);
 }

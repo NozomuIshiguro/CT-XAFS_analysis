@@ -219,3 +219,30 @@ __kernel void zcorrection(__read_only image2d_t xprj_img, __global float *yshift
         barrier(CLK_LOCAL_MEM_FENCE);
     }
 }
+
+__kernel void denoiseSinogram(__read_only image2d_array_t prj_src,
+                              __write_only image2d_array_t prj_dest,
+                              float threshold){
+    
+    const size_t X = get_global_id(0);
+    const size_t th = get_global_id(1);
+    const size_t Y = get_global_id(2);
+    
+    float4 XthY_f1 = (float4)(X,th,Y,0.0f);
+    float4 XthY_f2 = (float4)(X,th+1,Y,0.0f);
+    float4 XthY_f3 = (float4)(X,th-1,Y,0.0f);
+    int4 XthY_i = (int4)(X,th,Y,0.0f);
+    
+    float f1 = read_imagef(prj_src,s_linear_clampE,XthY_f1).x;
+    float f2 = read_imagef(prj_src,s_linear_clampE,XthY_f2).x;
+    float f3 = read_imagef(prj_src,s_linear_clampE,XthY_f3).x;
+    
+    float dfdth1 = f2-f1;
+    float dfdth2 = f1-f3;
+    
+    float corr_f = (f2+f3)/2.0f;
+    corr_f = (dfdth1>threshold&&dfdth2<-threshold)||(dfdth1<-threshold&&dfdth2>threshold) ? corr_f:f1;
+    
+    write_imagef(prj_dest, XthY_i, (float4)(corr_f,0.0f,0.0f,0.0f));
+    
+}
