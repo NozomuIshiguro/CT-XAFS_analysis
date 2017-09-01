@@ -56,7 +56,7 @@ __kernel void reslice(__read_only image2d_t mt_img, __write_only image2d_array_t
     const size_t X = get_global_id(0);
     const size_t Y = get_global_id(1);
     
-    float2 XY = (float2)(X+Xshift[th+th_offset],Y+Yshift[th+th_offset]);
+    float2 XY = (float2)(X+Xshift[th+th_offset]+0.5f,Y+Yshift[th+th_offset]+0.5f);
     int4 XthY = (int4)(X,th,Y,0);
     float4 img;
     
@@ -228,9 +228,9 @@ __kernel void denoiseSinogram(__read_only image2d_array_t prj_src,
     const size_t th = get_global_id(1);
     const size_t Y = get_global_id(2);
     
-    float4 XthY_f1 = (float4)(X,th,Y,0.0f);
-    float4 XthY_f2 = (float4)(X,th+1,Y,0.0f);
-    float4 XthY_f3 = (float4)(X,th-1,Y,0.0f);
+    float4 XthY_f1 = (float4)(X+0.5f,th+0.5f,Y,0.0f);
+    float4 XthY_f2 = (float4)(X+0.5f,th+1.5f,Y,0.0f);
+    float4 XthY_f3 = (float4)(X+0.5f,th-0.5f,Y,0.0f);
     int4 XthY_i = (int4)(X,th,Y,0.0f);
     
     float f1 = read_imagef(prj_src,s_linear_clampE,XthY_f1).x;

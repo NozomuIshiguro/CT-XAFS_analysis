@@ -356,6 +356,8 @@ protected:
     int layerN;
     int startLayer;
     int endLayer;
+    bool denoise;
+    float denoise_threshold;
     
     float rotCenterShiftStart;
     int rotCenterShiftN;
@@ -378,7 +380,9 @@ public:
     float getRotCenterShiftStart();
     int getRotCenterShiftN();
     float getRotCenterShiftStep();
-	
+    bool getDenoiseBool();
+    float getDenoiseThreshold();
+    
     
     void setBaseupFromDialog(string message);
     void setLayerNFromDialog(string message);

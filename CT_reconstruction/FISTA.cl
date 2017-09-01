@@ -258,11 +258,12 @@ __kernel void FISTA2(__read_only image2d_array_t reconst_x_img,
     const int X = get_global_id(0);
     const int Y = get_global_id(1);
     const int Z = get_global_id(2);
-    const int4 xyz = (int4)(X,Y,Z,0);
-    const int4 xpyz = (int4)(X+1,Y,Z,0);
-    const int4 xmyz = (int4)(X-1,Y,Z,0);
-    const int4 xypz = (int4)(X,Y+1,Z,0);
-    const int4 xymz = (int4)(X,Y-1,Z,0);
+    const float4 xyz = (float4)(X+0.5f,Y+0.5f,Z,0.0f);
+    const int4 xyz_i = (int4)(X,Y,Z,0);
+    const float4 xpyz = (float4)(X+1.5f,Y,Z,0.0f);
+    const float4 xmyz = (float4)(X-0.5f,Y,Z,0.0f);
+    const float4 xypz = (float4)(X,Y+1.5f,Z,0.0f);
+    const float4 xymz = (float4)(X,Y-0.5f,Z,0.0f);
     const float lambda = LAMBDA_FISTA/L[sub]*0.5f;
     
     
@@ -317,14 +318,14 @@ __kernel void FISTA2(__read_only image2d_array_t reconst_x_img,
     }
     
     //update of x img
-    write_imagef(reconst_x_new_img, xyz, (float4)(img_new,0.0f,0.0f,1.0f));
+    write_imagef(reconst_x_new_img, xyz_i, (float4)(img_new,0.0f,0.0f,1.0f));
     
     //update of beta image
     float beta_new = beta*beta*4.0f + 1.0f;
     beta_new = (sqrt(beta_new) + 1.0f)*0.5f;
-    write_imagef(reconst_b_new_img, xyz, (float4)(beta,0.0f,0.0f,1.0f));
+    write_imagef(reconst_b_new_img, xyz_i, (float4)(beta,0.0f,0.0f,1.0f));
     
     //update of w img
     float w_new = img_new + (beta - 1.0f)*(img_new-img)/beta_new;
-    write_imagef(reconst_w_new_img, xyz, (float4)(w_new,0.0f,0.0f,1.0f));
+    write_imagef(reconst_w_new_img, xyz_i, (float4)(w_new,0.0f,0.0f,1.0f));
 }

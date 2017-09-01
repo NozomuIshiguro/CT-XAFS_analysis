@@ -14,7 +14,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "    Reslice projection images to sinograms" <<endl<<endl;
     cout << "         First version: Jun. 22nd, 2015"<<endl;
-    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "         Last update: Sep. 1st, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     

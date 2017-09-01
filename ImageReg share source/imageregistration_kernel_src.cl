@@ -42,30 +42,31 @@ inline static float reduction(__local float *loc_mem, const size_t local_ID, con
 
 
 inline float4 XYshift(float4 XYZ, float* p, float mergeN){
-    return (float4)(XYZ.x+p[0]/mergeN, XYZ.y+p[1]/mergeN, XYZ.z, 0.0f);
+    return (float4)(XYZ.x+p[0]/mergeN+0.5f, XYZ.y+p[1]/mergeN+0.5f, XYZ.z, 0.0f);
 }
 
 
 inline float4 Rot(float4 XYZ, float* p, float mergeN){
-    return (float4)(cos(p[2])*XYZ.x - sin(p[2])*XYZ.y + p[0]/mergeN,
-                    sin(p[2])*XYZ.x + cos(p[2])*XYZ.y + p[1]/mergeN, XYZ.z, 0.0f);
+    return (float4)(cos(p[2])*XYZ.x - sin(p[2])*XYZ.y + p[0]/mergeN+0.5f,
+                    sin(p[2])*XYZ.x + cos(p[2])*XYZ.y + p[1]/mergeN+0.5f, XYZ.z, 0.0f);
 }
 
 
 inline float4 Scale(float4 XYZ, float* p, float mergeN){
-    return (float4)(exp(p[2])*XYZ.x + p[0]/mergeN, exp(p[2])*XYZ.y + p[1]/mergeN, XYZ.z, 0.0f);
+    return (float4)(exp(p[2])*XYZ.x + p[0]/mergeN+0.5f,
+                    exp(p[2])*XYZ.y + p[1]/mergeN+0.5f, XYZ.z, 0.0f);
 }
 
 
 inline float4 RotScale(float4 XYZ, float* p, float mergeN){
-    return (float4)((cos(p[2])*XYZ.x - sin(p[2])*XYZ.y)*exp(p[3]) + p[0]/mergeN,
-                    (sin(p[2])*XYZ.x + cos(p[2])*XYZ.y)*exp(p[3]) + p[1]/mergeN, XYZ.z, 0.0f);
+    return (float4)((cos(p[2])*XYZ.x - sin(p[2])*XYZ.y)*exp(p[3]) + p[0]/mergeN+0.5f,
+                    (sin(p[2])*XYZ.x + cos(p[2])*XYZ.y)*exp(p[3]) + p[1]/mergeN+0.5f, XYZ.z, 0.0f);
 }
 
 
 inline float4 Affine(float4 XYZ, float* p, float mergeN){
-    return (float4)((1.0f + p[2])*XYZ.x - p[3]*XYZ.y + p[0]/mergeN,
-                    p[4]*XYZ.x + (1.0f + p[5])*XYZ.y + p[1]/mergeN, XYZ.z, 0.0f);
+    return (float4)((1.0f + p[2])*XYZ.x - p[3]*XYZ.y + p[0]/mergeN+0.5f,
+                    p[4]*XYZ.x + (1.0f + p[5])*XYZ.y + p[1]/mergeN+0.5f, XYZ.z, 0.0f);
 }
 
 
@@ -688,6 +689,7 @@ __kernel void imageReg2X(__read_only image2d_array_t mt_t_img,__read_only image2
             mt_t = read_imagef(mt_t_img,s_linear_cEdge,XYZ_t);
             mask = mt_t.y*mt_s.y;
             dF = (mt_t.x - (mt_s.x+p_pr[PARA_NUM-1])*exp(p_pr[PARA_NUM-2]))*mask;
+            XYZ = (float4)(X+0.5f,Y+0.5f,Z,0.0f);
             weight = read_imagef(weight_img,s_linear_cEdge,XYZ).x*mask;
             
             sum_dF[i] += dF*weight;

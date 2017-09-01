@@ -56,8 +56,8 @@ __kernel void AART1(__read_only image2d_array_t reconst_img,
     int4 XthZ = (int4)(X,th,Z,0);
     for(Y=0; Y < DEPTHSIZE; Y++){
         angle_pr = angle[th]*PI/180.0f;
-        xyz.x =  (X-PRJ_IMAGESIZE*0.5f)*cos(angle_pr)+(Y-DEPTHSIZE*0.5f)*sin(angle_pr) + IMAGESIZE_X*0.5f;
-        xyz.y = -(X-PRJ_IMAGESIZE*0.5f)*sin(angle_pr)+(Y-DEPTHSIZE*0.5f)*cos(angle_pr) + IMAGESIZE_Y*0.5f;
+        xyz.x =  (X-PRJ_IMAGESIZE*0.5f)*cos(angle_pr)+(Y-DEPTHSIZE*0.5f)*sin(angle_pr) + IMAGESIZE_X*0.5f + 0.5f;
+        xyz.y = -(X-PRJ_IMAGESIZE*0.5f)*sin(angle_pr)+(Y-DEPTHSIZE*0.5f)*cos(angle_pr) + IMAGESIZE_Y*0.5f + 0.5f;
         
         prj += read_imagef(reconst_img,s_linear,xyz).x;
     }
@@ -94,8 +94,8 @@ __kernel void AART2(__read_only image2d_array_t reconst_img,
     int4 xyz_i = (int4)(X,Y,Z,0);
     for(th=sub;th<PRJ_ANGLESIZE;th+=SS){
         angle_pr = angle[th]*PI/180.0f;
-        XthZ.x =  (X-IMAGESIZE_X*0.5f)*cos(angle_pr)-(Y-IMAGESIZE_Y*0.5f)*sin(angle_pr) + PRJ_IMAGESIZE*0.5f;
-        XthZ.y = th;
+        XthZ.x =  (X-IMAGESIZE_X*0.5f)*cos(angle_pr)-(Y-IMAGESIZE_Y*0.5f)*sin(angle_pr) + PRJ_IMAGESIZE*0.5f + 0.5f;
+        XthZ.y = th + 0.5f;
         
         bprj += read_imagef(dprj_img,s_nearest,XthZ).x;
     }

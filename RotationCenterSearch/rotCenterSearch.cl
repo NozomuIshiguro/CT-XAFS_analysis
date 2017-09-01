@@ -39,7 +39,7 @@ __kernel void rotCenterShift(__read_only image2d_t prj_input_img,
     
     const size_t X = get_global_id(0);
     const size_t Y = get_global_id(1);
-    float2 XY_in = (float2)(X+rotCenterShift,Y);
+    float2 XY_in = (float2)(X+rotCenterShift+0.5f,Y+0.5f);
     int2 XY_out = (int2)(X,Y);
     
     float4 value = read_imagef(prj_input_img,s_linear,XY_in);
@@ -106,7 +106,7 @@ __kernel void imgAVG(__read_only image2d_array_t img,__read_only image2d_array_t
     float2 sum = {0.0f,0.0f};
     for(int j=0;j<IMAGESIZE_Y;j++){
         for(int i=0;i<IMAGESIZE_X/localsize;i++){
-            XYZ=(float4)(local_ID+i*localsize,j,group_ID,0);
+            XYZ=(float4)(local_ID+i*localsize+0.5f,j+0.5f,group_ID,0);
             float mask = read_imagef(mask_img,s_linear,XYZ).x;
             float val = (mask==1.0f) ? read_imagef(img,s_linear,XYZ).x:0.0f;
             sum += (float2)(val,mask);
@@ -136,7 +136,7 @@ __kernel void imgSTDEV(__read_only image2d_array_t img,__read_only image2d_array
     float2 var = {0.0f,0.0f};
     for(int j=0;j<IMAGESIZE_Y;j++){
         for(int i=0;i<IMAGESIZE_X/localsize;i++){
-            float4 XYZ=(float4)(local_ID+i*localsize,j,group_ID,0);
+            float4 XYZ=(float4)(local_ID+i*localsize+0.5f,j+0.5f,group_ID,0);
             float mask = read_imagef(mask_img,s_linear,XYZ).x;
             float a = (mask==1.0f) ? read_imagef(img,s_linear,XYZ).x - avg[group_ID]:0.0f;
             var += (float2)(a*a,mask);
@@ -166,15 +166,15 @@ __kernel void imgFocusIndex(__read_only image2d_array_t img,__read_only image2d_
     float2 var = {0.0f,0.0f};
     for(int j=0;j<IMAGESIZE_Y;j++){
         for(int i=0;i<IMAGESIZE_X/localsize;i++){
-            float4 XYZ=(float4)(local_ID+i*localsize,j,group_ID,0);
-            float4 XYZu=(float4)(local_ID+i*localsize,j+1,group_ID,0);
-            float4 XYZd=(float4)(local_ID+i*localsize,j-1,group_ID,0);
-            float4 XYZr=(float4)(local_ID+i*localsize+1,j,group_ID,0);
-            float4 XYZl=(float4)(local_ID+i*localsize-1,j,group_ID,0);
-            float4 XYZur=(float4)(local_ID+i*localsize+1,j+1,group_ID,0);
-            float4 XYZdr=(float4)(local_ID+i*localsize+1,j-1,group_ID,0);
-            float4 XYZul=(float4)(local_ID+i*localsize-1,j+1,group_ID,0);
-            float4 XYZdl=(float4)(local_ID+i*localsize-1,j-1,group_ID,0);
+            float4 XYZ=(float4)(local_ID+i*localsize+0.5f,j+0.5f,group_ID,0);
+            float4 XYZu=(float4)(local_ID+i*localsize+0.5f,j+1.5f,group_ID,0);
+            float4 XYZd=(float4)(local_ID+i*localsize+0.5f,j-0.5f,group_ID,0);
+            float4 XYZr=(float4)(local_ID+i*localsize+1.5f,j+0.5f,group_ID,0);
+            float4 XYZl=(float4)(local_ID+i*localsize-0.5f,j+0.5f,group_ID,0);
+            float4 XYZur=(float4)(local_ID+i*localsize+1.5f,j+1.5f,group_ID,0);
+            float4 XYZdr=(float4)(local_ID+i*localsize+1.5f,j-0.5f,group_ID,0);
+            float4 XYZul=(float4)(local_ID+i*localsize-0.5f,j+1.5f,group_ID,0);
+            float4 XYZdl=(float4)(local_ID+i*localsize-0.5f,j-0.5f,group_ID,0);
             
             float mask = read_imagef(mask_img,s_linear,XYZ).x;
             float mask_u = read_imagef(mask_img,s_linear,XYZu).x;

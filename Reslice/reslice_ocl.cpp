@@ -208,6 +208,53 @@ int reslice(cl::CommandQueue command_queue, cl::Kernel kernel,
 }
 
 
+int denoiseSinogram(cl::CommandQueue command_queue, cl::Kernel kernel,
+                    int num_angle, vector<float*> prj_vec, int iter,
+                    int imageSizeX,int imageSizeY,float threshold){
+    
+    cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
+    size_t maxWorkGroupSize = command_queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    
+    cl::ImageFormat format(CL_R, CL_FLOAT);
+    const cl::NDRange local_item_size(min(imageSizeX,(int)maxWorkGroupSize),1,1);
+    const cl::NDRange global_item_size(imageSizeX,num_angle,imageSizeY/iter);
+    cl::size_t<3> origin;
+    cl::size_t<3> region;
+    origin[0] = 0;
+    origin[1] = 0;
+    region[0] = imageSizeX;
+    region[1] = num_angle;
+    region[2] = 1;
+    
+    cl::Image2DArray prj_img_src(context, CL_MEM_READ_WRITE,format,imageSizeY/iter,imageSizeX, num_angle, 0, 0, NULL, NULL);
+    cl::Image2DArray prj_img_dest(context, CL_MEM_READ_WRITE,format,imageSizeY/iter,imageSizeX, num_angle, 0, 0, NULL, NULL);
+    
+    for (int j=0; j<imageSizeY; j+=imageSizeY/iter) {
+        for (int i = 0; i < imageSizeY/iter; i++) {
+            origin[2]=i;
+            command_queue.enqueueWriteImage(prj_img_src, CL_TRUE, origin, region, imageSizeX*sizeof(cl_float), 0, prj_vec[i+j], NULL, NULL);
+        }
+        
+        
+        //denoise
+        kernel.setArg(0, prj_img_src);
+        kernel.setArg(1, prj_img_dest);
+        kernel.setArg(2, (cl_float)threshold);
+        command_queue.enqueueNDRangeKernel(kernel, NULL, global_item_size, local_item_size, NULL, NULL);
+        command_queue.finish();
+        
+        
+        for (int i = 0; i < imageSizeY/iter; i++) {
+            origin[2]=i;
+            command_queue.enqueueReadImage(prj_img_dest, CL_TRUE, origin, region, imageSizeX*sizeof(cl_float), 0, prj_vec[i+j], NULL, NULL);
+        }
+    }
+    
+    
+    return 0;
+}
+
+
 int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                    int startAngleNo, int EndAngleNo,string subDir_str,float baseup,
                    input_parameter inp,string fileName_base_o,
@@ -281,6 +328,22 @@ int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                 xshift_buff,zshift_buff,
                 imageSizeX,imageSizeY);
         
+        //denoise
+        float threshold = inp.getDenoiseThreshold();
+        if(inp.getDenoiseBool()){
+            int iter2=1;
+            size_t memobj = sizeof(cl_float)*((int64_t)imageSizeX*num_angle*(imageSizeY/iter2)*2);
+            while (memobj>globalMemSize) {
+                iter*=2;
+                memobj = sizeof(cl_float)*((int64_t)imageSizeX*num_angle*(imageSizeY/iter2)*2);
+            }
+            
+            denoiseSinogram(command_queue, kernel[3], num_angle, prj_vec, iter2,
+                            imageSizeX, imageSizeY, threshold);
+            
+        }
+        
+        
         
         //delete input mt_vec
         for (int i=startAngleNo; i<=EndAngleNo; i++) {
@@ -342,6 +405,7 @@ int data_input_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
 
 //dummy thread
 static int dummy(){
+    
     return 0;
 }
 
@@ -381,6 +445,7 @@ int reslice_programBuild(cl::Context context,vector<cl::Kernel> *kernels,
     kernels[0].push_back(cl::Kernel::Kernel(program,"reslice", &ret));//0
     kernels[0].push_back(cl::Kernel::Kernel(program,"xprojection", &ret));//1
     kernels[0].push_back(cl::Kernel::Kernel(program,"zcorrection", &ret));//2
+    kernels[0].push_back(cl::Kernel::Kernel(program,"denoiseSinogram", &ret));//2
     
     return 0;
 }

@@ -49,7 +49,7 @@ __kernel void zeroPadding(__read_only image2d_array_t prj_img, global float2 *xc
     const size_t imgOffset = th*ZP_SIZE+Z*ZP_SIZE*PRJ_ANGLESIZE;
     
     //zero padding and swap data
-    float4 XthZ_f =(float4)(X,th,Z,0.0f);
+    float4 XthZ_f =(float4)(X+0.5f,th+0.5f,Z,0.0f);
     int Xcnt = X - PRJ_IMAGESIZE / 2 + ZP_SIZE / 2;
     int Xswap = (Xcnt < ZP_SIZE / 2) ? (Xcnt + ZP_SIZE / 2) : (Xcnt - ZP_SIZE / 2);
     float prj = read_imagef(prj_img, s_linear, XthZ_f).x;
@@ -77,6 +77,7 @@ __kernel void bitReverse(__global float2 *xc_src, __global float2 *xc_dest, cons
         
     xc_dest[X2+imgOffset] = xc_src[X1+imgOffset];
 }
+
 
 // 4. butterfly
 __kernel void butterfly(__global float2 *xc, __constant float2 *W, uint flag, int iter){
@@ -177,9 +178,9 @@ __kernel void backProjectionFBP(__read_only image2d_array_t fprj_img,
     float radius = sqrt((X-IMAGESIZE_X*0.5f)*(X-IMAGESIZE_X*0.5f)+(Y-IMAGESIZE_Y*0.5f)*(Y-IMAGESIZE_Y*0.5f));
     for(th=0;th<PRJ_ANGLESIZE;th++){
         angle_pr = angle[th]*PI/180.0f;
-        XthZ.x =  (X-IMAGESIZE_X*0.5f)*cos(angle_pr)-(Y-IMAGESIZE_Y*0.5f)*sin(angle_pr) + PRJ_IMAGESIZE*0.5f;
+        XthZ.x =  (X-IMAGESIZE_X*0.5f)*cos(angle_pr)-(Y-IMAGESIZE_Y*0.5f)*sin(angle_pr) + PRJ_IMAGESIZE*0.5f + 0.5f;
             
-        XthZ.y = th;
+        XthZ.y = th + 0.5f;
         bprj += (radius<IMAGESIZE_X*0.5f) ? read_imagef(fprj_img,s_linear,XthZ).x:0.0f;
     }
     bprj /= PRJ_ANGLESIZE*2.0f;

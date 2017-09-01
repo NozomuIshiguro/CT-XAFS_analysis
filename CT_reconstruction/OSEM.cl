@@ -1,4 +1,4 @@
-﻿#ifndef PI
+#ifndef PI
 #define PI 3.14159265358979323846
 #endif
 
@@ -55,17 +55,16 @@ __kernel void OSEM1(__read_only image2d_array_t reconst_img,
     // rprj_img:    y(k) = C x lambda(k) => y'(k) = y_i / y(k)
     for(Y=0; Y < DEPTHSIZE; Y++){
         angle_pr = angle[th]*PI/180;
-        xyz.x =  (X-PRJ_IMAGESIZE/2)*cos(angle_pr)+(Y-DEPTHSIZE/2)*sin(angle_pr) + IMAGESIZE_X/2;
-        xyz.y = -(X-PRJ_IMAGESIZE/2)*sin(angle_pr)+(Y-DEPTHSIZE/2)*cos(angle_pr) + IMAGESIZE_Y/2;
-                
+        xyz.x =  (X-PRJ_IMAGESIZE/2)*cos(angle_pr)+(Y-DEPTHSIZE/2)*sin(angle_pr) + IMAGESIZE_X/2+0.5f;
+        xyz.y = -(X-PRJ_IMAGESIZE/2)*sin(angle_pr)+(Y-DEPTHSIZE/2)*cos(angle_pr) + IMAGESIZE_Y/2+0.5f;
+        
         prj += read_imagef(reconst_img,s_linear,xyz).x;
     }
-            
+    
     rprj = read_imagef(prj_img,s_linear,XthZ).x;
     rprj = (prj<0.0001f) ? rprj:rprj/prj;
     write_imagef(rprj_img, XthZ, (float4)(rprj,0.0f,0.0f,1.0f));
 }
-
 
 //back-projection of projection ratio
 __kernel void OSEM2(__read_only image2d_array_t reconst_img,
@@ -87,17 +86,17 @@ __kernel void OSEM2(__read_only image2d_array_t reconst_img,
     // rprj_img:            y'(k)
     // bprj:                lambda' = y'(k) x C_pinv
     // reconst_dest_img:    lambda(k+1) = lambda' x lambda(k)
-    float4 xyz_f = (float4)(X,Y,Z,0.0f);
+    float4 xyz_f = (float4)(X+0.5f,Y+0.5f,Z,0.0f);
     int4 xyz_i = (int4)(X,Y,Z,0);
     float angle_pr;
     for(int th=sub;th<PRJ_ANGLESIZE;th+=SS){
-        angle_pr = angle[th]*PI/180;
-        XthZ.x =  (X-IMAGESIZE_X/2)*cos(angle_pr)-(Y-IMAGESIZE_Y/2)*sin(angle_pr) + PRJ_IMAGESIZE/2;
-        XthZ.y = th;
-                
+        angle_pr = angle[th]*PI/180.0f;
+        XthZ.x =  (X-IMAGESIZE_X/2)*cos(angle_pr)-(Y-IMAGESIZE_Y/2)*sin(angle_pr) + PRJ_IMAGESIZE/2+0.5f;
+        XthZ.y = th+0.5f;
+        
         bprj += read_imagef(rprj_img,s_nearest,XthZ).x;
     }
-            
+    
     //update assumed img
     img = read_imagef(reconst_img,s_nearest,xyz_f).x*bprj*SS/PRJ_ANGLESIZE;
     write_imagef(reconst_dest_img, xyz_i, (float4)(img,0.0f,0.0f,1.0f));

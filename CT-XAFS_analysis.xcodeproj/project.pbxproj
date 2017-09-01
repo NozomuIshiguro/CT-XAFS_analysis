@@ -372,7 +372,7 @@
 		2E2304351AAB4121005A0A54 /* readHisRawFile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = readHisRawFile.cpp; path = "../share source/readHisRawFile.cpp"; sourceTree = "<group>"; };
 		2E2ACFF11B2C33290073211A /* CT_reconstruction_input_parameter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CT_reconstruction_input_parameter.cpp; sourceTree = "<group>"; };
 		2E2ACFF31B2C33650073211A /* CT_reconstruction.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = CT_reconstruction.hpp; sourceTree = "<group>"; };
-		2E2ACFF71B32687C0073211A /* OSEM.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = OSEM.cl; sourceTree = "<group>"; };
+		2E2ACFF71B32687C0073211A /* OSEM.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; lineEnding = 0; path = OSEM.cl; sourceTree = "<group>"; };
 		2E2ED43F1F2B16F20093DA92 /* EXAFS.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = EXAFS.hpp; sourceTree = "<group>"; };
 		2E2ED4401F2B1F100093DA92 /* FEFF_shell_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FEFF_shell_class.cpp; sourceTree = "<group>"; };
 		2E2ED4551F2D980D0093DA92 /* shellObject_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = shellObject_class.cpp; sourceTree = "<group>"; };
@@ -426,7 +426,7 @@
 		2E8887911F3EC74400F5688F /* EXAFSextraction.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = EXAFSextraction.cl; sourceTree = "<group>"; };
 		2E8887971F3EC7CF00F5688F /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		2E8F505D1B39A81E00750952 /* reslice_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = reslice_cl.hpp; path = Reslice/reslice_cl.hpp; sourceTree = SOURCE_ROOT; };
-		2E8F505E1B39AEBF00750952 /* OSEM_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = OSEM_cl.hpp; path = CT_reconstruction/OSEM_cl.hpp; sourceTree = SOURCE_ROOT; };
+		2E8F505E1B39AEBF00750952 /* OSEM_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; lineEnding = 0; name = OSEM_cl.hpp; path = CT_reconstruction/OSEM_cl.hpp; sourceTree = SOURCE_ROOT; };
 		2EB338491C784C1C00DC59FA /* rotCenterSearch.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = rotCenterSearch.cl; sourceTree = "<group>"; };
 		2EB3384B1C7851FA00DC59FA /* rotCenterSerch_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = rotCenterSerch_cl.hpp; sourceTree = "<group>"; };
 		2EB7283C1F1DCD86003C0F2F /* imageBatchBinning */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = imageBatchBinning; sourceTree = BUILT_PRODUCTS_DIR; };

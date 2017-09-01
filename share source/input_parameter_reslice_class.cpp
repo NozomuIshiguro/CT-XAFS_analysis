@@ -102,10 +102,18 @@ void input_parameter_reslice::setRotCenterShiftStep(string str){
     iss >> rotCenterShiftStep;
 }
 
+bool input_parameter_reslice::getDenoiseBool(){
+    return denoise;
+}
+
+float input_parameter_reslice::getDenoiseThreshold(){
+    return denoise_threshold;
+}
+
 //constructor
 input_parameter_reslice::input_parameter_reslice(){
 
-    baseup=0.0;
+    baseup=0.0f;
     Z_corr=0;
     X_corr=0;
     startX=0;
@@ -119,6 +127,9 @@ input_parameter_reslice::input_parameter_reslice(){
 	rotCenterShiftStart = 0;
 	rotCenterShiftN = 0;
 	rotCenterShiftStep = NAN;
+    
+    denoise =false;
+    denoise_threshold = 0.0f;
 }
 
 input_parameter_reslice::input_parameter_reslice(string inputfile_path){
@@ -211,5 +222,21 @@ void input_parameter_reslice::inputFromFile_reslice(char *buffer, ifstream *inp_
         cout << buffer << endl;
         (*inp_ifs) >> startLayer; (*inp_ifs).ignore()>>endLayer;
         cout << "  " << startLayer << endLayer << endl;
+    }else if ((string)buffer == "#Noise removal") {
+        cout << buffer << endl;
+        (*inp_ifs).getline(buffer, buffsize);
+        istringstream iss(buffer);
+        char b;
+        (*inp_ifs) >> b;
+        if (atoi(&b)==1) {
+            denoise=true;
+        }else{
+            denoise=false;
+        }
+        cout<<"  "<< boolalpha <<denoise<<endl;
+    }else if ((string)buffer == "#Noise removal threshold") {
+        cout << buffer << endl;
+        (*inp_ifs) >> denoise_threshold;
+        cout << "  " << denoise_threshold << endl;
     }
 }
