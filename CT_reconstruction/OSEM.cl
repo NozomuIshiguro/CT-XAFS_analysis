@@ -99,5 +99,6 @@ __kernel void OSEM2(__read_only image2d_array_t reconst_img,
     
     //update assumed img
     img = read_imagef(reconst_img,s_nearest,xyz_f).x*bprj*SS/PRJ_ANGLESIZE;
+    img = isnan(img) ? 1.0e-6f:img;
     write_imagef(reconst_dest_img, xyz_i, (float4)(img,0.0f,0.0f,1.0f));
 }

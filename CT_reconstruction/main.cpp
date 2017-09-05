@@ -43,9 +43,7 @@ int correctionMode = 0; //投影像補正 0:なし,1:x方向,2:θ方向,3:x+θ�
 float amp = 1.0f; //強度増幅因子
 int baseupOrder =4;//baseup 減少速度次数
 bool CSitBool = false; //圧縮センシング逐次計算
-float CSepsilon = 1.0e-8f; //圧縮センシング逐次計算ノイズファクター
-float CSalpha = 0.1f; //圧縮センシング逐次計算加算ファクター
-int CSit = 5; //圧縮センシング逐次計算回数
+float CSlambda = 0.0001f; //圧縮センシング逐次計算加算ファクター
 
 //int CPU();
 int GPU();
@@ -57,7 +55,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "            Batch CT reconstruction" <<endl<<endl;
     cout << "         First version: Jun. 19th, 2015"<<endl;
-    cout << "         Last update: Aug. 31st, 2017"<<endl<<endl;
+    cout << "         Last update: Sep. 5th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     

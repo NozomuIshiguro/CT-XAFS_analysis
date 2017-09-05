@@ -9,7 +9,7 @@
 #include "EXAFS.hpp"
 
 vector<int> GPUmemoryControl(int imageSizeX, int imageSizeY,int ksize,int Rsize,int qsize,
-                             int fittingMode, int num_fpara, vector<shellObjects> shObjs, cl::CommandQueue queue){
+                             int fittingMode, int num_fpara, int shellnum, cl::CommandQueue queue){
     
     vector<int> processImageSizeY;
     processImageSizeY.push_back(imageSizeY); //for other process
@@ -18,7 +18,7 @@ vector<int> GPUmemoryControl(int imageSizeX, int imageSizeY,int ksize,int Rsize,
     size_t GPUmemorySize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>();
     
     size_t usingMemorySize;
-    size_t shellnum = shObjs.size();
+    //size_t shellnum = shObjs.size();
     do {
         usingMemorySize =0;
         //S0 image
@@ -316,7 +316,8 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
                cl::Buffer chidata, cl::Buffer S02, cl::Buffer Rfactor, vector<shellObjects> shObj,
                int kw, float kstart, float kend, int imageSizeX, int imageSizeY,
                bool freeS02,int numTrial,float lambda, int contrainSize, cl::Buffer edgeJ,
-               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff){
+               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff,
+               bool CSbool, int CSit, cl::Buffer CSlambda_buff){
     try {
         
         int FreeParaSize = (freeS02) ? 1:0;
@@ -352,7 +353,8 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
         queue.enqueueFillBuffer(nyu_buff, (cl_float)2.0f, 0, sizeof(float)*imageSizeM);
         queue.enqueueFillBuffer(p_fix, (cl_char)1, 0, sizeof(cl_char)*FreeParaSize);
         cl::Buffer eval_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeM,0,NULL);
-
+        cl::Buffer freefix_fista(context, CL_MEM_READ_WRITE, sizeof(cl_char)*FreeParaSize, 0, NULL);
+        queue.enqueueFillBuffer(freefix_fista, (cl_char)49, 0, sizeof(cl_char)*FreeParaSize);
         
         
         
@@ -421,6 +423,17 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
         kernel_Rfactor.setArg(1, chidata);
         kernel_Rfactor.setArg(2, chiFit);
         kernel_Rfactor.setArg(3, (cl_int)ksize);
+        //FISTA
+        cl::Kernel kernel_FISTA(program,"FISTA");
+        if (CSbool) {
+            kernel_FISTA.setArg(0, para_backup);
+            kernel_FISTA.setArg(1, dp_img);
+            kernel_FISTA.setArg(2, tJJ);
+            kernel_FISTA.setArg(3, tJdF);
+            kernel_FISTA.setArg(4, freefix_fista);
+            kernel_FISTA.setArg(5, lambda_buff);
+            kernel_FISTA.setArg(6, CSlambda_buff);
+        }
         
         
         
@@ -540,6 +553,15 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
                 cout <<"dp["<<i<<"]: "<<dp_data[i*imageSizeM]<<endl;
             }
             cout<<endl;*/
+            
+            
+            //FISTA (Soft Thresholding Function)
+            if(CSbool){
+                for (int k = 0; k < CSit; k++) {
+                    queue.enqueueNDRangeKernel(kernel_FISTA, NULL, global_item_size, local_item_size, NULL, NULL);
+                    queue.finish();
+                }
+            }
             
             
             //estimate dL
@@ -675,7 +697,8 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
                int kw, float kstart, float kend, float Rstart, float Rend,
                int imageSizeX, int imageSizeY, int FFTimageSizeY,
                bool freeS02,int numTrial,float lambda, int contrainSize, cl::Buffer edgeJ,
-               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff){
+               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff,
+               bool CSbool, int CSit, cl::Buffer CSlambda_buff){
     try {
         
         int FreeParaSize = (freeS02) ? 1:0;
@@ -714,10 +737,8 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         queue.enqueueFillBuffer(lambda_buff, (cl_float)lambda, 0, sizeof(float)*imageSizeM);
         queue.enqueueFillBuffer(nyu_buff, (cl_float)2.0f, 0, sizeof(float)*imageSizeM);
         cl::Buffer eval_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeM,0,NULL);
-        cl::Buffer Lambda_fista(context, CL_MEM_READ_WRITE, sizeof(cl_float)*FreeParaSize, 0, NULL);
         cl::Buffer freefix_fista(context, CL_MEM_READ_WRITE, sizeof(cl_char)*FreeParaSize, 0, NULL);
         queue.enqueueFillBuffer(freefix_fista, (cl_char)49, 0, sizeof(cl_char)*FreeParaSize);
-        queue.enqueueFillBuffer(Lambda_fista, (cl_float)0.001f, 0, sizeof(cl_float)*FreeParaSize);
         
         
         //kernel settings
@@ -785,20 +806,16 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         kernel_Rfactor.setArg(1, FTchidata);
         kernel_Rfactor.setArg(2, FTchiFit);
         kernel_Rfactor.setArg(3, (cl_int)Rsize);
-        
-        
         //FISTA
-        bool CSbool =false;
-        int CSit = 10;
         cl::Kernel kernel_FISTA(program,"FISTA");
         if (CSbool) {
-            kernel_FISTA.setArg(0, S02);
+            kernel_FISTA.setArg(0, para_backup);
             kernel_FISTA.setArg(1, dp_img);
             kernel_FISTA.setArg(2, tJJ);
             kernel_FISTA.setArg(3, tJdF);
             kernel_FISTA.setArg(4, freefix_fista);
             kernel_FISTA.setArg(5, lambda_buff);
-            kernel_FISTA.setArg(6, Lambda_fista);
+            kernel_FISTA.setArg(6, CSlambda_buff);
         }
         
         
@@ -919,6 +936,24 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
             queue.finish();
             
             
+            //copy para backup
+            //S02
+            fpn = 0;
+            if(freeS02){
+                queue.enqueueCopyBuffer(S02, para_backup, 0, sizeof(cl_float)*imageSizeM*fpn, sizeof(float)*imageSizeM);
+                fpn++;
+            }
+            //others
+            for (int sh=0; sh<shObj.size(); sh++) {
+                for (int paraN=0; paraN<7; paraN++) {
+                    if(shObj[sh].getFreeFixPara(paraN+1)){
+                        shObj[sh].copyPara(para_backup,fpn,paraN+1);
+                        fpn++;
+                    }
+                }
+            }
+            
+            
             //FISTA (Soft Thresholding Function)
             if(CSbool){
                 for (int k = 0; k < CSit; k++) {
@@ -937,7 +972,7 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
             //S02
             fpn = 0;
             if(freeS02){
-                queue.enqueueCopyBuffer(S02, para_backup, 0, sizeof(cl_float)*imageSizeM*fpn, sizeof(float)*imageSizeM);
+                //queue.enqueueCopyBuffer(S02, para_backup, 0, sizeof(cl_float)*imageSizeM*fpn, sizeof(float)*imageSizeM);
                 
                 kernel_update.setArg(1, S02);
                 kernel_update.setArg(2, (cl_int)0);
@@ -949,7 +984,7 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
             for (int sh=0; sh<shObj.size(); sh++) {
                 for (int paraN=0; paraN<7; paraN++) {
                     if(shObj[sh].getFreeFixPara(paraN+1)){
-                        shObj[sh].copyPara(para_backup,fpn,paraN+1);
+                        //shObj[sh].copyPara(para_backup,fpn,paraN+1);
                         shObj[sh].updatePara(dp_img, paraN+1, fpn);
                         fpn++;
                     }
@@ -1064,7 +1099,8 @@ int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
                int kw, float kstart, float kend, float Rstart, float Rend, float qstart, float qend,
                int imageSizeX, int imageSizeY, int FFTimageSizeY,
                bool freeS02,int numTrial,float lambda, int contrainSize, cl::Buffer edgeJ,
-               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff){
+               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff,
+               bool CSbool, int CSit, cl::Buffer CSlambda_buff){
     try {
         
         int FreeParaSize = (freeS02) ? 1:0;
@@ -1106,6 +1142,8 @@ int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         queue.enqueueFillBuffer(lambda_buff, (cl_float)lambda, 0, sizeof(float)*imageSizeM);
         queue.enqueueFillBuffer(nyu_buff, (cl_float)2.0f, 0, sizeof(float)*imageSizeM);
         cl::Buffer eval_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeM,0,NULL);
+        cl::Buffer freefix_fista(context, CL_MEM_READ_WRITE, sizeof(cl_char)*FreeParaSize, 0, NULL);
+        queue.enqueueFillBuffer(freefix_fista, (cl_char)49, 0, sizeof(cl_char)*FreeParaSize);
         
         
         //kernel settings
@@ -1173,6 +1211,18 @@ int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         kernel_Rfactor.setArg(1, chiqdata);
         kernel_Rfactor.setArg(2, chiqFit);
         kernel_Rfactor.setArg(3, (cl_int)qsize);
+        //FISTA
+        cl::Kernel kernel_FISTA(program,"FISTA");
+        if (CSbool) {
+            kernel_FISTA.setArg(0, para_backup);
+            kernel_FISTA.setArg(1, dp_img);
+            kernel_FISTA.setArg(2, tJJ);
+            kernel_FISTA.setArg(3, tJdF);
+            kernel_FISTA.setArg(4, freefix_fista);
+            kernel_FISTA.setArg(5, lambda_buff);
+            kernel_FISTA.setArg(6, CSlambda_buff);
+        }
+        
         
         
         size_t maxWorkGroupSize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
@@ -1331,6 +1381,15 @@ int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
             //Levenberg-Marquardt
             queue.enqueueNDRangeKernel(kernel_LM,NULL,global_item_size,local_item_size, NULL, NULL);
             queue.finish();
+            
+            
+            //FISTA (Soft Thresholding Function)
+            if(CSbool){
+                for (int k = 0; k < CSit; k++) {
+                    queue.enqueueNDRangeKernel(kernel_FISTA, NULL, global_item_size, local_item_size, NULL, NULL);
+                    queue.finish();
+                }
+            }
             
             
             //estimate dL

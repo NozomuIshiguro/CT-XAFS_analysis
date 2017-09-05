@@ -143,7 +143,7 @@ void getparameter_inp(string inputfile_path){
             }else if ((string)buffer == "#AARTファクター") {
 				cout << buffer << endl;
 				inp_ifs >> g_wt1;
-				cout << CSit << endl << endl;
+				cout << g_wt1 << endl << endl;
 			}else if((string)buffer=="#サブセット(OSEM)"){
 				cout << buffer << endl;
 				inp_ifs>>g_ss;
@@ -170,18 +170,10 @@ void getparameter_inp(string inputfile_path){
                 inp_ifs>>dummy;
                 CSitBool= (dummy==1) ? true:false;
                 cout << boolalpha <<CSitBool << endl << endl;
-            }else if((string)buffer=="#逐次圧縮センシング計算ノイズファクター"){
-                cout << buffer << endl;
-                inp_ifs>>CSepsilon;
-                cout << CSepsilon << endl << endl;
             }else if((string)buffer=="#逐次圧縮センシング計算加算ファクター"){
                 cout << buffer << endl;
-                inp_ifs>>CSalpha;
-                cout << CSalpha << endl << endl;
-            }else if((string)buffer=="#逐次圧縮センシング計算回数"){
-                cout << buffer << endl;
-                inp_ifs>>CSit;
-                cout << CSit << endl << endl;
+                inp_ifs>>CSlambda;
+                cout << CSlambda << endl << endl;
             }
             
 

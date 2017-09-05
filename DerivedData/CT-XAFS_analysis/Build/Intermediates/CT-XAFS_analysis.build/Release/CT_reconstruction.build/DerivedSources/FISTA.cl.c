@@ -13,7 +13,8 @@
 static void initBlocks(void);
 
 // Initialize static data structures
-static block_kernel_pair pair_map[7] = {
+static block_kernel_pair pair_map[8] = {
+      { NULL, NULL },
       { NULL, NULL },
       { NULL, NULL },
       { NULL, NULL },
@@ -23,7 +24,7 @@ static block_kernel_pair pair_map[7] = {
       { NULL, NULL }
 };
 
-static block_kernel_map bmap = { 0, 7, initBlocks, pair_map };
+static block_kernel_map bmap = { 0, 8, initBlocks, pair_map };
 
 // Block function
 void (^powerIter1_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image prj_img, cl_float* angle) =
@@ -156,13 +157,35 @@ void (^FISTA1_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image 
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
-void (^FISTA2_kernel)(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image reconst_v_img, cl_image reconst_b_img, cl_image reconst_w_new_img, cl_image reconst_x_new_img, cl_image reconst_b_new_img, cl_int sub, cl_float* L) =
-^(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image reconst_v_img, cl_image reconst_b_img, cl_image reconst_w_new_img, cl_image reconst_x_new_img, cl_image reconst_b_new_img, cl_int sub, cl_float* L) {
+void (^FISTA2_0_kernel)(const cl_ndrange *ndrange, cl_image reconst_v_img, cl_image reconst_x_new_img, cl_int sub, cl_float* L) =
+^(const cl_ndrange *ndrange, cl_image reconst_v_img, cl_image reconst_x_new_img, cl_int sub, cl_float* L) {
   int err = 0;
   cl_kernel k = bmap.map[6].kernel;
   if (!k) {
     initBlocks();
     k = bmap.map[6].kernel;
+  }
+  if (!k)
+    gcl_log_fatal("kernel FISTA2_0 does not exist for device");
+  kargs_struct kargs;
+  gclCreateArgsAPPLE(k, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 0, reconst_v_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 1, reconst_x_new_img, &kargs);
+  err |= gclSetKernelArgAPPLE(k, 2, sizeof(sub), &sub, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 3, L, &kargs);
+  gcl_log_cl_fatal(err, "setting argument for FISTA2_0 failed");
+  err = gclExecKernelAPPLE(k, ndrange, &kargs);
+  gcl_log_cl_fatal(err, "Executing FISTA2_0 failed");
+  gclDeleteArgsAPPLE(k, &kargs);
+};
+
+void (^FISTA2_kernel)(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image reconst_v_img, cl_image reconst_b_img, cl_image reconst_w_new_img, cl_image reconst_x_new_img, cl_image reconst_b_new_img, cl_int sub, cl_float* L) =
+^(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image reconst_v_img, cl_image reconst_b_img, cl_image reconst_w_new_img, cl_image reconst_x_new_img, cl_image reconst_b_new_img, cl_int sub, cl_float* L) {
+  int err = 0;
+  cl_kernel k = bmap.map[7].kernel;
+  if (!k) {
+    initBlocks();
+    k = bmap.map[7].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel FISTA2 does not exist for device");
@@ -201,8 +224,10 @@ static void initBlocks(void) {
           bmap.map[4].kernel = clCreateKernel(bmap.program, "imageL2AbsY", &err);
           assert(bmap.map[5].block_ptr == FISTA1_kernel && "mismatch block");
           bmap.map[5].kernel = clCreateKernel(bmap.program, "FISTA1", &err);
-          assert(bmap.map[6].block_ptr == FISTA2_kernel && "mismatch block");
-          bmap.map[6].kernel = clCreateKernel(bmap.program, "FISTA2", &err);
+          assert(bmap.map[6].block_ptr == FISTA2_0_kernel && "mismatch block");
+          bmap.map[6].kernel = clCreateKernel(bmap.program, "FISTA2_0", &err);
+          assert(bmap.map[7].block_ptr == FISTA2_kernel && "mismatch block");
+          bmap.map[7].kernel = clCreateKernel(bmap.program, "FISTA2", &err);
        }
      });
 }
@@ -216,6 +241,7 @@ static void RegisterMap(void) {
   bmap.map[3].block_ptr = imageL2AbsX_kernel;
   bmap.map[4].block_ptr = imageL2AbsY_kernel;
   bmap.map[5].block_ptr = FISTA1_kernel;
-  bmap.map[6].block_ptr = FISTA2_kernel;
+  bmap.map[6].block_ptr = FISTA2_0_kernel;
+  bmap.map[7].block_ptr = FISTA2_kernel;
 }
 

@@ -38,7 +38,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "             Imaging EXAFS fittting" <<endl<<endl;
     cout << "         First version: Aug. 10th, 2017"<<endl;
-    cout << "         Last update: Sep. 4th, 2017"<<endl<<endl;
+    cout << "         Last update: Sep. 5th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     
@@ -51,7 +51,6 @@ int main(int argc, const char * argv[]) {
         getline(cin,dummy);
         istringstream iss(dummy);
         iss>>fp_str;
-        //fp_str="C:/Users/CT/Desktop/XANES_fitting.inp";
     }
     input_parameter inp(fp_str);
     OCL_platform_device plat_dev_list(inp.getPlatDevList(),true);

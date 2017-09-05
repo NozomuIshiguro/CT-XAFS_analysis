@@ -198,8 +198,7 @@ protected:
 	int num_trial_fit;
 	float lamda_t_fit;
     bool CSbool;
-    vector<float> CSepsilon;
-    vector<float> CSalpha;
+    vector<float> CSlambda;
     int CSit;
     
     vector<float> fitting_para;
@@ -301,8 +300,7 @@ public:
 	int getNumTrial_fit();
 	float getLambda_t_fit();
     bool getCSbool();
-    vector<float> getCSepsilon();
-    vector<float> getCSalpha();
+    vector<float> getCSlambda();
     int getCSit();
     
     vector<string> funcNameList;
@@ -342,8 +340,7 @@ public:
 	void setNumtrial_fit(int numTrial_inp);
     
     void setCSbool(bool CSbool_inp);
-    void setCSepsilon(string CSepsilon_inp);
-    void setCSalpha(string CSalpha_inp);
+    void setCSlambda(string CSepsilon_inp);
     void setCSit(int CSit_inp);
     
     void inputFromFile_fitting(char* buffer,ifstream *inp_ifs);

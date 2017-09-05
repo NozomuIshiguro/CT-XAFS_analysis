@@ -75,6 +75,10 @@ int FBP_programBuild(cl::Context context,vector<cl::Kernel> *kernels);
 int AART_programBuild(cl::Context context,vector<cl::Kernel> *kernels);
 int FISTA_programBuild(cl::Context context,vector<cl::Kernel> *kernels);
 int OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,cl::Buffer angle_buffer, int *sub,cl::Image2DArray reconst_img, cl::Image2DArray prj_img, int dN, int it, bool prjCorrection);
+int FISTA_OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
+                         cl::Buffer angle_buffer, int *sub,
+                         cl::Image2DArray reconst_img, cl::Image2DArray prj_img,
+                         int dN, int it, bool prjCorrection);
 int AART_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,cl::Buffer angle_buffer, int *sub,cl::Image2DArray reconst_img, cl::Image2DArray prj_img,int dN,int it);
 int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,cl::Buffer angle_buffer, cl::Buffer L2norm_buffer, int *sub,cl::Image2DArray reconst_img, cl::Image2DArray prj_img,int dN,int it);
 
@@ -127,9 +131,7 @@ extern int correctionMode; //投影像補正 0:なし,1:x方向,2:θ方向,3:x+�
 extern float amp; //強度増幅因子
 extern int baseupOrder;//baseup 減少速度次数
 extern bool CSitBool; //圧縮センシング逐次計算
-extern float CSepsilon; //圧縮センシング逐次計算ノイズファクター
-extern float CSalpha; //圧縮センシング逐次計算加算ファクター
-extern int CSit; //圧縮センシング逐次計算回数
+extern float CSlambda; //圧縮センシング逐次計算加算ファクター
 
 
 #endif

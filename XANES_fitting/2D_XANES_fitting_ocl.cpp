@@ -313,7 +313,7 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         //cout << paramsize << endl;
         if (inp.getCSbool()) {
             for (int i=0; i<paramsize; i++) {
-                float val = (fiteq.freefix_para()[i] == 49) ? inp.getCSepsilon()[i] : 0.0f;
+                float val = (fiteq.freefix_para()[i] == 49) ? inp.getCSlambda()[i] : 0.0f;
                 command_queue.enqueueFillBuffer(Lambda_fista, (cl_float)val, sizeof(cl_float)*i, sizeof(cl_float), NULL, NULL);
                 command_queue.finish();
             }

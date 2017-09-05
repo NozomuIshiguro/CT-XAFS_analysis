@@ -1,4 +1,4 @@
-//
+﻿//
 //  GPU.cpp
 //  CT_reconstruction
 //
@@ -193,26 +193,150 @@ int OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
 		kernel[1].setArg(2, rprj_img);
 		kernel[1].setArg(3, angle_buffer);
         
-        //for FISTA
+        for (int i=0; i<it; i++) {
+            for (int k=0; k<g_ss; k++) {
+                //extent reconst image
+                for (int org=(g_nx-3*g_ox)/2; org>=-g_ox/2; org-=g_ox) {
+                    origin_img2[0] = max(0,org);
+                    region2[0] = org + g_ox - max(0, org);
+                    command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img2, region2, NULL,NULL);
+                }
+                for (int org=(g_nx+g_ox)/2; org<g_nx; org+=g_ox) {
+                    origin_img2[0] = org;
+                    region2[0] = min(org+g_ox,g_nx) - org;
+                    command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img2, region2, NULL,NULL);
+                }
+                
+                
+                //projection
+                kernel[0].setArg(4, sub[k]);
+                command_queue.enqueueNDRangeKernel(kernel[0], NULL, global_item_size1, local_item_size_p, NULL, NULL);
+                command_queue.finish();
+                
+                //back projection
+                kernel[1].setArg(4, sub[k]);
+                command_queue.enqueueNDRangeKernel(kernel[1], NULL, global_item_size2, local_item_size_n, NULL, NULL);
+                command_queue.finish();
+                
+                
+                //update (copy) image
+                command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img, region,NULL,NULL);
+                command_queue.finish();
+            }
+        }
+        
+    } catch (cl::Error ret) {
+        cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(ret.err());
+    }
+    
+    return 0;
+}
+
+
+int FISTA_OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
+                   cl::Buffer angle_buffer, int *sub,
+                   cl::Image2DArray reconst_img, cl::Image2DArray prj_img,
+                   int dN, int it, bool prjCorrection){
+    
+    try {
+        cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
+        cl::Device device = command_queue.getInfo<CL_QUEUE_DEVICE>();
+        string devicename = device.getInfo<CL_DEVICE_NAME>();
+        size_t WorkGroupSize_n = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), g_nx);
+        size_t WorkGroupSize_p = min((int)device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>(), g_px);
+        
+        //OpenCL memory objects
+        cl::ImageFormat format(CL_R,CL_FLOAT);
+        cl::Image2DArray reconst_dest_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
+        cl::Image2DArray rprj_img(context,CL_MEM_READ_WRITE,format,dN,g_px,g_pa,0,0,NULL,NULL);
+        
+        //write memory objects to GPUs
+        cl::size_t<3> origin;
+        cl::size_t<3> origin_img;
+        cl::size_t<3> origin_img2;
+        cl::size_t<3> region;
+        cl::size_t<3> region2;
+        cl::size_t<3> region_prj;
+        origin[0] = 0;
+        origin[1] = 0;
+        origin[2] = 0;
+        origin_img[0] = (g_nx-g_ox)/2;
+        origin_img[1] = (g_ny-g_oy)/2;
+        origin_img[2] = 0;
+        origin_img2[1] = (g_ny-g_oy)/2;
+        origin_img2[2] = 0;
+        region[0] = g_ox;
+        region[1] = g_oy;
+        region[2] = dN;
+        region2[1] = g_oy;
+        region2[2] = dN;
+        region_prj[0] = g_nx;
+        region_prj[1] = g_pa;
+        region_prj[2] = dN;
+        command_queue.enqueueCopyImage(reconst_img, reconst_dest_img, origin_img, origin_img, region, NULL,NULL);
+        
+        //NDrange settings
+        const cl::NDRange global_item_size0(g_px,g_pa,dN);
+        const cl::NDRange global_item_size1(g_px,g_pa/g_ss,dN);
+        const cl::NDRange global_item_size2(g_ox,g_oy,dN);
+        const cl::NDRange local_item_size_n(WorkGroupSize_n,1,1);
+        const cl::NDRange local_item_size_p(WorkGroupSize_p, 1, 1);
+        
+        //sinogram correction
+        if(prjCorrection&&correctionMode>0){
+            command_queue.enqueueCopyImage(prj_img, rprj_img, origin, origin, region_prj, NULL,NULL);
+            command_queue.finish();
+            kernel[2].setArg(0, rprj_img);
+            kernel[2].setArg(1, prj_img);
+            kernel[2].setArg(2, angle_buffer);
+            kernel[2].setArg(3, (cl_int)correctionMode);
+            kernel[2].setArg(4, (cl_float)0.5f);
+            kernel[2].setArg(5, (cl_float)0.5f);
+            command_queue.enqueueNDRangeKernel(kernel[2], NULL, global_item_size0, local_item_size_p, NULL, NULL);
+            command_queue.finish();
+        }
+        
+        //projection
+        kernel[0].setArg(0, reconst_img);
+        kernel[0].setArg(1, prj_img);
+        kernel[0].setArg(2, rprj_img);
+        kernel[0].setArg(3, angle_buffer);
+        //back projection
+        kernel[1].setArg(0, reconst_img);
+        kernel[1].setArg(1, reconst_dest_img);
+        kernel[1].setArg(2, rprj_img);
+        kernel[1].setArg(3, angle_buffer);
+        
+        //initialization for FISTA
+        //x[0]=reconst_img, beta[0]=0, w[0]=x[0]=reconst_img
         cl::Image2DArray b_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl::Image2DArray b_dest_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl::Buffer L2norm_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*g_ss, 0, NULL);
         cl::Image2DArray reconst_v_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl::Image2DArray reconst_w_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
-        cl::Image2DArray reconst_pre_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl_float4 color = {0.0f,0.0f,0.0f,1.0f};
         command_queue.enqueueFillImage(b_img, color, origin_img, region);
         command_queue.enqueueFillBuffer(L2norm_buffer, (cl_float)0.5f, 0, sizeof(cl_float)*g_ss);
-        command_queue.enqueueCopyImage(reconst_img, reconst_pre_img, origin_img, origin_img, region,NULL,NULL);
+        command_queue.enqueueCopyImage(reconst_img, reconst_w_img, origin_img, origin_img, region,NULL,NULL);
+        //FISTA2_0 (update only for 0th cycle)
+        kernel[3].setArg(0, reconst_img);  //as x[0] img -> w[t] img
+        kernel[3].setArg(1, reconst_dest_img); //as x[1] img
+        kernel[3].setArg(3, L2norm_buffer);
         //FISTA2 (update)
-        kernel[4].setArg(0, reconst_pre_img);
+        kernel[4].setArg(0, reconst_img); //as x[t] img -> w[t] img
         kernel[4].setArg(1, reconst_v_img);
-        kernel[4].setArg(2, b_img);
-        kernel[4].setArg(3, reconst_w_img);
-        kernel[4].setArg(4, reconst_dest_img);
-        kernel[4].setArg(5, b_dest_img);
+        kernel[4].setArg(2, b_img); //as b[t] img
+        kernel[4].setArg(3, reconst_w_img); //as w[t+1] img
+        kernel[4].setArg(4, reconst_dest_img); //as x[t+1] img
+        kernel[4].setArg(5, b_dest_img); //as b[t+1] img
         kernel[4].setArg(7, L2norm_buffer);
         
+        
+        bool firstBool = true;
         for (int i=0; i<it; i++) {
             for (int k=0; k<g_ss; k++) {
                 //extent reconst image
@@ -239,56 +363,33 @@ int OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                 command_queue.finish();
                 
                 //compressed sensing-based iteration
-                if (CSitBool)/* {
+                if (firstBool){
+                    //FISTA2_0 (update)
+                    kernel[3].setArg(2, sub[k]);
+                    command_queue.enqueueNDRangeKernel(kernel[3], NULL, global_item_size2, local_item_size_n, NULL, NULL);
                     
-                    cl::Image2DArray reconst_original_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
-                    command_queue.enqueueCopyImage(reconst_img, reconst_original_img, origin_img, origin_img, region,NULL,NULL);
-                    command_queue.finish();
-                    
-                    kernel[3].setArg(0, reconst_original_img);
-                    kernel[3].setArg(1, reconst_img);
-                    kernel[3].setArg(2, reconst_dest_img);
-                    kernel[3].setArg(3, (cl_float)CSepsilon);
-                    kernel[3].setArg(4, (cl_float)CSalpha);
-                    for (int j=0; j<CSit; j++) {
-                        command_queue.enqueueNDRangeKernel(kernel[3], NULL, global_item_size2, local_item_size, NULL, NULL);
-                        command_queue.finish();
-                        
-                        command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img, region,NULL,NULL);
-                        command_queue.finish();
-                    }
-                }*/
-                {
+                    //after 0th cycle, iterlation preceeds with w_img(reconst_w_img), not with x_img(reconst_w_img)
+                    firstBool=false;
+                    kernel[3].setArg(0, reconst_w_img);
+                    kernel[4].setArg(0, reconst_w_img);
+                }else{
                     command_queue.enqueueCopyImage(reconst_dest_img, reconst_v_img, origin_img, origin_img, region,NULL,NULL);
                     
                     //FISTA2 (update)
                     kernel[4].setArg(6, sub[k]);
                     command_queue.enqueueNDRangeKernel(kernel[4], NULL, global_item_size2, local_item_size_n, NULL, NULL);
-
-                    
-                    //update(copy) x image
-                    command_queue.enqueueCopyImage(reconst_w_img, reconst_img, origin_img, origin_img, region, NULL, NULL);
-                    command_queue.finish();
                     
                     //update(copy) b image
                     command_queue.enqueueCopyImage(b_dest_img, b_img, origin_img, origin_img, region, NULL, NULL);
                     command_queue.finish();
-
-					//update(copy) x image
-					command_queue.enqueueCopyImage(reconst_dest_img, reconst_pre_img, origin_img, origin_img, region, NULL, NULL);
-					command_queue.finish();
-                }else{
-                    //update (copy) image
-                    command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img, region,NULL,NULL);
-                    command_queue.finish();
                 }
+                
+                //update(copy) x image
+                command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img, region, NULL, NULL);
+                command_queue.finish();
             }
         }
         
-        if (CSitBool){
-            command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img, region,NULL,NULL);
-            command_queue.finish();
-        }
     } catch (cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")" << endl;
         cout <<  "Press 'Enter' to quit." << endl;
@@ -299,6 +400,7 @@ int OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
     
     return 0;
 }
+
 
 int OSEM_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                 cl::Buffer angle_buffer, int *sub, vector<float*> imgs, vector<float*> prjs,
@@ -341,7 +443,12 @@ int OSEM_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
     
     
     //OSEM execution
-    OSEM_execution(command_queue, kernel,angle_buffer,sub,reconst_img,prj_img,dN,it,true);
+    if (CSitBool) {
+        FISTA_OSEM_execution(command_queue, kernel,angle_buffer,sub,reconst_img,prj_img,dN,it,true);
+    }else{
+        OSEM_execution(command_queue, kernel,angle_buffer,sub,reconst_img,prj_img,dN,it,true);
+    }
+    
     
     
     //read memory objects from GPUs
@@ -432,7 +539,7 @@ int OSEM_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     OSS << " -D PRJ_ANGLESIZE=" << g_pa;
     OSS << " -D PRJ_IMAGESIZE_M=" << g_px*g_pa;
     OSS << " -D SS=" << g_ss;
-    OSS << " -D LAMBDA_FISTA=" << CSepsilon;
+    OSS << " -D LAMBDA_FISTA=" << CSlambda;
     string option = OSS.str();
     //kernel build
     ret=program.build(option.c_str());
@@ -440,7 +547,7 @@ int OSEM_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     kernels[0].push_back(cl::Kernel::Kernel(program,"OSEM1", &ret));//0
     kernels[0].push_back(cl::Kernel::Kernel(program,"OSEM2", &ret));//1
     kernels[0].push_back(cl::Kernel::Kernel(program,"sinogramCorrection", &ret));//2
-    kernels[0].push_back(cl::Kernel::Kernel(program,"partialDerivativeOfGradiant", &ret));//3
+    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA2_0", &ret));//3
     kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA2", &ret));//4
     
     return 0;
@@ -1089,27 +1196,6 @@ int AART_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                 command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img, region,NULL,NULL);
                 command_queue.finish();
                 
-                //compressed sensing-based iteration
-                if (CSitBool) {
-                    
-                    cl::Image2DArray reconst_original_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
-                    command_queue.enqueueCopyImage(reconst_img, reconst_original_img, origin_img, origin_img, region,NULL,NULL);
-                    command_queue.finish();
-                    
-                    kernel[3].setArg(0, reconst_original_img);
-                    kernel[3].setArg(1, reconst_img);
-                    kernel[3].setArg(2, reconst_dest_img);
-                    kernel[3].setArg(3, (cl_float)CSepsilon);
-                    kernel[3].setArg(4, (cl_float)CSalpha);
-                    for (int j=0; j<CSit; j++) {
-                        command_queue.enqueueNDRangeKernel(kernel[3], NULL, global_item_size2, local_item_size_n, NULL, NULL);
-                        command_queue.finish();
-                        
-                        command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img, region,NULL,NULL);
-                        command_queue.finish();
-                    }
-                    
-                }
             }
         }
     } catch (cl::Error ret) {
@@ -1484,7 +1570,11 @@ int hybrid_thread(cl::CommandQueue command_queue,
 		}
         
         //OSEM execution
-        OSEM_execution(command_queue, kernel_osem, angle_buffer,sub,reconst_img,prj_img,dN,it,false);
+        if (CSitBool) {
+            FISTA_OSEM_execution(command_queue, kernel_osem, angle_buffer,sub,reconst_img,prj_img,dN,it,false);
+        }else{
+            OSEM_execution(command_queue, kernel_osem, angle_buffer,sub,reconst_img,prj_img,dN,it,false);
+        }
         
         //read reconst image from GPU
         for (int i=0; i<dN; i++) {
@@ -1706,7 +1796,7 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         region_prj[1] = g_pa;
         region_prj[2] = dN;
         cl_float4 color = {0.0f,0.0f,0.0f,1.0f};
-        command_queue.enqueueCopyImage(reconst_img, reconst_dest_img, origin_img, origin_img, region, NULL,NULL);
+        command_queue.enqueueCopyImage(reconst_img, reconst_w_img, origin_img, origin_img, region, NULL,NULL);
         command_queue.enqueueFillImage(reconst_b_img, color, origin_img, region);
         
         //NDrange settings
@@ -1719,12 +1809,12 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         if(prjCorrection&&correctionMode>0){
             command_queue.enqueueCopyImage(prj_img, vprj_img, origin, origin, region_prj, NULL,NULL);
             command_queue.finish();
-            kernel[8].setArg(0, vprj_img);
-            kernel[8].setArg(1, prj_img);
-            kernel[8].setArg(2, angle_buffer);
-            kernel[8].setArg(3, (cl_int)correctionMode);
-            kernel[8].setArg(4, (cl_float)0.5f);
-            kernel[8].setArg(5, (cl_float)0.5f);
+            kernel[9].setArg(0, vprj_img);
+            kernel[9].setArg(1, prj_img);
+            kernel[9].setArg(2, angle_buffer);
+            kernel[9].setArg(3, (cl_int)correctionMode);
+            kernel[9].setArg(4, (cl_float)0.5f);
+            kernel[9].setArg(5, (cl_float)0.5f);
             command_queue.enqueueNDRangeKernel(kernel[8], NULL, global_item_size0, local_item_size, NULL, NULL);
             command_queue.finish();
         }
@@ -1734,38 +1824,43 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
 
         //set arguments
         //AART1 (projection)
-        kernel[5].setArg(0, reconst_w_img);
+        kernel[5].setArg(0, reconst_img);
         kernel[5].setArg(1, prj_img);
         kernel[5].setArg(2, vprj_img);
         kernel[5].setArg(3, angle_buffer);
         //FISTA1 (back projection)
-        kernel[6].setArg(0, reconst_w_img);
+        kernel[6].setArg(0, reconst_img);
         kernel[6].setArg(1, reconst_v_img);
         kernel[6].setArg(2, vprj_img);
         kernel[6].setArg(3, angle_buffer);
         kernel[6].setArg(4, L2norm_buffer);
         kernel[6].setArg(6, (cl_float)g_wt1);
+        //FISTA2_0 (update)
+        kernel[7].setArg(0, reconst_v_img);
+        kernel[7].setArg(1, reconst_dest_img); //as x_img[1]
+        kernel[7].setArg(3, L2norm_buffer);
         //FISTA2 (update)
-        kernel[7].setArg(0, reconst_img);
-        kernel[7].setArg(1, reconst_v_img);
-        kernel[7].setArg(2, reconst_b_img);
-        kernel[7].setArg(3, reconst_w_img);
-        kernel[7].setArg(4, reconst_dest_img);
-        kernel[7].setArg(5, reconst_b_dest_img);
-        kernel[7].setArg(7, L2norm_buffer);
+        kernel[8].setArg(0, reconst_img); //as x_img[t]
+        kernel[8].setArg(1, reconst_v_img);
+        kernel[8].setArg(2, reconst_b_img); //as b_img[t]
+        kernel[8].setArg(3, reconst_w_img); //as w_img[t+1]
+        kernel[8].setArg(4, reconst_dest_img); //as x_img[t+1]
+        kernel[8].setArg(5, reconst_b_dest_img); //as b_img[t+1]
+        kernel[8].setArg(7, L2norm_buffer);
+		
         
-		//normal back projection
-		kernel[9].setArg(0, reconst_img);
-		kernel[9].setArg(1, prj_img);
-		kernel[9].setArg(2, angle_buffer);
-		kernel[9].setArg(3, sub[0]);
-		command_queue.enqueueNDRangeKernel(kernel[9], NULL, global_item_size2, local_item_size, NULL, NULL);
+        //normal back projection (estimate initial x image by simple back projection)
+		kernel[10].setArg(0, reconst_img);
+		kernel[10].setArg(1, prj_img);
+		kernel[10].setArg(2, angle_buffer);
+		kernel[10].setArg(3, sub[0]);
+		command_queue.enqueueNDRangeKernel(kernel[10], NULL, global_item_size2, local_item_size, NULL, NULL);
 		command_queue.finish();
-
         command_queue.enqueueCopyImage(reconst_img, reconst_w_img, origin_img, origin_img, region, NULL, NULL);
         command_queue.finish();
 		
-
+        
+        bool firstBool=true;
         for (int i=0; i<it; i++) {
             for (int k=0; k<g_ss; k++) {
                 //extent reconst image
@@ -1790,24 +1885,28 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                 command_queue.enqueueNDRangeKernel(kernel[6], NULL, global_item_size2, local_item_size, NULL, NULL);
                 command_queue.finish();
                 
-                //FISTA2 (update)
-                kernel[7].setArg(6, sub[k]);
-                command_queue.enqueueNDRangeKernel(kernel[7], NULL, global_item_size2, local_item_size, NULL, NULL);
-                
-                /*command_queue.enqueueReadImage(reconst_img, CL_TRUE, origin, region, 0, 0, image);
-                write_data_output("E:", "reconst.raw", image, IMAGE_SIZE_M*dN);
-                command_queue.enqueueReadImage(reconst_v_img, CL_TRUE, origin, region, 0, 0, image);
-                write_data_output("E:", "reconstv.raw", image, IMAGE_SIZE_M*dN);
-                command_queue.enqueueReadImage(reconst_dest_img, CL_TRUE, origin, region, 0, 0, image);
-                write_data_output("E:", "reconstnew.raw", image, IMAGE_SIZE_M*dN);*/
-                
+                if (firstBool) {
+                    //FISTA2_0 (update for 0th cycle)
+                    kernel[7].setArg(2, sub[k]);
+                    command_queue.enqueueNDRangeKernel(kernel[7], NULL, global_item_size2, local_item_size, NULL, NULL);
+                    
+                    //after 0th cycle, iterlation preceeds with w_img(reconst_w_img), not with x_img(reconst_w_img)
+                    firstBool=false;
+                    kernel[5].setArg(0, reconst_w_img);
+                    kernel[6].setArg(0, reconst_w_img);
+                }else{
+                    //FISTA2 (update)
+                    kernel[8].setArg(6, sub[k]);
+                    command_queue.enqueueNDRangeKernel(kernel[8], NULL, global_item_size2, local_item_size, NULL, NULL);
+                    
+                    //update(copy) b image
+                    command_queue.enqueueCopyImage(reconst_b_dest_img, reconst_b_img, origin_img, origin_img, region, NULL, NULL);
+                    command_queue.finish();
+                }
                 //update(copy) x image
                 command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img, region, NULL, NULL);
                 command_queue.finish();
                 
-                //update(copy) b image
-                command_queue.enqueueCopyImage(reconst_b_dest_img, reconst_b_img, origin_img, origin_img, region, NULL, NULL);
-                command_queue.finish();
             }
         }
     } catch (cl::Error ret) {
@@ -1816,6 +1915,7 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
     
     return 0;
 }
+
 
 int FISTA_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                 cl::Buffer angle_buffer, cl::Buffer L2norm_buffer,
@@ -1926,12 +2026,12 @@ int FISTA_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     
     cl::Program::Sources source;
 #if defined (OCL120)
-    source.push_back(make_pair(kernel_src_osem.c_str(),kernel_src_osem.length()));
+    //source.push_back(make_pair(kernel_src_osem.c_str(),kernel_src_osem.length()));
     source.push_back(make_pair(kernel_src_aart.c_str(),kernel_src_aart.length()));
     source.push_back(make_pair(kernel_src_fista.c_str(),kernel_src_fista.length()));
     source.push_back(make_pair(kernel_src_reconstShare.c_str(),kernel_src_reconstShare.length()));
 #else
-    source.push_back(kernel_src_osem);
+    //source.push_back(kernel_src_osem);
     source.push_back(kernel_src_aart);
     source.push_back(kernel_src_fista);
     source.push_back(kernel_src_reconstShare);
@@ -1946,7 +2046,7 @@ int FISTA_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     OSS << " -D PRJ_ANGLESIZE=" << g_pa;
     OSS << " -D PRJ_IMAGESIZE_M=" << g_px*g_pa;
     OSS << " -D SS=" << g_ss;
-    OSS << " -D LAMBDA_FISTA=" << CSepsilon;
+    OSS << " -D LAMBDA_FISTA=" << CSlambda;
     string option = OSS.str();
     //kernel build
     ret=program.build(option.c_str());
@@ -1958,9 +2058,10 @@ int FISTA_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     kernels[0].push_back(cl::Kernel::Kernel(program,"imageL2AbsY", &ret));//4
     kernels[0].push_back(cl::Kernel::Kernel(program,"AART1", &ret));//5
     kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA1", &ret));//6
-    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA2", &ret));//7
-    kernels[0].push_back(cl::Kernel::Kernel(program,"sinogramCorrection", &ret));//8
-	kernels[0].push_back(cl::Kernel::Kernel(program,"backProjection", &ret));//9
+    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA2_0", &ret));//7
+    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA2", &ret));//8
+    kernels[0].push_back(cl::Kernel::Kernel(program,"sinogramCorrection", &ret));//9
+	kernels[0].push_back(cl::Kernel::Kernel(program,"backProjection", &ret));//10
     
     return 0;
 }

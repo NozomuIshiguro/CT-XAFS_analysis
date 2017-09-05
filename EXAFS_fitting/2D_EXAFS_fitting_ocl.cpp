@@ -50,7 +50,8 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
                      int AngleNo, int thread_id, input_parameter inp,vector<string> paraName,
                      vector<shellObjects> shObjs, cl::Buffer w_factor, float* edgeJ,
                      vector<float*> chi_vec, vector<int> processImageSizeY, int contrainSize,
-                     cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff){
+                     cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff,
+                     cl::Buffer CSlambda_buff){
     
     cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
     const int imgSizeX = inp.getImageSizeX();
@@ -74,6 +75,8 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
     int ksize = (int)ceil((min(float(kend+WIN_DK),(float)MAX_KQ)-max(float(kstart-WIN_DK),0.0f))/KGRID) + 1;
     int Rsize = (int)ceil((min(float(Rend+WIN_DR),(float)MAX_R)-max(float(Rstart-WIN_DR),0.0f))/RGRID) + 1;
     int qsize = (int)ceil((min(float(qend+WIN_DK),(float)MAX_KQ)-max(float(qstart-WIN_DK),0.0f))/KGRID) + 1;
+    bool CSbool = inp.getCSbool();
+    int CSit = inp.getCSit();
     
     
     //create fitting results img pointer
@@ -119,7 +122,7 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
                 //data input
                 ChiData_k(queue,program,Data_buff,move(chi_vec),kw, kstart, kend, imgSizeX, procImgSizeY, true, imgOffset);
                 //fitting
-                EXAFS_kFit(queue,program,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,imgSizeX,procImgSizeY, S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff);
+                EXAFS_kFit(queue,program,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,imgSizeX,procImgSizeY, S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff,CSbool,CSit,CSlambda_buff);
                 break;
                 
             case 1: //R-fit
@@ -131,7 +134,7 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
 					cout << FFTchidata[i*procImgSizeM+ procImgSizeM/2+96].x << "\t" << FFTchidata[i*procImgSizeM + procImgSizeM / 2+96 ].y << endl;
 				}*/
 				//fitting
-                EXAFS_RFit(queue,program,w_factor,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,Rstart,Rend, imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff);
+                EXAFS_RFit(queue,program,w_factor,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,Rstart,Rend, imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff,CSbool,CSit,CSlambda_buff);
                 break;
             
             case 2: //q-fit
@@ -139,7 +142,7 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
                 //data input
                 ChiData_q(queue,program,Data_buff,move(chi_vec),w_factor,kw,kstart,kend,Rstart,Rend, qstart,qend, imgSizeX, procImgSizeY, FFTprocImgSizeY, true, imgOffset);
                 //fitting
-                EXAFS_qFit(queue,program,w_factor,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,Rstart,Rend, qstart,qend,imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff);
+                EXAFS_qFit(queue,program,w_factor,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,Rstart,Rend, qstart,qend,imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff,CSbool,CSit,CSlambda_buff);
                 break;
                 
             default:
@@ -184,7 +187,7 @@ int data_input_thread(cl::CommandQueue command_queue, cl::Program program,
                       int AngleNo, int thread_id, input_parameter inp,vector<string> paraName,
                       vector<shellObjects> shObjs, cl::Buffer w_factor, vector<int> processImageSizeY,
                       int contrainSize, cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff,
-                      cl::Buffer C2_vector_buff){
+                      cl::Buffer C2_vector_buff, cl::Buffer CSlambda_buff){
     
     
     int startkNo = 1;
@@ -225,7 +228,7 @@ int data_input_thread(cl::CommandQueue command_queue, cl::Program program,
     fitting_th[thread_id] = thread(EXAFS_fit_thread,command_queue,program,AngleNo,thread_id,inp,
                                    paraName, shObjs, w_factor, move(edgeJ),
                                    move(chi_vec),processImageSizeY, contrainSize,
-                                   C_matrix_buff, D_vector_buff, C2_vector_buff);
+                                   C_matrix_buff, D_vector_buff, C2_vector_buff, CSlambda_buff);
     
     return 0;
 }
@@ -273,16 +276,20 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
         num_fpara += freefixpara[sh][3] ? 1:0;//ss
     }
     vector<string> fparaName;
+    vector<float> CSlambda;
     if (inp.getS02freeFix()) {
         fparaName.push_back(paraName[0]);
+        CSlambda.push_back(inp.getCSlambda()[0]);
     }
     for (int sh=0; sh<num_shell; sh++) {
         for (int pn=0; pn<4; pn++) {
             if (freefixpara[sh][pn]) {
                 fparaName.push_back(paraName[pn+1+4*sh]);
+                CSlambda.push_back(inp.getCSlambda()[pn+1+4*sh]);
             }
         }
     }
+    //contrain setting
     vector<string> contrain_eqs=inp.getContrainEqs();
     vector<vector<float>> C_matrix;
     vector<float> D_vector;
@@ -316,12 +323,15 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
     string fileName_output = inp.getFittingOutputDir() + "/Rfactor";
     MKDIR(fileName_output.c_str());
     
-    vector<vector<int>> processImageSizeYs;
+
     
     
     //OpenCL Program
     vector<cl::Program> programs;
+    vector<vector<int>> processImageSizeYs;
     for (int i=0; i<plat_dev_list.contextsize(); i++) {
+        processImageSizeYs.push_back(GPUmemoryControl(imgSizeX,imgSizeY,ksize,Rsize,qsize,num_shell,num_fpara,num_shell,plat_dev_list.queue(i,0)));
+        
         cl::Program::Sources source;
 #if defined (OCL120)
         source.push_back(make_pair(kernel_EXAFSfit_src.c_str(),kernel_EXAFSfit_src.length()));
@@ -339,6 +349,9 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
         oss << "-D PARA_NUM="<<num_fpara<<" ";
         oss << "-D PARA_NUM_SQ="<<num_fpara*num_fpara<<" ";
         oss << "-D CONTRAIN_NUM="<<contrainSize<<" ";
+        oss << "-D IMAGESIZE_X="<<imgSizeX<<" ";
+        oss << "-D IMAGESIZE_Y="<<processImageSizeYs[i][0]<<" ";
+        oss << "-D IMAGESIZE_M="<<imgSizeX*processImageSizeYs[i][0]<<" ";
         string option =oss.str();
 #ifdef DEBUG
         option += "-D DEBUG -Werror";
@@ -381,6 +394,7 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
     vector<cl::Buffer> w_factors;
     vector<vector<shellObjects>> shObjs;
     vector<cl::Buffer> C_mats, D_vecs, C2_vecs;
+    vector<cl::Buffer> CSlambda_buff;
     const cl::NDRange local_item_size(1,1,1);
     const cl::NDRange global_item_size(contrainSize,1,1);
     for (int i=0; i<plat_dev_list.contextsize(); i++){
@@ -389,7 +403,7 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
         
         vector<shellObjects> shObj_atP;
         for (int sh=0; sh<num_shell; sh++) {
-            shObj_atP.push_back(shellObjects(plat_dev_list.queue(i,0), programs[i], shell[sh], imgSizeX, imgSizeY));
+            shObj_atP.push_back(shellObjects(plat_dev_list.queue(i,0), programs[i], shell[sh], imgSizeX, processImageSizeYs[i][0]));
         }
         shObjs.push_back(shObj_atP);
         
@@ -417,8 +431,10 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
         plat_dev_list.queue(i,0).enqueueNDRangeKernel(kernel_contrain0, NULL, global_item_size, local_item_size, NULL, NULL);
         plat_dev_list.queue(i,0).finish();
         
-        
-        processImageSizeYs.push_back(GPUmemoryControl(imgSizeX,imgSizeY,ksize,Rsize,qsize,num_shell,num_fpara,shObjs[i],plat_dev_list.queue(i,0)));
+        CSlambda_buff.push_back(cl::Buffer(plat_dev_list.context(i),CL_MEM_READ_WRITE,sizeof(cl_float)*num_fpara, 0, NULL));
+        if(inp.getCSbool()){
+            plat_dev_list.queue(i,0).enqueueWriteBuffer(CSlambda_buff[i], CL_TRUE, 0, sizeof(cl_float)*num_fpara, &CSlambda[0]);
+        }
     }
     
     
@@ -435,7 +451,7 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
                 input_th[j].join();
                 input_th[j] = thread(data_input_thread, plat_dev_list.queue(j,0), programs[j],
                                      i, j, inp, paraName,shObjs[j],w_factors[j],processImageSizeYs[j],
-                                     contrainSize, C_mats[j], D_vecs[j], C2_vecs[j]);
+                                     contrainSize, C_mats[j], D_vecs[j], C2_vecs[j], CSlambda_buff[j]);
                 i++;
                 if (i > endAngleNo) break;
             } else{

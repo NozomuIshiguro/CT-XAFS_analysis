@@ -126,7 +126,7 @@ int readRawFile_offset(string filepath_input,float *binImgf, int64_t offset, int
 int outputRawFile_stream(string filename,float*data,size_t pnt_size);
 
 vector<int> GPUmemoryControl(int imageSizeX, int imageSizeY,int ksize,int Rsize,int qsize,
-                             int fittingMode, int num_fpara, vector<shellObjects> shObjs, cl::CommandQueue queue);
+                             int fittingMode, int num_fpara, int shellnum, cl::CommandQueue queue);
 int createSpinFactor(cl::Buffer w_buffer, cl::CommandQueue queue, cl::Program program);
 int FFT(cl::Buffer chi, cl::Buffer FTchi,
         cl::Buffer w_buffer, cl::CommandQueue queue, cl::Program program,
@@ -140,19 +140,22 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
                cl::Buffer chidata, cl::Buffer S02, cl::Buffer Rfactor,  vector<shellObjects> shObj,
                int kw, float kstart, float kend, int imageSizeX, int imageSizeY,
                bool freeS02,int numTrial,float lambda, int contrainSize,  cl::Buffer edgeJ,
-               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff);
+               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff,
+               bool CSbool, int CSit, cl::Buffer CSlambda_buff);
 int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
                cl::Buffer FTchidata, cl::Buffer S02, cl::Buffer Rfactor,  vector<shellObjects> shObj,
                int kw, float kstart, float kend, float Rstart, float Rend,
                int imageSizeX, int imageSizeY, int FFTimageSizeY,
                bool freeS02,int numTrial,float lambda, int contrainSize, cl::Buffer edgeJ,
-               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff);
+               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff,
+               bool CSbool, int CSit, cl::Buffer CSlambda_buff);
 int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
                cl::Buffer chiqdata, cl::Buffer S02, cl::Buffer Rfactor,  vector<shellObjects> shObj,
                int kw, float kstart, float kend, float Rstart, float Rend, float qstart, float qend,
                int imageSizeX, int imageSizeY, int FFTimageSizeY,
                bool freeS02,int numTrial,float lambda, int contrainSize, cl::Buffer edgeJ,
-               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff);
+               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff,
+               bool CSbool, int CSit, cl::Buffer CSlambda_buff);
 int ChiData_k(cl::CommandQueue queue, cl::Program program,
               cl::Buffer chiData, vector<float*> chiData_pointer,
               int kw, float kstart, float kend, int imageSizeX, int imageSizeY,
