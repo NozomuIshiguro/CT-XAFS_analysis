@@ -132,7 +132,7 @@ void (^imageL2AbsY_kernel)(const cl_ndrange *ndrange, cl_float* L2absY, size_t l
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
-void (^FISTA1_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image reconst_dest_img, cl_image dprj_img, cl_float* angle, cl_float* L, cl_int sub, cl_float alpha) =
+void (^FISTAbackProjection_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image reconst_dest_img, cl_image dprj_img, cl_float* angle, cl_float* L, cl_int sub, cl_float alpha) =
 ^(const cl_ndrange *ndrange, cl_image reconst_img, cl_image reconst_dest_img, cl_image dprj_img, cl_float* angle, cl_float* L, cl_int sub, cl_float alpha) {
   int err = 0;
   cl_kernel k = bmap.map[5].kernel;
@@ -141,7 +141,7 @@ void (^FISTA1_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image 
     k = bmap.map[5].kernel;
   }
   if (!k)
-    gcl_log_fatal("kernel FISTA1 does not exist for device");
+    gcl_log_fatal("kernel FISTAbackProjection does not exist for device");
   kargs_struct kargs;
   gclCreateArgsAPPLE(k, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 0, reconst_img, &kargs);
@@ -151,13 +151,13 @@ void (^FISTA1_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image 
   err |= gclSetKernelArgMemAPPLE(k, 4, L, &kargs);
   err |= gclSetKernelArgAPPLE(k, 5, sizeof(sub), &sub, &kargs);
   err |= gclSetKernelArgAPPLE(k, 6, sizeof(alpha), &alpha, &kargs);
-  gcl_log_cl_fatal(err, "setting argument for FISTA1 failed");
+  gcl_log_cl_fatal(err, "setting argument for FISTAbackProjection failed");
   err = gclExecKernelAPPLE(k, ndrange, &kargs);
-  gcl_log_cl_fatal(err, "Executing FISTA1 failed");
+  gcl_log_cl_fatal(err, "Executing FISTAbackProjection failed");
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
-void (^FISTA2_0_kernel)(const cl_ndrange *ndrange, cl_image reconst_v_img, cl_image reconst_x_new_img, cl_int sub, cl_float* L) =
+void (^ISTA_kernel)(const cl_ndrange *ndrange, cl_image reconst_v_img, cl_image reconst_x_new_img, cl_int sub, cl_float* L) =
 ^(const cl_ndrange *ndrange, cl_image reconst_v_img, cl_image reconst_x_new_img, cl_int sub, cl_float* L) {
   int err = 0;
   cl_kernel k = bmap.map[6].kernel;
@@ -166,20 +166,20 @@ void (^FISTA2_0_kernel)(const cl_ndrange *ndrange, cl_image reconst_v_img, cl_im
     k = bmap.map[6].kernel;
   }
   if (!k)
-    gcl_log_fatal("kernel FISTA2_0 does not exist for device");
+    gcl_log_fatal("kernel ISTA does not exist for device");
   kargs_struct kargs;
   gclCreateArgsAPPLE(k, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 0, reconst_v_img, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 1, reconst_x_new_img, &kargs);
   err |= gclSetKernelArgAPPLE(k, 2, sizeof(sub), &sub, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 3, L, &kargs);
-  gcl_log_cl_fatal(err, "setting argument for FISTA2_0 failed");
+  gcl_log_cl_fatal(err, "setting argument for ISTA failed");
   err = gclExecKernelAPPLE(k, ndrange, &kargs);
-  gcl_log_cl_fatal(err, "Executing FISTA2_0 failed");
+  gcl_log_cl_fatal(err, "Executing ISTA failed");
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
-void (^FISTA2_kernel)(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image reconst_v_img, cl_image reconst_b_img, cl_image reconst_w_new_img, cl_image reconst_x_new_img, cl_image reconst_b_new_img, cl_int sub, cl_float* L) =
+void (^FISTA_kernel)(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image reconst_v_img, cl_image reconst_b_img, cl_image reconst_w_new_img, cl_image reconst_x_new_img, cl_image reconst_b_new_img, cl_int sub, cl_float* L) =
 ^(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image reconst_v_img, cl_image reconst_b_img, cl_image reconst_w_new_img, cl_image reconst_x_new_img, cl_image reconst_b_new_img, cl_int sub, cl_float* L) {
   int err = 0;
   cl_kernel k = bmap.map[7].kernel;
@@ -188,7 +188,7 @@ void (^FISTA2_kernel)(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_imag
     k = bmap.map[7].kernel;
   }
   if (!k)
-    gcl_log_fatal("kernel FISTA2 does not exist for device");
+    gcl_log_fatal("kernel FISTA does not exist for device");
   kargs_struct kargs;
   gclCreateArgsAPPLE(k, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 0, reconst_x_img, &kargs);
@@ -199,9 +199,9 @@ void (^FISTA2_kernel)(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_imag
   err |= gclSetKernelArgMemAPPLE(k, 5, reconst_b_new_img, &kargs);
   err |= gclSetKernelArgAPPLE(k, 6, sizeof(sub), &sub, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 7, L, &kargs);
-  gcl_log_cl_fatal(err, "setting argument for FISTA2 failed");
+  gcl_log_cl_fatal(err, "setting argument for FISTA failed");
   err = gclExecKernelAPPLE(k, ndrange, &kargs);
-  gcl_log_cl_fatal(err, "Executing FISTA2 failed");
+  gcl_log_cl_fatal(err, "Executing FISTA failed");
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
@@ -222,12 +222,12 @@ static void initBlocks(void) {
           bmap.map[3].kernel = clCreateKernel(bmap.program, "imageL2AbsX", &err);
           assert(bmap.map[4].block_ptr == imageL2AbsY_kernel && "mismatch block");
           bmap.map[4].kernel = clCreateKernel(bmap.program, "imageL2AbsY", &err);
-          assert(bmap.map[5].block_ptr == FISTA1_kernel && "mismatch block");
-          bmap.map[5].kernel = clCreateKernel(bmap.program, "FISTA1", &err);
-          assert(bmap.map[6].block_ptr == FISTA2_0_kernel && "mismatch block");
-          bmap.map[6].kernel = clCreateKernel(bmap.program, "FISTA2_0", &err);
-          assert(bmap.map[7].block_ptr == FISTA2_kernel && "mismatch block");
-          bmap.map[7].kernel = clCreateKernel(bmap.program, "FISTA2", &err);
+          assert(bmap.map[5].block_ptr == FISTAbackProjection_kernel && "mismatch block");
+          bmap.map[5].kernel = clCreateKernel(bmap.program, "FISTAbackProjection", &err);
+          assert(bmap.map[6].block_ptr == ISTA_kernel && "mismatch block");
+          bmap.map[6].kernel = clCreateKernel(bmap.program, "ISTA", &err);
+          assert(bmap.map[7].block_ptr == FISTA_kernel && "mismatch block");
+          bmap.map[7].kernel = clCreateKernel(bmap.program, "FISTA", &err);
        }
      });
 }
@@ -240,8 +240,8 @@ static void RegisterMap(void) {
   bmap.map[2].block_ptr = powerIter3_kernel;
   bmap.map[3].block_ptr = imageL2AbsX_kernel;
   bmap.map[4].block_ptr = imageL2AbsY_kernel;
-  bmap.map[5].block_ptr = FISTA1_kernel;
-  bmap.map[6].block_ptr = FISTA2_0_kernel;
-  bmap.map[7].block_ptr = FISTA2_kernel;
+  bmap.map[5].block_ptr = FISTAbackProjection_kernel;
+  bmap.map[6].block_ptr = ISTA_kernel;
+  bmap.map[7].block_ptr = FISTA_kernel;
 }
 
