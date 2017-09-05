@@ -208,11 +208,11 @@ __kernel void imageL2AbsY(__global float *L2absY, __local float *loc_mem,
 }
 
 //back-projection of projection delta
-__kernel void FISTA1(__read_only image2d_array_t reconst_img,
-                    __write_only image2d_array_t reconst_dest_img,
-                    __read_only image2d_array_t dprj_img,
-                    __constant float *angle, __constant float *L,
-                    int sub, float alpha){
+__kernel void FISTAbackProjection(__read_only image2d_array_t reconst_img,
+                                   __write_only image2d_array_t reconst_dest_img,
+                                   __read_only image2d_array_t dprj_img,
+                                   __constant float *angle, __constant float *L,
+                                   int sub, float alpha){
     
     const int X = get_global_id(0);
     const int Y = get_global_id(1);
@@ -246,8 +246,8 @@ __kernel void FISTA1(__read_only image2d_array_t reconst_img,
 }
 
 
-//update image (only for 0th cycle)
-__kernel void FISTA2_0(__read_only image2d_array_t reconst_v_img,
+//ISTA update image (only for 0th cycle for FISTA)
+__kernel void ISTA(__read_only image2d_array_t reconst_v_img,
                        __write_only image2d_array_t reconst_x_new_img,
                        int sub, __constant float *L){
     
@@ -318,8 +318,8 @@ __kernel void FISTA2_0(__read_only image2d_array_t reconst_v_img,
 }
 
 
-//update image (more than 1st cycle)
-__kernel void FISTA2(__read_only image2d_array_t reconst_x_img,
+//FISTA update image (more than 1st cycle)
+__kernel void FISTA(__read_only image2d_array_t reconst_x_img,
                     __read_only image2d_array_t reconst_v_img,
                     __read_only image2d_array_t reconst_b_img,
                     __write_only image2d_array_t reconst_w_new_img,

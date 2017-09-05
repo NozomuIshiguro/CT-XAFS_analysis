@@ -424,15 +424,15 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
         kernel_Rfactor.setArg(2, chiFit);
         kernel_Rfactor.setArg(3, (cl_int)ksize);
         //FISTA
-        cl::Kernel kernel_FISTA(program,"FISTA");
+        cl::Kernel kernel_ISTA(program,"ISTA");
         if (CSbool) {
-            kernel_FISTA.setArg(0, para_backup);
-            kernel_FISTA.setArg(1, dp_img);
-            kernel_FISTA.setArg(2, tJJ);
-            kernel_FISTA.setArg(3, tJdF);
-            kernel_FISTA.setArg(4, freefix_fista);
-            kernel_FISTA.setArg(5, lambda_buff);
-            kernel_FISTA.setArg(6, CSlambda_buff);
+            kernel_ISTA.setArg(0, para_backup);
+            kernel_ISTA.setArg(1, dp_img);
+            kernel_ISTA.setArg(2, tJJ);
+            kernel_ISTA.setArg(3, tJdF);
+            kernel_ISTA.setArg(4, freefix_fista);
+            kernel_ISTA.setArg(5, lambda_buff);
+            kernel_ISTA.setArg(6, CSlambda_buff);
         }
         
         
@@ -558,7 +558,7 @@ int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
             //FISTA (Soft Thresholding Function)
             if(CSbool){
                 for (int k = 0; k < CSit; k++) {
-                    queue.enqueueNDRangeKernel(kernel_FISTA, NULL, global_item_size, local_item_size, NULL, NULL);
+                    queue.enqueueNDRangeKernel(kernel_ISTA, NULL, global_item_size, local_item_size, NULL, NULL);
                     queue.finish();
                 }
             }
@@ -807,15 +807,15 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         kernel_Rfactor.setArg(2, FTchiFit);
         kernel_Rfactor.setArg(3, (cl_int)Rsize);
         //FISTA
-        cl::Kernel kernel_FISTA(program,"FISTA");
+        cl::Kernel kernel_ISTA(program,"ISTA");
         if (CSbool) {
-            kernel_FISTA.setArg(0, para_backup);
-            kernel_FISTA.setArg(1, dp_img);
-            kernel_FISTA.setArg(2, tJJ);
-            kernel_FISTA.setArg(3, tJdF);
-            kernel_FISTA.setArg(4, freefix_fista);
-            kernel_FISTA.setArg(5, lambda_buff);
-            kernel_FISTA.setArg(6, CSlambda_buff);
+            kernel_ISTA.setArg(0, para_backup);
+            kernel_ISTA.setArg(1, dp_img);
+            kernel_ISTA.setArg(2, tJJ);
+            kernel_ISTA.setArg(3, tJdF);
+            kernel_ISTA.setArg(4, freefix_fista);
+            kernel_ISTA.setArg(5, lambda_buff);
+            kernel_ISTA.setArg(6, CSlambda_buff);
         }
         
         
@@ -957,7 +957,7 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
             //FISTA (Soft Thresholding Function)
             if(CSbool){
                 for (int k = 0; k < CSit; k++) {
-                    queue.enqueueNDRangeKernel(kernel_FISTA, NULL, global_item_size, local_item_size, NULL, NULL);
+                    queue.enqueueNDRangeKernel(kernel_ISTA, NULL, global_item_size, local_item_size, NULL, NULL);
                     queue.finish();
                 }
             }
@@ -1212,15 +1212,15 @@ int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         kernel_Rfactor.setArg(2, chiqFit);
         kernel_Rfactor.setArg(3, (cl_int)qsize);
         //FISTA
-        cl::Kernel kernel_FISTA(program,"FISTA");
+        cl::Kernel kernel_ISTA(program,"ISTA");
         if (CSbool) {
-            kernel_FISTA.setArg(0, para_backup);
-            kernel_FISTA.setArg(1, dp_img);
-            kernel_FISTA.setArg(2, tJJ);
-            kernel_FISTA.setArg(3, tJdF);
-            kernel_FISTA.setArg(4, freefix_fista);
-            kernel_FISTA.setArg(5, lambda_buff);
-            kernel_FISTA.setArg(6, CSlambda_buff);
+            kernel_ISTA.setArg(0, para_backup);
+            kernel_ISTA.setArg(1, dp_img);
+            kernel_ISTA.setArg(2, tJJ);
+            kernel_ISTA.setArg(3, tJdF);
+            kernel_ISTA.setArg(4, freefix_fista);
+            kernel_ISTA.setArg(5, lambda_buff);
+            kernel_ISTA.setArg(6, CSlambda_buff);
         }
         
         
@@ -1383,10 +1383,10 @@ int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
             queue.finish();
             
             
-            //FISTA (Soft Thresholding Function)
+            //ISTA
             if(CSbool){
                 for (int k = 0; k < CSit; k++) {
-                    queue.enqueueNDRangeKernel(kernel_FISTA, NULL, global_item_size, local_item_size, NULL, NULL);
+                    queue.enqueueNDRangeKernel(kernel_ISTA, NULL, global_item_size, local_item_size, NULL, NULL);
                     queue.finish();
                 }
             }

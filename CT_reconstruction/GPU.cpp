@@ -313,26 +313,26 @@ int FISTA_OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kern
         
         //initialization for FISTA
         //x[0]=reconst_img, beta[0]=0, w[0]=x[0]=reconst_img
-        cl::Image2DArray b_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
-        cl::Image2DArray b_dest_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
+        cl::Image2DArray beta_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
+        cl::Image2DArray beta_dest_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl::Buffer L2norm_buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*g_ss, 0, NULL);
         cl::Image2DArray reconst_v_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl::Image2DArray reconst_w_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl_float4 color = {0.0f,0.0f,0.0f,1.0f};
-        command_queue.enqueueFillImage(b_img, color, origin_img, region);
+        command_queue.enqueueFillImage(beta_img, color, origin_img, region);
         command_queue.enqueueFillBuffer(L2norm_buffer, (cl_float)0.5f, 0, sizeof(cl_float)*g_ss);
         command_queue.enqueueCopyImage(reconst_img, reconst_w_img, origin_img, origin_img, region,NULL,NULL);
-        //FISTA2_0 (update only for 0th cycle)
+        //ISTA (update only for 0th cycle)
         kernel[3].setArg(0, reconst_img);  //as x[0] img -> w[t] img
         kernel[3].setArg(1, reconst_dest_img); //as x[1] img
         kernel[3].setArg(3, L2norm_buffer);
-        //FISTA2 (update)
+        //FISTA (update)
         kernel[4].setArg(0, reconst_img); //as x[t] img -> w[t] img
         kernel[4].setArg(1, reconst_v_img);
-        kernel[4].setArg(2, b_img); //as b[t] img
+        kernel[4].setArg(2, beta_img); //as beta[t] img
         kernel[4].setArg(3, reconst_w_img); //as w[t+1] img
         kernel[4].setArg(4, reconst_dest_img); //as x[t+1] img
-        kernel[4].setArg(5, b_dest_img); //as b[t+1] img
+        kernel[4].setArg(5, beta_dest_img); //as beta[t+1] img
         kernel[4].setArg(7, L2norm_buffer);
         
         
@@ -364,7 +364,7 @@ int FISTA_OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kern
                 
                 //compressed sensing-based iteration
                 if (firstBool){
-                    //FISTA2_0 (update)
+                    //ISTA (0th cycle update)
                     kernel[3].setArg(2, sub[k]);
                     command_queue.enqueueNDRangeKernel(kernel[3], NULL, global_item_size2, local_item_size_n, NULL, NULL);
                     
@@ -375,12 +375,12 @@ int FISTA_OSEM_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kern
                 }else{
                     command_queue.enqueueCopyImage(reconst_dest_img, reconst_v_img, origin_img, origin_img, region,NULL,NULL);
                     
-                    //FISTA2 (update)
+                    //FISTA (update)
                     kernel[4].setArg(6, sub[k]);
                     command_queue.enqueueNDRangeKernel(kernel[4], NULL, global_item_size2, local_item_size_n, NULL, NULL);
                     
                     //update(copy) b image
-                    command_queue.enqueueCopyImage(b_dest_img, b_img, origin_img, origin_img, region, NULL, NULL);
+                    command_queue.enqueueCopyImage(beta_dest_img, beta_img, origin_img, origin_img, region, NULL, NULL);
                     command_queue.finish();
                 }
                 
@@ -547,8 +547,8 @@ int OSEM_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     kernels[0].push_back(cl::Kernel::Kernel(program,"OSEM1", &ret));//0
     kernels[0].push_back(cl::Kernel::Kernel(program,"OSEM2", &ret));//1
     kernels[0].push_back(cl::Kernel::Kernel(program,"sinogramCorrection", &ret));//2
-    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA2_0", &ret));//3
-    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA2", &ret));//4
+    kernels[0].push_back(cl::Kernel::Kernel(program,"ISTA", &ret));//3
+    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA", &ret));//4
     
     return 0;
 }
@@ -1767,9 +1767,9 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         cl::ImageFormat format(CL_R,CL_FLOAT);
         cl::Image2DArray reconst_v_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl::Image2DArray reconst_w_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
-        cl::Image2DArray reconst_b_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
+        cl::Image2DArray beta_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl::Image2DArray reconst_dest_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
-        cl::Image2DArray reconst_b_dest_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
+        cl::Image2DArray beta_dest_img(context,CL_MEM_READ_WRITE,format,dN,g_nx,g_ny,0,0,NULL,NULL);
         cl::Image2DArray vprj_img(context,CL_MEM_READ_WRITE,format,dN,g_px,g_pa,0,0,NULL,NULL);
         
         //write memory objects to GPUs
@@ -1797,7 +1797,7 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         region_prj[2] = dN;
         cl_float4 color = {0.0f,0.0f,0.0f,1.0f};
         command_queue.enqueueCopyImage(reconst_img, reconst_w_img, origin_img, origin_img, region, NULL,NULL);
-        command_queue.enqueueFillImage(reconst_b_img, color, origin_img, region);
+        command_queue.enqueueFillImage(beta_img, color, origin_img, region);
         
         //NDrange settings
         const cl::NDRange global_item_size0(g_px,g_pa,dN);
@@ -1824,28 +1824,28 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
 
         //set arguments
         //AART1 (projection)
-        kernel[5].setArg(0, reconst_img);
+        kernel[5].setArg(0, reconst_img); //as x[0] img -> w[t] img
         kernel[5].setArg(1, prj_img);
         kernel[5].setArg(2, vprj_img);
         kernel[5].setArg(3, angle_buffer);
         //FISTA1 (back projection)
-        kernel[6].setArg(0, reconst_img);
+        kernel[6].setArg(0, reconst_img); //as x[0] img -> w[t] img
         kernel[6].setArg(1, reconst_v_img);
         kernel[6].setArg(2, vprj_img);
         kernel[6].setArg(3, angle_buffer);
         kernel[6].setArg(4, L2norm_buffer);
         kernel[6].setArg(6, (cl_float)g_wt1);
-        //FISTA2_0 (update)
+        //ISTA (update for 0th cycle)
         kernel[7].setArg(0, reconst_v_img);
-        kernel[7].setArg(1, reconst_dest_img); //as x_img[1]
+        kernel[7].setArg(1, reconst_dest_img); //as x[1] img
         kernel[7].setArg(3, L2norm_buffer);
-        //FISTA2 (update)
-        kernel[8].setArg(0, reconst_img); //as x_img[t]
+        //FISTA (update)
+        kernel[8].setArg(0, reconst_img); //as x[t] img -> w[t] img
         kernel[8].setArg(1, reconst_v_img);
-        kernel[8].setArg(2, reconst_b_img); //as b_img[t]
-        kernel[8].setArg(3, reconst_w_img); //as w_img[t+1]
-        kernel[8].setArg(4, reconst_dest_img); //as x_img[t+1]
-        kernel[8].setArg(5, reconst_b_dest_img); //as b_img[t+1]
+        kernel[8].setArg(2, beta_img); //as b[t] img
+        kernel[8].setArg(3, reconst_w_img); //as w[t+1] img
+        kernel[8].setArg(4, beta_dest_img); //as x[t+1] img
+        kernel[8].setArg(5, beta_dest_img); //as beta[t+1] img
         kernel[8].setArg(7, L2norm_buffer);
 		
         
@@ -1880,30 +1880,30 @@ int FISTA_execution(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                 command_queue.enqueueNDRangeKernel(kernel[5], NULL, global_item_size1, local_item_size, NULL, NULL);
                 command_queue.finish();
                 
-                //FISTA1 (back projection)
+                //FISTA back projection
                 kernel[6].setArg(5, sub[k]);
                 command_queue.enqueueNDRangeKernel(kernel[6], NULL, global_item_size2, local_item_size, NULL, NULL);
                 command_queue.finish();
                 
                 if (firstBool) {
-                    //FISTA2_0 (update for 0th cycle)
+                    //ISTA (update for 0th cycle)
                     kernel[7].setArg(2, sub[k]);
                     command_queue.enqueueNDRangeKernel(kernel[7], NULL, global_item_size2, local_item_size, NULL, NULL);
                     
-                    //after 0th cycle, iterlation preceeds with w_img(reconst_w_img), not with x_img(reconst_w_img)
+                    //after 0th cycle, iterlation preceeds with w_img (reconst_w_img), not with x_img (reconst_img)
                     firstBool=false;
                     kernel[5].setArg(0, reconst_w_img);
                     kernel[6].setArg(0, reconst_w_img);
                 }else{
-                    //FISTA2 (update)
+                    //FISTA (update)
                     kernel[8].setArg(6, sub[k]);
                     command_queue.enqueueNDRangeKernel(kernel[8], NULL, global_item_size2, local_item_size, NULL, NULL);
                     
-                    //update(copy) b image
-                    command_queue.enqueueCopyImage(reconst_b_dest_img, reconst_b_img, origin_img, origin_img, region, NULL, NULL);
+                    //update(copy) of beta image
+                    command_queue.enqueueCopyImage(beta_dest_img, beta_img, origin_img, origin_img, region, NULL, NULL);
                     command_queue.finish();
                 }
-                //update(copy) x image
+                //update(copy) of x image (reconst_img)
                 command_queue.enqueueCopyImage(reconst_dest_img, reconst_img, origin_img, origin_img, region, NULL, NULL);
                 command_queue.finish();
                 
@@ -2057,9 +2057,9 @@ int FISTA_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     kernels[0].push_back(cl::Kernel::Kernel(program,"imageL2AbsX", &ret));//3
     kernels[0].push_back(cl::Kernel::Kernel(program,"imageL2AbsY", &ret));//4
     kernels[0].push_back(cl::Kernel::Kernel(program,"AART1", &ret));//5
-    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA1", &ret));//6
-    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA2_0", &ret));//7
-    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA2", &ret));//8
+    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTAbackProjection", &ret));//6
+    kernels[0].push_back(cl::Kernel::Kernel(program,"ISTA", &ret));//7
+    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA", &ret));//8
     kernels[0].push_back(cl::Kernel::Kernel(program,"sinogramCorrection", &ret));//9
 	kernels[0].push_back(cl::Kernel::Kernel(program,"backProjection", &ret));//10
     

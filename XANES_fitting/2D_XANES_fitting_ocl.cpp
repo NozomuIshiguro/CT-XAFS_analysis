@@ -229,7 +229,7 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         cl::Kernel kernel_UorH(program,"updateOrHold");
         cl::Kernel kernel_mask(program,"setMask");
         cl::Kernel kernel_threshold(program,"applyMask");
-        cl::Kernel kernel_FISTA(program,"FISTA");
+        cl::Kernel kernel_ISTA(program,"ISTA");
         
         
         //set kernel arguments
@@ -317,14 +317,14 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
                 command_queue.enqueueFillBuffer(Lambda_fista, (cl_float)val, sizeof(cl_float)*i, sizeof(cl_float), NULL, NULL);
                 command_queue.finish();
             }
-            //FISTA
-            kernel_FISTA.setArg(0, results_img);
-            kernel_FISTA.setArg(1, dp_img);
-            kernel_FISTA.setArg(2, tJJ_buff);
-            kernel_FISTA.setArg(3, tJdF_buff);
-            kernel_FISTA.setArg(4, freeFix_buff);
-            kernel_FISTA.setArg(5, lambda_buff);
-            kernel_FISTA.setArg(6, Lambda_fista);
+            //ISTA
+            kernel_ISTA.setArg(0, results_img);
+            kernel_ISTA.setArg(1, dp_img);
+            kernel_ISTA.setArg(2, tJJ_buff);
+            kernel_ISTA.setArg(3, tJdF_buff);
+            kernel_ISTA.setArg(4, freeFix_buff);
+            kernel_ISTA.setArg(5, lambda_buff);
+            kernel_ISTA.setArg(6, Lambda_fista);
         }
         
         
@@ -374,7 +374,7 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
                 if(inp.getCSbool()){
                     errorzone = "FISTA";
                     for (int k = 0; k < inp.getCSit(); k++) {
-                        command_queue.enqueueNDRangeKernel(kernel_FISTA, NULL, global_item_size, local_item_size, NULL, NULL);
+                        command_queue.enqueueNDRangeKernel(kernel_ISTA, NULL, global_item_size, local_item_size, NULL, NULL);
                         command_queue.finish();
                     }
                 }
