@@ -714,6 +714,10 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         queue.enqueueFillBuffer(lambda_buff, (cl_float)lambda, 0, sizeof(float)*imageSizeM);
         queue.enqueueFillBuffer(nyu_buff, (cl_float)2.0f, 0, sizeof(float)*imageSizeM);
         cl::Buffer eval_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*imageSizeM,0,NULL);
+        cl::Buffer Lambda_fista(context, CL_MEM_READ_WRITE, sizeof(cl_float)*FreeParaSize, 0, NULL);
+        cl::Buffer freefix_fista(context, CL_MEM_READ_WRITE, sizeof(cl_char)*FreeParaSize, 0, NULL);
+        queue.enqueueFillBuffer(freefix_fista, (cl_char)49, 0, sizeof(cl_char)*FreeParaSize);
+        queue.enqueueFillBuffer(Lambda_fista, (cl_float)0.001f, 0, sizeof(cl_float)*FreeParaSize);
         
         
         //kernel settings
@@ -781,6 +785,21 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
         kernel_Rfactor.setArg(1, FTchidata);
         kernel_Rfactor.setArg(2, FTchiFit);
         kernel_Rfactor.setArg(3, (cl_int)Rsize);
+        
+        
+        //FISTA
+        bool CSbool =false;
+        int CSit = 10;
+        cl::Kernel kernel_FISTA(program,"FISTA");
+        if (CSbool) {
+            kernel_FISTA.setArg(0, S02);
+            kernel_FISTA.setArg(1, dp_img);
+            kernel_FISTA.setArg(2, tJJ);
+            kernel_FISTA.setArg(3, tJdF);
+            kernel_FISTA.setArg(4, freefix_fista);
+            kernel_FISTA.setArg(5, lambda_buff);
+            kernel_FISTA.setArg(6, Lambda_fista);
+        }
         
         
         size_t maxWorkGroupSize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
@@ -898,6 +917,15 @@ int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
             //Levenberg-Marquardt
             queue.enqueueNDRangeKernel(kernel_LM,NULL,global_item_size,local_item_size, NULL, NULL);
             queue.finish();
+            
+            
+            //FISTA (Soft Thresholding Function)
+            if(CSbool){
+                for (int k = 0; k < CSit; k++) {
+                    queue.enqueueNDRangeKernel(kernel_FISTA, NULL, global_item_size, local_item_size, NULL, NULL);
+                    queue.finish();
+                }
+            }
             
             
             //estimate dL
