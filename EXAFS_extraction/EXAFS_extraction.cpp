@@ -9,7 +9,7 @@
 #include "EXAFS_extraction.hpp"
 #include "XANES_fit_cl.hpp"
 #include "EXAFS_fit_cl.hpp"
-#include "3D_FFT_cl.hpp"
+#include "threeD_FFT_cl.hpp"
 #include "LevenbergMarquardt_cl.hpp"
 #include "EXAFSextraction_cl.hpp"
 
@@ -1187,7 +1187,7 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
 #if defined (OCL120)
         source.push_back(make_pair(kernel_fit_src.c_str(),kernel_fit_src.length()));
         source.push_back(make_pair(kernel_EXAFSfit_src.c_str(),kernel_EXAFSfit_src.length()));
-        source.push_back(make_pair(kernel_3D_FFT_src.c_str(),kernel_3D_FFT_src.length()));
+        source.push_back(make_pair(kernel_threeD_FFT_src.c_str(),kernel_threeD_FFT_src.length()));
         source.push_back(make_pair(kernel_LM_src.c_str(),kernel_LM_src.length()));
         source.push_back(make_pair(kernel_ext_src.c_str(),kernel_ext_src.length()));
 #else

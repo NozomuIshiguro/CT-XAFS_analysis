@@ -460,7 +460,13 @@ input_parameter_fitting::input_parameter_fitting(){
     postEdgeEndEnergy=NAN;
     bkgFittingMode=1;
     
+    num_contrain_eq=0;
 }
+
+vector<string> input_parameter_fitting::getContrainEqs(){
+    return contrain_eq;
+}
+
 
 float input_parameter_fitting::get_kstart(){
     return kstart;
@@ -719,7 +725,7 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         (*inp_ifs)>>dummy;
         CSbool = (dummy==1) ? true:false;
         cout<<"  "<< boolalpha <<CSbool<<endl;
-    }else if((string)buffer=="#Noise factor of CS-based iteration for XANES fitting"){
+    }else if((string)buffer=="#Update factor of CS-based iteration for XANES fitting"){
         cout<<buffer<<endl;
         (*inp_ifs).getline(buffer, buffsize);
         istringstream iss(buffer);
@@ -920,7 +926,7 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         (*inp_ifs)>>dummy;
         CSbool = (dummy==1) ? true:false;
         cout<<"  "<< boolalpha <<CSbool<<endl;
-    }else if((string)buffer=="#Noise factor of CS-based iteration for EXAFS fitting"){
+    }else if((string)buffer=="#Update factor of CS-based iteration for EXAFS fitting"){
         cout<<buffer<<endl;
         (*inp_ifs).getline(buffer, buffsize);
         istringstream iss(buffer);
@@ -937,5 +943,16 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         cout<<buffer<<endl;
         (*inp_ifs)>>CSit;
         cout<<"  "<<CSit<<endl;
+    }else if((string)buffer=="#Number of contrain equations"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>num_contrain_eq;
+        cout<<"  "<<num_contrain_eq<<endl;
+    }else if((string)buffer=="#Contrain equations"){
+        cout<<buffer<<endl;
+        for (int i=0; i<num_contrain_eq; i++) {
+            (*inp_ifs).getline(buffer, buffsize);
+            contrain_eq.push_back(buffer);
+            cout<<"("<<i+1<<")  "<<contrain_eq[i]<<endl;
+        }
     }
 }

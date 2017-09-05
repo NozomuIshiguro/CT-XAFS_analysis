@@ -51,6 +51,8 @@ shellObjects::shellObjects(cl::CommandQueue commandQueue, cl::Program program, F
     kernel_update = cl::Kernel(program,"updatePara");
     kernel_UR = cl::Kernel(program,"updateOrRestore");
     kernel_OBD = cl::Kernel(program,"outputBondDistance");
+    kernel_contrain1 = cl::Kernel(program,"contrain_1");
+    kernel_contrain2 = cl::Kernel(program,"contrain_2");
     
     cl::size_t<3> origin;
     cl::size_t<3> region;
@@ -324,29 +326,29 @@ int shellObjects::getFreeParaSize(){
     return val;
 }
 
-int shellObjects::copyPara(cl::Buffer dstPara, int paramode){
+int shellObjects::copyPara(cl::Buffer dstPara, int offsetN, int paramode){
     
     switch (paramode) {
         case 1: //CN
-            queue.enqueueCopyBuffer(CN, dstPara, 0, 0, sizeof(float)*imageSizeM);
+            queue.enqueueCopyBuffer(CN, dstPara, 0, sizeof(float)*imageSizeM*offsetN, sizeof(float)*imageSizeM);
             break;
         case 2:
-            queue.enqueueCopyBuffer(dR, dstPara, 0, 0, sizeof(float)*imageSizeM);
+            queue.enqueueCopyBuffer(dR, dstPara, 0, sizeof(float)*imageSizeM*offsetN, sizeof(float)*imageSizeM);
             break;
         case 3:
-            queue.enqueueCopyBuffer(dE0, dstPara, 0, 0, sizeof(float)*imageSizeM);
+            queue.enqueueCopyBuffer(dE0, dstPara, 0, sizeof(float)*imageSizeM*offsetN, sizeof(float)*imageSizeM);
             break;
         case 4:
-            queue.enqueueCopyBuffer(ss, dstPara, 0, 0, sizeof(float)*imageSizeM);
+            queue.enqueueCopyBuffer(ss, dstPara, 0, sizeof(float)*imageSizeM*offsetN, sizeof(float)*imageSizeM);
             break;
         case 5:
-            queue.enqueueCopyBuffer(E0imag, dstPara, 0, 0, sizeof(float)*imageSizeM);
+            queue.enqueueCopyBuffer(E0imag, dstPara, 0, sizeof(float)*imageSizeM*offsetN, sizeof(float)*imageSizeM);
             break;
         case 6:
-            queue.enqueueCopyBuffer(C3, dstPara, 0, 0, sizeof(float)*imageSizeM);
+            queue.enqueueCopyBuffer(C3, dstPara, 0, sizeof(float)*imageSizeM*offsetN, sizeof(float)*imageSizeM);
             break;
         case 7:
-            queue.enqueueCopyBuffer(C4, dstPara, 0, 0, sizeof(float)*imageSizeM);
+            queue.enqueueCopyBuffer(C4, dstPara, 0, sizeof(float)*imageSizeM*offsetN, sizeof(float)*imageSizeM);
             break;
         default:
             break;
@@ -396,7 +398,7 @@ int shellObjects::updatePara(cl::Buffer dp_img, int paramode, int z_id){
     return 0;
 }
 
-int shellObjects::restorePara(cl::Buffer para_backup, cl::Buffer rho_img, int paramode){
+int shellObjects::restorePara(cl::Buffer para_backup, int offsetN,cl::Buffer rho_img, int paramode){
     
     size_t maxWorkGroupSize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
     const cl::NDRange local_item_size(min((int)maxWorkGroupSize,imageSizeX),1,1);
@@ -404,6 +406,8 @@ int shellObjects::restorePara(cl::Buffer para_backup, cl::Buffer rho_img, int pa
     
     kernel_UR.setArg(1, para_backup);
     kernel_UR.setArg(2, rho_img);
+    kernel_UR.setArg(3, (cl_int)0);
+    kernel_UR.setArg(4, (cl_int)offsetN);
     
     switch (paramode) {
         case 1: //CN
@@ -430,6 +434,8 @@ int shellObjects::restorePara(cl::Buffer para_backup, cl::Buffer rho_img, int pa
         default:
             break;
     }
+    queue.enqueueNDRangeKernel(kernel_UR,NULL,global_item_size,local_item_size,NULL,NULL);
+    queue.finish();
     
     return 0;
 }
@@ -479,6 +485,104 @@ int shellObjects::readParaImage(float* paraData, int paramode){
         default:
             break;
     }
+    
+    return 0;
+}
+
+
+int shellObjects::constrain1(cl::Buffer eval_img, cl::Buffer C_mat,
+                             int cnum, int pnum, int paramode){
+    
+    size_t maxWorkGroupSize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    const cl::NDRange local_item_size(min((int)maxWorkGroupSize,imageSizeX),1,1);
+    const cl::NDRange global_item_size(imageSizeX,imageSizeY,1);
+    
+    
+    switch (paramode) {
+        case 1: //CN
+            kernel_contrain1.setArg(0, CN);
+            break;
+        case 2: //dR
+            kernel_contrain1.setArg(0, dR);
+            break;
+        case 3: //dE0
+            kernel_contrain1.setArg(0, dE0);
+            break;
+        case 4: //ss
+            kernel_contrain1.setArg(0, ss);
+            break;
+        case 5: //E0img
+            kernel_contrain1.setArg(0, E0imag);
+            break;
+        case 6: //C3
+            kernel_contrain1.setArg(0, C3);
+            break;
+        case 7: //C4
+            kernel_contrain1.setArg(0, C4);
+            break;
+        default:
+            break;
+    }
+    kernel_contrain1.setArg(1, eval_img);
+    kernel_contrain1.setArg(2, C_mat);
+    kernel_contrain1.setArg(3, (cl_int)cnum);
+    kernel_contrain1.setArg(4, (cl_int)pnum);
+    queue.enqueueNDRangeKernel(kernel_contrain1,NULL,global_item_size,local_item_size,NULL,NULL);
+    queue.finish();
+    
+    
+    return 0;
+}
+
+
+int shellObjects::constrain2(cl::Buffer eval_img, cl::Buffer edgeJ, cl::Buffer C_mat, cl::Buffer D_vec, cl::Buffer C2_vec, int cnum, int pnum, int paramode){
+    
+    size_t maxWorkGroupSize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    const cl::NDRange local_item_size(min((int)maxWorkGroupSize,imageSizeX),1,1);
+    const cl::NDRange global_item_size(imageSizeX,imageSizeY,1);
+    
+    
+    switch (paramode) {
+        case 1: //CN
+            kernel_contrain2.setArg(0, CN);
+            kernel_contrain2.setArg(8, (cl_char)49);
+            break;
+        case 2: //dR
+            kernel_contrain2.setArg(0, dR);
+            kernel_contrain2.setArg(8, (cl_char)48);
+            break;
+        case 3: //dE0
+            kernel_contrain2.setArg(0, dE0);
+            kernel_contrain2.setArg(8, (cl_char)48);
+            break;
+        case 4: //ss
+            kernel_contrain2.setArg(0, ss);
+            kernel_contrain2.setArg(8, (cl_char)48);
+            break;
+        case 5: //E0img
+            kernel_contrain2.setArg(0, E0imag);
+            kernel_contrain2.setArg(8, (cl_char)48);
+            break;
+        case 6: //C3
+            kernel_contrain2.setArg(0, C3);
+            kernel_contrain2.setArg(8, (cl_char)48);
+            break;
+        case 7: //C4
+            kernel_contrain2.setArg(0, C4);
+            kernel_contrain2.setArg(8, (cl_char)48);
+            break;
+        default:
+            break;
+    }
+    kernel_contrain2.setArg(1, edgeJ);
+    kernel_contrain2.setArg(2, eval_img);
+    kernel_contrain2.setArg(3, C_mat);
+    kernel_contrain2.setArg(4, D_vec);
+    kernel_contrain2.setArg(5, C2_vec);
+    kernel_contrain2.setArg(6, (cl_int)cnum);
+    kernel_contrain2.setArg(7, (cl_int)pnum);
+    queue.enqueueNDRangeKernel(kernel_contrain2,NULL,global_item_size,local_item_size,NULL,NULL);
+    queue.finish();
     
     return 0;
 }

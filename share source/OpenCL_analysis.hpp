@@ -183,6 +183,7 @@ public:
     void inputFromFile_mask(char* buffer,ifstream *inp_ifs);
 };
 
+
 class input_parameter_fitting{
 protected:
     string fitting_output_dir;
@@ -240,6 +241,9 @@ protected:
     float postEdgeStartEnergy;
     float postEdgeEndEnergy;
     
+    int num_contrain_eq;
+    vector<string> contrain_eq;
+    
 public:
     input_parameter_fitting();
     input_parameter_fitting(string inputfile_path);
@@ -285,6 +289,7 @@ public:
     float getEndEnergy();
     int getFittingStartEnergyNo();
     int getFittingEndEnergyNo();
+    vector<string> getContrainEqs();
 
     vector<float> getFittingPara();
     vector<bool> getFreeFixPara();
@@ -541,7 +546,7 @@ public:
 	float* paraAttenuator();
 	float* lowerLimit();
 	float* upperLimit();
-	size_t constrain_size;
+	size_t contrain_size;
     
     
     void setFittingEquation(vector<string> fittingFuncList);

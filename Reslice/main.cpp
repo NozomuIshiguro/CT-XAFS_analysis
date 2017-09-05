@@ -79,11 +79,13 @@ int main(int argc, const char * argv[]) {
     
     //check if input data exist
     string fileName_base = inp.getInputDir();
+	string paraName;
     if (!(inp.getStartEnergyNo()<0)) {
-        fileName_base += EnumTagString(inp.getStartEnergyNo(),"/","");
+		paraName = EnumTagString(inp.getStartEnergyNo(), "", "");
     }else if(inp.getFittingParaName().size()>0){
-        fileName_base += "/"+inp.getFittingParaName()[0];
+		paraName = inp.getFittingParaName()[0];
     }
+	fileName_base += "/" + paraName;
     DIR *dir;
     struct dirent *dp;
     dir=opendir(fileName_base.c_str());
@@ -102,7 +104,7 @@ int main(int argc, const char * argv[]) {
             cout << "    raw file found: " << Edirname <<endl<<endl;
             fileName_base += +"/"+Edirname;
             fileName_base.erase(fileName_base.size()-8);
-            fileName_base.erase(0,inp.getInputDir().size()+4);
+            fileName_base.erase(0,inp.getInputDir().size()+paraName.size()+1);
             break;
         }
     }

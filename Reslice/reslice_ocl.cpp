@@ -182,7 +182,7 @@ int reslice(cl::CommandQueue command_queue, cl::Kernel kernel,
         //write input mt_img object
         origin[2] = 0;
         for (int i=0; i<num_angle/iter; i++) {
-            command_queue.enqueueWriteImage(mt_img, CL_TRUE, origin, region_mt, imageSizeX*sizeof(cl_float), 0, mt_vec[i+j], NULL, NULL);
+            command_queue.enqueueWriteImage(mt_img, CL_TRUE, origin, region_mt, 0, 0, mt_vec[i+j], NULL, NULL);
         
             //reslice
             kernel.setArg(0, mt_img);
@@ -199,7 +199,7 @@ int reslice(cl::CommandQueue command_queue, cl::Kernel kernel,
         
         for (int i = 0; i < imageSizeY; i++) {
             origin[2]=i;
-            command_queue.enqueueReadImage(prj_img, CL_TRUE, origin, region_prj, imageSizeX*sizeof(cl_float), 0, prj_vec[i]+j*imageSizeX, NULL, NULL);
+            command_queue.enqueueReadImage(prj_img, CL_TRUE, origin, region_prj, 0, 0, prj_vec[i]+j*imageSizeX, NULL, NULL);
         }
     }
     
@@ -268,6 +268,7 @@ int reslice_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
     int imageSizeX = inp.getImageSizeX();
     int imageSizeY = inp.getImageSizeY();
     int64_t imageSizeM = inp.getImageSizeM();
+	//cout << imageSizeX << "," << imageSizeY << endl;
     
     try {
         cl::Context context = command_queue.getInfo<CL_QUEUE_CONTEXT>();
@@ -380,10 +381,11 @@ int data_input_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
                       int thread_id){
     
     int imageSizeM = inp.getImageSizeM();
+	//cout << imageSizeM << endl;
     
     vector<float*> mt_vec;
     for (int i=startAngleNo; i<=endAngleNo; i++) {
-        mt_vec.push_back(new float[inp.getImageSizeM()]);
+        mt_vec.push_back(new float[imageSizeM]);
     }
     
     
@@ -432,6 +434,7 @@ int reslice_programBuild(cl::Context context,vector<cl::Kernel> *kernels,
     oss<<"-D IMAGESIZE_Y="<<inp.getImageSizeY()<<" ";
     oss<<"-D IMAGESIZE_M="<<inp.getImageSizeM()<<" ";
     string option = oss.str();
+	//cout << option << endl;
     //cout << kernel_code<<endl;
 #if defined (OCL120)
     cl::Program::Sources source(1,std::make_pair(kernel_src_reslice.c_str(),kernel_src_reslice.length()));

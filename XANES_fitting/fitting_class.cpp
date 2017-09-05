@@ -155,10 +155,6 @@ fitting_eq::fitting_eq(input_parameter inp){
     }
     
     for (int i=0; i<param_size; i++) {
-        //char buffer=free_para[i];
-		//cout << para_lowerlimit[i] << "," << para_upperlimit[i] << endl;
-		//cout << isnan(para_lowerlimit[i]) << "," << isnan(para_upperlimit[i]) << endl;
-        //bool b1 = (atoi(&buffer)==1);
 		bool b1 = (free_para[i] == '1');
 		bool b2 = (isnan(para_lowerlimit[i])==0);
         bool b3 = (isinf(para_lowerlimit[i])==0);
@@ -177,6 +173,10 @@ fitting_eq::fitting_eq(input_parameter inp){
             D_vector.push_back(para_upperlimit[i]);
         }
     }
+    contrain_size = D_vector.size();
+    //extra contrain
+    vector<string> contrain_eqs = inp.getContrainEqs();
+	contrain_size = createContrainMatrix(contrain_eqs,parameter_name,&C_matrix,&D_vector,(int)contrain_size);
 	cout << "C matrix | D vector" << endl;
 	for (int i = 0; i < C_matrix.size(); i++) {
 		for (int j = 0; j < C_matrix[i].size(); j++) {
@@ -185,7 +185,7 @@ fitting_eq::fitting_eq(input_parameter inp){
 		cout << "| " << D_vector[i] << endl;
 	}
     cout<<endl;
-    constrain_size = D_vector.size();
+    
     
     
     //input LCF standard

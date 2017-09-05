@@ -22,6 +22,10 @@
 #define IMAGESIZE_M 4194304 //2048*2048
 #endif
 
+#ifndef CONTRAIN_NUM
+#define CONTRAIN_NUM 0
+#endif
+
 inline void linear_transform(float *A, float *x_src, float *x_dest, int dim, __constant char *p_fix){
     
     for(int i=0; i<dim; i++){
@@ -224,7 +228,7 @@ __kernel void evaluateUpdateCandidate(__global float* tJdF_img, __global float* 
 
 
 __kernel void updateOrRestore(__global float* para_img, __global float* para_img_backup,
-                              __global float* rho_img){
+                              __global float* rho_img, int z_id1, int z_id2){
     
     const size_t global_x = get_global_id(0);
     const size_t global_y = get_global_id(1);
@@ -232,15 +236,17 @@ __kernel void updateOrRestore(__global float* para_img, __global float* para_img
     const size_t imageSizeX = get_global_size(0);
     const size_t imageSizeY = get_global_size(1);
     const size_t IDxy = global_x+global_y*imageSizeX;
-    const size_t IDxyz = IDxy + global_z*imageSizeX*imageSizeY;
+    
+    const size_t IDxyz1 = IDxy + (global_z+z_id1)*imageSizeX*imageSizeY;
+    const size_t IDxyz2 = IDxy + (global_z+z_id2)*imageSizeX*imageSizeY;
     
     float rho = rho_img[IDxy];
     
-    float para_A = para_img[IDxyz];
-    float para_B = para_img_backup[IDxyz];
+    float para_A = para_img[IDxyz1];
+    float para_B = para_img_backup[IDxyz2];
     
     
-    para_img[IDxyz] = (rho>=0) ? para_A:para_B;
+    para_img[IDxyz1] = (rho>=0) ? para_A:para_B;
 }
 
 
@@ -381,3 +387,59 @@ __kernel void FISTA(__global float* fp_img, __global float* dp_img,
     }
 }
 
+
+__kernel void contrain_0(__constant float *C_mat,__global float* C2_vec){
+    
+    const size_t c_num = get_global_id(0);
+    float C2 =0.0f;
+    for(int i=0; i<PARA_NUM; i++){
+        C2 += C_mat[c_num*PARA_NUM+i]*C_mat[c_num*PARA_NUM+i];
+    }
+    
+    C2_vec[c_num] = C2;
+}
+
+
+__kernel void contrain_1(__global float* fp_cnd_img, __global float* eval_img,
+                          __constant float *C_mat, int c_num, int p_num){
+    
+    const size_t global_x = get_global_id(0);
+    const size_t global_y = get_global_id(1);
+    const size_t global_z = get_global_id(2);
+    const size_t size_x = get_global_size(0);
+    const size_t size_y = get_global_size(1);
+    const size_t IDxy  = global_x+ global_y*size_x;
+    const size_t IDxyz = IDxy + global_z*size_x*size_y;
+    
+    float fp = fp_cnd_img[IDxyz];
+    float Cij = C_mat[c_num*PARA_NUM+p_num];
+    eval_img[IDxy] += Cij*fp;
+}
+
+
+__kernel void contrain_2(__global float* fp_cnd_img, __global float* weight_img,
+                          __global float* eval_img, __constant float *C_mat,
+                          __constant float *D_vec, __constant float *C2_vec,
+                          int c_num, int p_num, char weight_b){
+    
+    const size_t global_x = get_global_id(0);
+    const size_t global_y = get_global_id(1);
+    const size_t global_z = get_global_id(2);
+    const size_t size_x = get_global_size(0);
+    const size_t size_y = get_global_size(1);
+    const size_t IDxy  = global_x+ global_y*size_x;
+    const size_t IDxyz = IDxy + global_z*size_x*size_y;
+    
+    
+    float fp   = fp_cnd_img[IDxyz];
+    float eval = eval_img[IDxy];
+    float C2 = C2_vec[c_num];
+    float weight = weight_img[IDxy];
+    float D = (weight_b==48) ? D_vec[c_num]:D_vec[c_num]*weight;
+    
+    bool eval_b = (eval>D);
+    float h = (eval-D)/sqrt(C2);
+    fp = (eval_b) ? fp-h*C_mat[c_num*PARA_NUM+p_num]:fp;
+    
+    fp_cnd_img[IDxyz] = fp;
+}

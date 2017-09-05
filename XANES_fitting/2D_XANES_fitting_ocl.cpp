@@ -21,7 +21,7 @@ int XANESGPUmemoryControl(int imageSizeX, int imageSizeY,
     size_t paraN = fiteq.ParaSize();
     int numFunc = fiteq.numFunc;
     int numLCF = fiteq.numLCF;
-    size_t numContrain = fiteq.constrain_size;
+    size_t numContrain = fiteq.contrain_size;
     do {
         usingMemorySize =0;
         //energy
@@ -76,7 +76,7 @@ string kernel_preprocessor_nums(fitting_eq fiteq,input_parameter inp, int proces
     
     OSS<<" -D PARA_NUM_SQ="<< fiteq.ParaSize()*fiteq.ParaSize();
     
-    OSS<<" -D CONSTRAIN_NUM="<< fiteq.constrain_size;
+    OSS<<" -D CONTRAIN_NUM="<< fiteq.contrain_size;
     
     OSS<<" -D START_E="<< inp.getStartEnergy() - inp.getE0();
     
@@ -119,7 +119,7 @@ int fitresult_output_thread(fitting_eq fit_eq, int AngleNo,string output_dir,
 int data_input_thread(cl::CommandQueue command_queue, cl::Program program,
                       fitting_eq fiteq, int AngleNo, int thread_id,input_parameter inp,
                       cl::Buffer energy, cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff,
-                      cl::Buffer freeFix_buff, cl::Image1DArray refSpectra,
+                      cl::Buffer C2_vector_buff,cl::Buffer freeFix_buff, cl::Image1DArray refSpectra,
                       cl::Buffer funcMode_buff, int processImageSizeY){
     
     
@@ -147,7 +147,7 @@ int data_input_thread(cl::CommandQueue command_queue, cl::Program program,
     fitting_th[thread_id].join();
     fitting_th[thread_id] = thread(XANES_fit_thread,command_queue, program,
                                    fiteq,AngleNo,thread_id,inp,
-                                   energy, C_matrix_buff, D_vector_buff,
+                                   energy, C_matrix_buff, D_vector_buff, C2_vector_buff,
                                    freeFix_buff,refSpectra,funcMode_buff,
                                    move(mt_vec),0,processImageSizeY);
     
@@ -163,8 +163,9 @@ static int dummy(){
 int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
                      fitting_eq fiteq,int AngleNo, int thread_id,input_parameter inp,
                      cl::Buffer energy, cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff,
-                     cl::Buffer freeFix_buff, cl::Image1DArray refSpectra, cl::Buffer funcMode_buff,
-                     vector<float*> mt_vec, int64_t offset, int processImgSizeY)
+                     cl::Buffer C2_vector_buff, cl::Buffer freeFix_buff, cl::Image1DArray refSpectra,
+                     cl::Buffer funcMode_buff, vector<float*> mt_vec, int64_t offset,
+                     int processImgSizeY)
 {
 	string errorzone = "0";
 	try {
@@ -183,6 +184,7 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         const int processImgSizeM = imgSizeX*processImgSizeY;
         string output_dir=inp.getFittingOutputDir();
         float CI=10.0f;
+        int contrainSize = (int)fiteq.contrain_size;
         
         const cl::NDRange local_item_size(min(imgSizeX,(int)maxWorkGroupSize),1,1);
         const cl::NDRange global_item_size(imgSizeX,processImgSizeY,1);
@@ -209,6 +211,10 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
 		cl::Buffer dL_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*processImgSizeM, 0, NULL);
         cl::Buffer rho_buff(context, CL_MEM_READ_WRITE, sizeof(cl_float)*processImgSizeM, 0, NULL);
         cl::Buffer weight_thleshold_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*processImgSizeM,0,NULL);
+        cl::Buffer eval_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*processImgSizeM,0,NULL);
+        cl::Buffer contrainWgt_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*processImgSizeM,0,NULL);
+        command_queue.enqueueFillBuffer(contrainWgt_img, (cl_float)1.0f, 0, sizeof(cl_float)*processImgSizeM);
+        cl::Buffer Lambda_fista(context, CL_MEM_READ_WRITE, sizeof(cl_float)*paramsize, 0, NULL);
 
         
         //cout<<ret<<endl;
@@ -217,13 +223,14 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         cl::Kernel kernel_LM(program,"LevenbergMarquardt");
         cl::Kernel kernel_dL(program,"estimate_dL");
         cl::Kernel kernel_cnd(program,"updatePara");
-        cl::Kernel kernel_constrain(program,"constrain");
+        cl::Kernel kernel_contrain1(program,"contrain_1");
+        cl::Kernel kernel_contrain2(program,"contrain_2");
         cl::Kernel kernel_evalUpdate(program,"evaluateUpdateCandidate");
         cl::Kernel kernel_UorH(program,"updateOrHold");
         cl::Kernel kernel_mask(program,"setMask");
         cl::Kernel kernel_threshold(program,"applyMask");
-        cl::Kernel kernel_CS(program,"partialDerivativeOfGradiant");
         cl::Kernel kernel_FISTA(program,"FISTA");
+        
         
         //set kernel arguments
         //chi2(old), tJdF, tJJ calculation
@@ -269,10 +276,17 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         kernel_cnd.setArg(1, results_cnd_img);
         kernel_cnd.setArg(2, (cl_int)0);
         kernel_cnd.setArg(3, (cl_int)0);
-        //constrain
-        kernel_constrain.setArg(0, results_cnd_img);
-        kernel_constrain.setArg(1, C_matrix_buff);
-        kernel_constrain.setArg(2, D_vector_buff);
+        //contrain
+        kernel_contrain1.setArg(0, results_cnd_img);
+        kernel_contrain1.setArg(1, eval_img);
+        kernel_contrain1.setArg(2, C_matrix_buff);
+        kernel_contrain2.setArg(0, results_cnd_img);
+        kernel_contrain2.setArg(1, contrainWgt_img);
+        kernel_contrain2.setArg(2, eval_img);
+        kernel_contrain2.setArg(3, C_matrix_buff);
+        kernel_contrain2.setArg(4, D_vector_buff);
+        kernel_contrain2.setArg(5, C2_vector_buff);
+        kernel_contrain2.setArg(8, (cl_char)48);
         //evaluate update
         kernel_evalUpdate.setArg(0, tJdF_buff);
         kernel_evalUpdate.setArg(1, tJJ_buff);
@@ -287,10 +301,30 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
         kernel_UorH.setArg(1, results_cnd_img);
         kernel_UorH.setArg(2, rho_buff);
         
+        
         //allocate memory for results
         vector<float*> results_vec;
         for (int i=0; i<paramsize; i++) {
             results_vec.push_back(new float[imgSizeM]);
+        }
+        
+        
+        errorzone = "setting parameters for CS to GPU";
+        //cout << paramsize << endl;
+        if (inp.getCSbool()) {
+            for (int i=0; i<paramsize; i++) {
+                float val = (fiteq.freefix_para()[i] == 49) ? inp.getCSepsilon()[i] : 0.0f;
+                command_queue.enqueueFillBuffer(Lambda_fista, (cl_float)val, sizeof(cl_float)*i, sizeof(cl_float), NULL, NULL);
+                command_queue.finish();
+            }
+            //FISTA
+            kernel_FISTA.setArg(0, results_img);
+            kernel_FISTA.setArg(1, dp_img);
+            kernel_FISTA.setArg(2, tJJ_buff);
+            kernel_FISTA.setArg(3, tJdF_buff);
+            kernel_FISTA.setArg(4, freeFix_buff);
+            kernel_FISTA.setArg(5, lambda_buff);
+            kernel_FISTA.setArg(6, Lambda_fista);
         }
         
         
@@ -314,25 +348,6 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
                 command_queue.finish();
             }
             
-            errorzone = "setting parameters for CS to GPU";
-            cl::Buffer Lambda_fista(context, CL_MEM_READ_WRITE, sizeof(cl_float)*paramsize, 0, NULL);
-            //cout << paramsize << endl;
-            if (inp.getCSbool()) {
-                for (int i=0; i<paramsize; i++) {
-                    float val = (fiteq.freefix_para()[i] == 49) ? inp.getCSepsilon()[i] : 0.0f;
-                    command_queue.enqueueFillBuffer(Lambda_fista, (cl_float)val, sizeof(cl_float)*i, sizeof(cl_float), NULL, NULL);
-                    command_queue.finish();
-                }
-            }
-            //FISTA
-            kernel_FISTA.setArg(0, results_img);
-            kernel_FISTA.setArg(1, dp_img);
-            kernel_FISTA.setArg(2, tJJ_buff);
-            kernel_FISTA.setArg(3, tJdF_buff);
-            kernel_FISTA.setArg(4, freeFix_buff);
-            kernel_FISTA.setArg(5, lambda_buff);
-            kernel_FISTA.setArg(6, Lambda_fista);
-            
             
             errorzone = "initial weighting";
             //chi2(new) calculation
@@ -347,6 +362,7 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
                 //chi2(old), tJdF, tJJ calculation
                 command_queue.enqueueNDRangeKernel(kernel_chi2tJdFtJJ, NULL, global_item_size, local_item_size, NULL, NULL);
                 command_queue.finish();
+                
                 
                 errorzone = "L-M";
                 //L-M equation
@@ -363,6 +379,7 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
                     }
                 }
                 
+                
                 errorzone = "estimating dL";
                 //estimate dL
                 command_queue.enqueueNDRangeKernel(kernel_dL, NULL, global_item_size, local_item_size, NULL, NULL);
@@ -376,15 +393,32 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
                 command_queue.finish();
                 
                 
-                errorzone = "setting constrain";
-                //constrain
-                command_queue.enqueueNDRangeKernel(kernel_constrain, NULL, global_item_size, local_item_size, NULL, NULL);
-                command_queue.finish();
+                //contrain
+                errorzone = "setting contrain";
+                for (int i=0; i<contrainSize; i++) {
+                    kernel_contrain1.setArg(3, (cl_int)i);
+                    kernel_contrain2.setArg(6, (cl_int)i);
+                    command_queue.enqueueFillBuffer(eval_img, (cl_float)0.0f, 0, sizeof(cl_float)*processImgSizeM);
+                    for (int j=0; j<paramsize; j++) {
+                        const cl::NDRange global_item_offset(0,0,j);
+                        kernel_contrain1.setArg(4, (cl_int)j);
+                        command_queue.enqueueNDRangeKernel(kernel_contrain1, global_item_offset, global_item_size, local_item_size, NULL, NULL);
+                        command_queue.finish();
+                    }
+                    for (int j=0; j<paramsize; j++) {
+                        const cl::NDRange global_item_offset(0,0,j);
+                        kernel_contrain2.setArg(7, (cl_int)j);
+                        command_queue.enqueueNDRangeKernel(kernel_contrain2, global_item_offset, global_item_size, local_item_size, NULL, NULL);
+                        command_queue.finish();
+                    }
+                }
+                
                 
                 errorzone = "calclating new chi2";
                 //chi2(new) calculation
                 command_queue.enqueueNDRangeKernel(kernel_chi2new, NULL, global_item_size, local_item_size, NULL, NULL);
                 command_queue.finish();
+                
                 
                 errorzone = "evaluateUpdateCandidate";
                 //evaluate rho
@@ -393,7 +427,6 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
                 //update or hold parameter
                 command_queue.enqueueNDRangeKernel(kernel_UorH, NULL, global_item_size2, local_item_size, NULL, NULL);
                 command_queue.finish();
-                
             }
             
             
@@ -404,12 +437,14 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
             command_queue.enqueueNDRangeKernel(kernel_mask, NULL, global_item_size, local_item_size, NULL, NULL);
             command_queue.finish();
             
+            
             errorzone = "applying threshold";
             //apply threshold
             kernel_threshold.setArg(0, results_img);
             kernel_threshold.setArg(1, mask_buff);
             command_queue.enqueueNDRangeKernel(kernel_threshold, NULL, global_item_size2, local_item_size, NULL, NULL);
             command_queue.finish();
+            
             
             errorzone = "read results from GPU";
             //read results image from buffer
@@ -585,18 +620,21 @@ int XANES_fit_ocl(fitting_eq fiteq, input_parameter inp,
     vector<cl::Buffer> energy_buffers;
     vector<cl::Buffer> C_matrix_buffers;
     vector<cl::Buffer> D_vector_buffers;
+    vector<cl::Buffer> C2_vector_buffers;
     vector<cl::Buffer> freeFix_buffers;
     vector<cl::Buffer> funcMode_buffers;
     cl::ImageFormat format(CL_R, CL_FLOAT);
     vector<cl::Image1DArray> refSpectra;
     int paramsize = (int)fiteq.ParaSize();
-    int contrainsize = (int)fiteq.constrain_size;
+    int contrainsize = (int)fiteq.contrain_size;
     const cl::NDRange local_item_size(1,1,1);
     const cl::NDRange global_item_size(1,1,1);
+    const cl::NDRange global_item_size2(contrainsize,1,1);
     for (int i=0; i<plat_dev_list.contextsize(); i++){
         energy_buffers.push_back(cl::Buffer(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_float)*num_energy, 0, NULL));
         C_matrix_buffers.push_back(cl::Buffer(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_float)*paramsize*contrainsize, 0, NULL));
         D_vector_buffers.push_back(cl::Buffer(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_float)*contrainsize, 0, NULL));
+        C2_vector_buffers.push_back(cl::Buffer(plat_dev_list.context(i), CL_MEM_READ_WRITE, sizeof(cl_float)*contrainsize, 0, NULL));
         freeFix_buffers.push_back(cl::Buffer(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_char)*paramsize, 0, NULL));
         funcMode_buffers.push_back(cl::Buffer(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_int)*fiteq.numFunc, 0, NULL));
         refSpectra.push_back(cl::Image1DArray(plat_dev_list.context(i), CL_MEM_READ_WRITE,format,fiteq.numLCF,IMAGE_SIZE_E, 0, NULL));
@@ -637,6 +675,14 @@ int XANES_fit_ocl(fitting_eq fiteq, input_parameter inp,
             plat_dev_list.queue(i,0).enqueueNDRangeKernel(kernel_LCFstd, NULL, global_item_size, local_item_size, NULL, NULL);
             plat_dev_list.queue(i,0).finish();
         }
+        
+        
+        //estimate C2
+        cl::Kernel kernel_contrain0(programs[i],"contrain_0");
+        kernel_contrain0.setArg(0, C_matrix_buffers[i]);
+        kernel_contrain0.setArg(1, C2_vector_buffers[i]);
+        plat_dev_list.queue(i,0).enqueueNDRangeKernel(kernel_contrain0, NULL, global_item_size2, local_item_size, NULL, NULL);
+        plat_dev_list.queue(i,0).finish();
     }
 
 	/*float *spectra;
@@ -668,8 +714,8 @@ int XANES_fit_ocl(fitting_eq fiteq, input_parameter inp,
                 input_th[j].join();
                 input_th[j] = thread(data_input_thread,
                                      plat_dev_list.queue(j,0),programs[j],
-                                     fiteq,i,j,inp,
-                                     energy_buffers[j], C_matrix_buffers[j], D_vector_buffers[j],
+                                     fiteq,i,j,inp,energy_buffers[j], C_matrix_buffers[j],
+                                     D_vector_buffers[j],C2_vector_buffers[j],
                                      freeFix_buffers[j],refSpectra[j],funcMode_buffers[j],
                                      processImageSizeY[j]);
                 i++;

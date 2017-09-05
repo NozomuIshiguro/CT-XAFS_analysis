@@ -123,7 +123,7 @@
 		2E8887811F3EC1CE00F5688F /* FEFF_shell_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2ED4401F2B1F100093DA92 /* FEFF_shell_class.cpp */; };
 		2E8887821F3EC1D100F5688F /* shellObject_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2ED4551F2D980D0093DA92 /* shellObject_class.cpp */; };
 		2E8887831F3EC1D300F5688F /* EXAFS_fit.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2ECC35821C3A41BF002215B2 /* EXAFS_fit.cl */; };
-		2E8887841F3EC1D600F5688F /* 3D_FFT.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EB976A21E24AD6D00B5258D /* 3D_FFT.cl */; };
+		2E8887841F3EC1D600F5688F /* threeD_FFT.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EB976A21E24AD6D00B5258D /* threeD_FFT.cl */; };
 		2E8887851F3EC1DC00F5688F /* readHisRawFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2304351AAB4121005A0A54 /* readHisRawFile.cpp */; };
 		2E8887861F3EC1DF00F5688F /* CTXAFS_analysis_share.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E23042F1AA91629005A0A54 /* CTXAFS_analysis_share.cpp */; };
 		2E8887871F3EC1E100F5688F /* OCL_platform_device_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E117F0F1AB425850094871E /* OCL_platform_device_class.cpp */; };
@@ -159,7 +159,7 @@
 		2EB728501F1DE0C4003C0F2F /* input_parameter_mask_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E3C8B011C00D41900E9CC3C /* input_parameter_mask_class.cpp */; };
 		2EB728531F1DE15F003C0F2F /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EB7283E1F1DCD86003C0F2F /* main.cpp */; };
 		2EB728561F1DE3F8003C0F2F /* imageBatchBinning.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EB728441F1DCFD1003C0F2F /* imageBatchBinning.cpp */; };
-		2EB976A31E24AD6D00B5258D /* 3D_FFT.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EB976A21E24AD6D00B5258D /* 3D_FFT.cl */; };
+		2EB976A31E24AD6D00B5258D /* threeD_FFT.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2EB976A21E24AD6D00B5258D /* threeD_FFT.cl */; };
 		2EBB68CE1F4D1ABE000F2398 /* CT_imageRegistration_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E434DD11A8AFE15006A3162 /* CT_imageRegistration_ocl.cpp */; };
 		2EBEB7C91F3483220068B9D1 /* 2D_EXAFS_fitting_ocl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EBEB7C81F3483220068B9D1 /* 2D_EXAFS_fitting_ocl.cpp */; };
 		2EC3E1771C01A30D0039438B /* input_parameter_reslice_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2EC3E1761C01A30D0039438B /* input_parameter_reslice_class.cpp */; };
@@ -434,9 +434,9 @@
 		2EB728441F1DCFD1003C0F2F /* imageBatchBinning.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = imageBatchBinning.cpp; sourceTree = "<group>"; };
 		2EB728451F1DCFD1003C0F2F /* imageBatchBinning.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = imageBatchBinning.hpp; sourceTree = "<group>"; };
 		2EB88F1E1BA47FE10053944A /* FBP_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = FBP_cl.hpp; sourceTree = "<group>"; };
-		2EB976A21E24AD6D00B5258D /* 3D_FFT.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = 3D_FFT.cl; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.opencl; };
+		2EB976A21E24AD6D00B5258D /* threeD_FFT.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = threeD_FFT.cl; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.opencl; };
 		2EBEB7C61F3461990068B9D1 /* EXAFS_fit_cl.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = EXAFS_fit_cl.hpp; sourceTree = "<group>"; };
-		2EBEB7C71F34625F0068B9D1 /* 3D_FFT_cl.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = 3D_FFT_cl.hpp; sourceTree = "<group>"; };
+		2EBEB7C71F34625F0068B9D1 /* threeD_FFT_cl.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = threeD_FFT_cl.hpp; sourceTree = "<group>"; };
 		2EBEB7C81F3483220068B9D1 /* 2D_EXAFS_fitting_ocl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = 2D_EXAFS_fitting_ocl.cpp; path = EXAFS_fitting/2D_EXAFS_fitting_ocl.cpp; sourceTree = SOURCE_ROOT; };
 		2EC3E1761C01A30D0039438B /* input_parameter_reslice_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = input_parameter_reslice_class.cpp; sourceTree = "<group>"; };
 		2ECC2BED1ECEBB8D0029EE38 /* ImagingXAFS_RegAndBkgRemoval */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ImagingXAFS_RegAndBkgRemoval; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -782,14 +782,14 @@
 			children = (
 				2E2ED43F1F2B16F20093DA92 /* EXAFS.hpp */,
 				2EBEB7C61F3461990068B9D1 /* EXAFS_fit_cl.hpp */,
-				2EBEB7C71F34625F0068B9D1 /* 3D_FFT_cl.hpp */,
+				2EBEB7C71F34625F0068B9D1 /* threeD_FFT_cl.hpp */,
 				2ECC357D1C3A4183002215B2 /* main.cpp */,
 				2EBEB7C81F3483220068B9D1 /* 2D_EXAFS_fitting_ocl.cpp */,
 				2ECC35841C3A7DC7002215B2 /* EXAFS_fitting.cpp */,
 				2E2ED4401F2B1F100093DA92 /* FEFF_shell_class.cpp */,
 				2E2ED4551F2D980D0093DA92 /* shellObject_class.cpp */,
 				2ECC35821C3A41BF002215B2 /* EXAFS_fit.cl */,
-				2EB976A21E24AD6D00B5258D /* 3D_FFT.cl */,
+				2EB976A21E24AD6D00B5258D /* threeD_FFT.cl */,
 			);
 			path = EXAFS_fitting;
 			sourceTree = "<group>";
@@ -1384,7 +1384,7 @@
 				2E8887891F3EC1E700F5688F /* input_parameter_mask_class.cpp in Sources */,
 				2E88878D1F3EC20D00F5688F /* fitting_class.cpp in Sources */,
 				2E8887861F3EC1DF00F5688F /* CTXAFS_analysis_share.cpp in Sources */,
-				2E8887841F3EC1D600F5688F /* 3D_FFT.cl in Sources */,
+				2E8887841F3EC1D600F5688F /* threeD_FFT.cl in Sources */,
 				2E8887851F3EC1DC00F5688F /* readHisRawFile.cpp in Sources */,
 				2E8887821F3EC1D100F5688F /* shellObject_class.cpp in Sources */,
 				2E8887941F3EC78200F5688F /* EXAFS_extraction.cpp in Sources */,
@@ -1446,7 +1446,7 @@
 				2E2ED44C1F2C5EA30093DA92 /* readHisRawFile.cpp in Sources */,
 				2E2ED4541F2C62890093DA92 /* EXAFS_fitting.cpp in Sources */,
 				2E2ED4561F2D980D0093DA92 /* shellObject_class.cpp in Sources */,
-				2EB976A31E24AD6D00B5258D /* 3D_FFT.cl in Sources */,
+				2EB976A31E24AD6D00B5258D /* threeD_FFT.cl in Sources */,
 				2E3FC9661F3AFF9700B6CD75 /* LevenbergMarquardt.cl in Sources */,
 				2E2ED4531F2C5EF30093DA92 /* input_parameter_class.cpp in Sources */,
 				2E2ED44B1F2C5E7A0093DA92 /* FEFF_shell_class.cpp in Sources */,

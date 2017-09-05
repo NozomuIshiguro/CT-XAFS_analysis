@@ -40,8 +40,8 @@
 #define EZERO 11559.0f
 #endif
 
-#ifndef CONSTRAIN_NUM
-#define CONSTRAIN_NUM 0
+#ifndef CONTRAIN_NUM
+#define CONTRAIN_NUM 0
 #endif
 
 #ifndef START_E
@@ -442,37 +442,6 @@ __kernel void chi2_tJdF_tJJ_Stack(__global float* mt_img, __global float* fp_img
 }
 
 
-
-__kernel void constrain(__global float* fp_cnd_img,
-                        __constant float *C_mat, __constant float *D_vec){
-    
-    const size_t global_x = get_global_id(0);
-    const size_t global_y = get_global_id(1);
-    const size_t global_ID = global_x+global_y*IMAGESIZE_X;
-    
-    float fp[PARA_NUM];
-    for(int i=0; i<PARA_NUM; i++){
-        fp[i] = fp_cnd_img[global_ID+i*IMAGESIZE_M];
-    }
-    for(int j=0;j<CONSTRAIN_NUM;j++){
-        float eval=0.0f;
-        float C2 =0.0f;
-        for(int i=0; i<PARA_NUM; i++){
-            eval += C_mat[j*PARA_NUM+i]*fp[i];
-            C2 += C_mat[j*PARA_NUM+i]*C_mat[j*PARA_NUM+i];
-        }
-        bool eval_b = (eval>D_vec[j]);
-        float h = (eval-D_vec[j])/sqrt(C2);
-        for(int i=0; i<PARA_NUM; i++){
-            fp[i] = (eval_b) ? fp[i]-h*C_mat[j*PARA_NUM+i]:fp[i];
-        }
-    }
-    for(int i=0; i<PARA_NUM; i++){
-        fp_cnd_img[global_ID+i*IMAGESIZE_M] = fp[i];
-    }
-}
-
-
 __kernel void setMask(__global float* mt_img,__global char *mask_img)
 {
     const size_t global_x = get_global_id(0);
@@ -507,50 +476,6 @@ __kernel void applyMask(__global float *fp_img, __global char *mask)
     fp_img[IDxyz] = fp*(float)mask[IDxy];
 }
 
-
-__kernel void partialDerivativeOfGradiant(__global float* original_img_src,
-                                          __global float* img_src,
-                                          __global float* img_dest,
-                                          __constant float* epsilon_g, __constant float*alpha_g){
-    
-    const int X = get_global_id(0);
-    const int Y = get_global_id(1);
-    const int Z = get_global_id(2);
-    size_t global_ID;
-    
-    float epsilon =epsilon_g[Z];
-    float alpha =alpha_g[Z];
-    
-    global_ID = X + Y*IMAGESIZE_X + Z*IMAGESIZE_M;
-    float f_o = original_img_src[global_ID];
-    float f_i_j = img_src[global_ID];
-    global_ID = (X+1) + Y*IMAGESIZE_X + Z*IMAGESIZE_M;
-    float f_ip_j = (X+1<IMAGESIZE_X) ? img_src[global_ID]:0.0f;
-    global_ID = (X-1) + Y*IMAGESIZE_X + Z*IMAGESIZE_M;
-    float f_im_j = (X-1>=0) ? img_src[global_ID]:0.0f;
-    global_ID = (X-1) + (Y+1)*IMAGESIZE_X + Z*IMAGESIZE_M;
-    float f_im_jp = (X-1>=0&&Y+1<IMAGESIZE_Y) ? img_src[global_ID]:0.0f;
-    global_ID = X + (Y+1)*IMAGESIZE_X + Z*IMAGESIZE_M;
-    float f_i_jp = (Y+1<IMAGESIZE_Y) ? img_src[global_ID]:0.0f;
-    global_ID = X + (Y-1)*IMAGESIZE_X + Z*IMAGESIZE_M;
-    float f_i_jm = (Y-1>=0) ? img_src[global_ID]:0.0f;
-    global_ID = (X+1) + (Y-1)*IMAGESIZE_X + Z*IMAGESIZE_M;
-    float f_ip_jm = (X+1<IMAGESIZE_X&&Y-1>=0) ? img_src[global_ID]:0.0f;
-    
-    float v=0.0f;
-    float grad = epsilon + (f_ip_j-f_i_j)*(f_ip_j-f_i_j) + (f_i_jp-f_i_j)*(f_i_jp-f_i_j);
-    v += (2.0f*f_i_j - f_ip_j - f_i_jp)/sqrt(grad);
-    grad = epsilon + (f_i_j-f_im_j)*(f_i_j-f_im_j) + (f_im_jp-f_im_j)*(f_im_jp-f_im_j);
-    v += (f_i_j - f_im_j)/sqrt(grad);
-    grad = epsilon + (f_ip_jm-f_i_jm)*(f_ip_jm-f_i_jm) + (f_i_j-f_i_jm)*(f_i_j-f_i_jm);
-    v += (f_i_j - f_i_jm)/sqrt(grad);
-    
-    f_i_j -= (v>=0.0f) ? alpha*fabs(f_o):-alpha*fabs(f_o);
-    //f_i_j -= alpha*v;
-    
-    global_ID = X + Y*IMAGESIZE_X + Z*IMAGESIZE_M;
-    img_dest[global_ID]= f_i_j;
-}
 
 
 __kernel void redimension_refSpecta(__write_only image1d_array_t refSpectra,

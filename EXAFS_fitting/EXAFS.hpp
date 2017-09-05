@@ -84,6 +84,9 @@ class shellObjects{
     cl::Kernel kernel_update;
     cl::Kernel kernel_UR;
     cl::Kernel kernel_OBD;
+    cl::Kernel kernel_contrain1;
+    cl::Kernel kernel_contrain2;
+    
     
     int imageSizeX;
     int imageSizeY;
@@ -108,11 +111,14 @@ public:
     bool getFreeFixPara(int paramode);
     int getFreeParaSize();
     
-    int copyPara(cl::Buffer dstPara, int paramode);
+    int copyPara(cl::Buffer dstPara, int offsetN,int paramode);
     int updatePara(cl::Buffer dp, int paramode, int z_id);
-    int restorePara(cl::Buffer para_backup, cl::Buffer rho_img, int paramode);
+    int restorePara(cl::Buffer para_backup, int offsetN, cl::Buffer rho_img, int paramode);
     
     int readParaImage(float* paraData, int paramode);
+    
+    int constrain1(cl::Buffer eval_img, cl::Buffer C_mat, int cnum, int pnum, int paramode);
+    int constrain2(cl::Buffer eval_img, cl::Buffer edgeJ, cl::Buffer C_mat, cl::Buffer D_vec, cl::Buffer C2_vec, int cnum, int pnum, int paramode);
 };
 
 int readRawFile(string filepath_input,float *binImgf, int imageSizeM);
@@ -131,19 +137,22 @@ int IFFT(cl::Buffer FTchi, cl::Buffer chiq,
          int imageSizeX, int imageSizeY, int FFTimageSizeY, int offsetY,
          int Roffset, int Rsize, int qoffset, int qsize);
 int EXAFS_kFit(cl::CommandQueue queue, cl::Program program,
-               cl::Buffer chidata, cl::Buffer S02, vector<shellObjects> shObj,
+               cl::Buffer chidata, cl::Buffer S02, cl::Buffer Rfactor,  vector<shellObjects> shObj,
                int kw, float kstart, float kend, int imageSizeX, int imageSizeY,
-               bool freeS02,int numTrial,float lambda);
+               bool freeS02,int numTrial,float lambda, int contrainSize,  cl::Buffer edgeJ,
+               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff);
 int EXAFS_RFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
-               cl::Buffer FTchidata, cl::Buffer S02, vector<shellObjects> shObj,
+               cl::Buffer FTchidata, cl::Buffer S02, cl::Buffer Rfactor,  vector<shellObjects> shObj,
                int kw, float kstart, float kend, float Rstart, float Rend,
                int imageSizeX, int imageSizeY, int FFTimageSizeY,
-               bool freeS02,int numTrial,float lambda);
+               bool freeS02,int numTrial,float lambda, int contrainSize, cl::Buffer edgeJ,
+               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff);
 int EXAFS_qFit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
-               cl::Buffer chiqdata, cl::Buffer S02, vector<shellObjects> shObj,
+               cl::Buffer chiqdata, cl::Buffer S02, cl::Buffer Rfactor,  vector<shellObjects> shObj,
                int kw, float kstart, float kend, float Rstart, float Rend, float qstart, float qend,
                int imageSizeX, int imageSizeY, int FFTimageSizeY,
-               bool freeS02,int numTrial,float lambda);
+               bool freeS02,int numTrial,float lambda, int contrainSize, cl::Buffer edgeJ,
+               cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff);
 int ChiData_k(cl::CommandQueue queue, cl::Program program,
               cl::Buffer chiData, vector<float*> chiData_pointer,
               int kw, float kstart, float kend, int imageSizeX, int imageSizeY,
@@ -158,5 +167,10 @@ int ChiData_q(cl::CommandQueue queue, cl::Program program,
               int imageSizeX, int imageSizeY, int FFTimageSizeY, bool imgStckOrChiStck, int offsetM);
 
 int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<FEFF_shell> shell);
+
+int createContrainMatrix(vector<string> contrain_eqs, vector<string> fparaName,
+                         vector<vector<float>> *C_matrix, vector<float> *D_vector,int cotrainOffset);
+int correctBondDistanceContrain(vector<vector<float>> *C_matrix, vector<float> *D_vector,
+                                int fpnum, float Reff);
 
 #endif /* EXAFS_h */

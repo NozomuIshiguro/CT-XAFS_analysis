@@ -8,11 +8,23 @@
 
 #include "EXAFS.hpp"
 #include "EXAFS_fit_cl.hpp"
-#include "3D_FFT_cl.hpp"
+#include "threeD_FFT_cl.hpp"
 #include "LevenbergMarquardt_cl.hpp"
 
+int correctBondDistanceContrain(vector<vector<float>> *C_matrix, vector<float> *D_vector,
+                                int fpnum, float Reff){
+    
+    int contrainSize = (int)(*D_vector).size();
+    for (int i=0; i<contrainSize; i++) {
+        (*D_vector)[i] -= Reff*(*C_matrix)[i][fpnum];
+    }
+    
+    return 0;
+}
+
+
 int EXAFSfitresult_output_thread(int AngleNo, string output_dir, vector<string> paraName,
-                                 vector<float*> result_outputs, int imageSizeM){
+                                 vector<float*> result_outputs, float* Rfactor, int imageSizeM){
     
     ostringstream oss;
     for (int i=0; i<paraName.size(); i++) {
@@ -20,11 +32,15 @@ int EXAFSfitresult_output_thread(int AngleNo, string output_dir, vector<string> 
         oss << "output file: " << fileName_output << endl;
         outputRawFile_stream(fileName_output,result_outputs[i],imageSizeM);
     }
+    string fileName_output= output_dir+ "/Rfactor"+ AnumTagString(AngleNo,"/i", ".raw");
+    oss << "output file: " << fileName_output << endl;
+    outputRawFile_stream(fileName_output,Rfactor,imageSizeM);
     oss << endl;
     cout << oss.str();
     for (int i=0; i<paraName.size(); i++) {
         delete [] result_outputs[i];
     }
+    delete [] Rfactor;
     return 0;
 }
 
@@ -33,7 +49,8 @@ int EXAFSfitresult_output_thread(int AngleNo, string output_dir, vector<string> 
 int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
                      int AngleNo, int thread_id, input_parameter inp,vector<string> paraName,
                      vector<shellObjects> shObjs, cl::Buffer w_factor, float* edgeJ,
-                     vector<float*> chi_vec, vector<int> processImageSizeY){
+                     vector<float*> chi_vec, vector<int> processImageSizeY, int contrainSize,
+                     cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff, cl::Buffer C2_vector_buff){
     
     cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
     const int imgSizeX = inp.getImageSizeX();
@@ -73,12 +90,15 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
         //ss img
         results_vec.push_back(new float[imgSizeM]);
     }
+    float* Rfactor;
+    Rfactor = new float[imgSizeM];
     
     
     //S02 img buffer;
     cl::Buffer S02(context,CL_MEM_READ_WRITE,sizeof(cl_float)*procImgSizeM,0,NULL);
     cl::Buffer Data_buff;
     cl::Buffer edgeJ_buff(context,CL_MEM_READ_WRITE,sizeof(cl_float)*procImgSizeM,0,NULL);
+    cl::Buffer Rfactor_buff(context,CL_MEM_READ_WRITE,sizeof(cl_float)*procImgSizeM,0,NULL);
     for (int imgOffset=0; imgOffset<imgSizeM; imgOffset+=procImgSizeM) {
         //reset parameters
         queue.enqueueFillBuffer(S02, (cl_float)ini_S02, 0, sizeof(cl_float)*procImgSizeM);
@@ -99,7 +119,7 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
                 //data input
                 ChiData_k(queue,program,Data_buff,move(chi_vec),kw, kstart, kend, imgSizeX, procImgSizeY, true, imgOffset);
                 //fitting
-                EXAFS_kFit(queue,program,Data_buff,S02,shObjs,kw,kstart,kend,imgSizeX,procImgSizeY, S02freeFix,numTrial,lambda);
+                EXAFS_kFit(queue,program,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,imgSizeX,procImgSizeY, S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff);
                 break;
                 
             case 1: //R-fit
@@ -111,7 +131,7 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
 					cout << FFTchidata[i*procImgSizeM+ procImgSizeM/2+96].x << "\t" << FFTchidata[i*procImgSizeM + procImgSizeM / 2+96 ].y << endl;
 				}*/
 				//fitting
-                EXAFS_RFit(queue,program,w_factor,Data_buff,S02,shObjs,kw,kstart,kend,Rstart,Rend, imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda);
+                EXAFS_RFit(queue,program,w_factor,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,Rstart,Rend, imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff);
                 break;
             
             case 2: //q-fit
@@ -119,7 +139,7 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
                 //data input
                 ChiData_q(queue,program,Data_buff,move(chi_vec),w_factor,kw,kstart,kend,Rstart,Rend, qstart,qend, imgSizeX, procImgSizeY, FFTprocImgSizeY, true, imgOffset);
                 //fitting
-                EXAFS_qFit(queue,program,w_factor,Data_buff,S02,shObjs,kw,kstart,kend,Rstart,Rend, qstart,qend,imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda);
+                EXAFS_qFit(queue,program,w_factor,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,Rstart,Rend, qstart,qend,imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff);
                 break;
                 
             default:
@@ -138,6 +158,8 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
             shObjs[i].readParaImage(&results_vec[t++][imgOffset], 3);
             shObjs[i].readParaImage(&results_vec[t++][imgOffset], 4);
         }
+        //Rfactor
+        queue.enqueueReadBuffer(Rfactor_buff, CL_TRUE, 0, sizeof(float)*procImgSizeM, &Rfactor[imgOffset]);
     }
     
     
@@ -150,7 +172,7 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
     //output thread
     output_th_fit[thread_id].join();
     output_th_fit[thread_id]=thread(EXAFSfitresult_output_thread, AngleNo,
-                                    output_dir, paraName, move(results_vec),imgSizeM);
+                                    output_dir, paraName, move(results_vec),move(Rfactor),imgSizeM);
     
     
     return 0;
@@ -160,8 +182,9 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
 
 int data_input_thread(cl::CommandQueue command_queue, cl::Program program,
                       int AngleNo, int thread_id, input_parameter inp,vector<string> paraName,
-                      vector<shellObjects> shObjs, cl::Buffer w_factor,
-                      vector<int> processImageSizeY){
+                      vector<shellObjects> shObjs, cl::Buffer w_factor, vector<int> processImageSizeY,
+                      int contrainSize, cl::Buffer C_matrix_buff, cl::Buffer D_vector_buff,
+                      cl::Buffer C2_vector_buff){
     
     
     int startkNo = 1;
@@ -199,7 +222,10 @@ int data_input_thread(cl::CommandQueue command_queue, cl::Program program,
     
     
     fitting_th[thread_id].join();
-    fitting_th[thread_id] = thread(EXAFS_fit_thread,command_queue,program,AngleNo,thread_id,inp,paraName, shObjs, w_factor, move(edgeJ),move(chi_vec),processImageSizeY);
+    fitting_th[thread_id] = thread(EXAFS_fit_thread,command_queue,program,AngleNo,thread_id,inp,
+                                   paraName, shObjs, w_factor, move(edgeJ),
+                                   move(chi_vec),processImageSizeY, contrainSize,
+                                   C_matrix_buff, D_vector_buff, C2_vector_buff);
     
     return 0;
 }
@@ -233,26 +259,62 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
     int num_shell = (int)shell.size();
     int num_fpara = inp.getS02freeFix() ? 1:0;
     vector<string> shellName = inp.getShellName();
+    vector<vector<bool>> freefixpara = inp.getEXAFSfreeFixPara();
     vector<string> paraName;
     paraName.push_back("S02");
     for (int sh=0; sh<num_shell; sh++) {
-        paraName.push_back(shellName[sh]+"_CN");
-        paraName.push_back(shellName[sh]+"_R");
-        paraName.push_back(shellName[sh]+"_dE0");
-        paraName.push_back(shellName[sh]+"_ss");
-        num_fpara += inp.getEXAFSfreeFixPara()[sh][0] ? 1:0;//CN
-        num_fpara += inp.getEXAFSfreeFixPara()[sh][1] ? 1:0;//dR
-        num_fpara += inp.getEXAFSfreeFixPara()[sh][2] ? 1:0;//dE0
-        num_fpara += inp.getEXAFSfreeFixPara()[sh][3] ? 1:0;//ss
+        paraName.push_back("CN_"+shellName[sh]);
+        paraName.push_back("R_"+shellName[sh]);
+        paraName.push_back("dE0_"+shellName[sh]);
+        paraName.push_back("ss_"+shellName[sh]);
+        num_fpara += freefixpara[sh][0] ? 1:0;//CN
+        num_fpara += freefixpara[sh][1] ? 1:0;//dR
+        num_fpara += freefixpara[sh][2] ? 1:0;//dE0
+        num_fpara += freefixpara[sh][3] ? 1:0;//ss
     }
-    vector<vector<bool>> freefixpara = inp.getEXAFSfreeFixPara();
+    vector<string> fparaName;
+    if (inp.getS02freeFix()) {
+        fparaName.push_back(paraName[0]);
+    }
+    for (int sh=0; sh<num_shell; sh++) {
+        for (int pn=0; pn<4; pn++) {
+            if (freefixpara[sh][pn]) {
+                fparaName.push_back(paraName[pn+1+4*sh]);
+            }
+        }
+    }
+    vector<string> contrain_eqs=inp.getContrainEqs();
+    vector<vector<float>> C_matrix;
+    vector<float> D_vector;
+    int contrainSize=createContrainMatrix(contrain_eqs,fparaName,&C_matrix,&D_vector,0);
+    int fpn=0;
+    if (inp.getS02freeFix()) fpn++;
+    for (int sh=0; sh<num_shell; sh++) {
+        if(freefixpara[sh][0]) fpn++; //CN
+        if(freefixpara[sh][1]) {//dR
+            correctBondDistanceContrain(&C_matrix, &D_vector, fpn, shell[sh].getReff());
+            fpn++;
+        }
+        if(freefixpara[sh][2]) fpn++; //dE0
+        if(freefixpara[sh][3]) fpn++; //ss
+    }
+    cout<<endl<<"C_matrix | D_vector"<<endl;
+    for (int i=0; i<contrainSize; i++) {
+        for (int j=0; j<num_fpara-1; j++) {
+            cout << C_matrix[i][j] <<" ";
+        }
+        cout<< C_matrix[i][num_fpara-1] <<" | "<< D_vector[i] << endl;
+    }
+    cout<<endl;
+    
     
     //create output dir
     for (int i=0; i<paraName.size(); i++) {
         string fileName_output = inp.getFittingOutputDir() + "/"+paraName[i];
         MKDIR(fileName_output.c_str());
     }
-    
+    string fileName_output = inp.getFittingOutputDir() + "/Rfactor";
+    MKDIR(fileName_output.c_str());
     
     vector<vector<int>> processImageSizeYs;
     
@@ -263,7 +325,7 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
         cl::Program::Sources source;
 #if defined (OCL120)
         source.push_back(make_pair(kernel_EXAFSfit_src.c_str(),kernel_EXAFSfit_src.length()));
-        source.push_back(make_pair(kernel_3D_FFT_src.c_str(),kernel_3D_FFT_src.length()));
+        source.push_back(make_pair(kernel_threeD_FFT_src.c_str(),kernel_threeD_FFT_src.length()));
 		source.push_back(make_pair(kernel_LM_src.c_str(), kernel_LM_src.length()));
 #else
         source.push_back(kernel_EXAFSfit_src);
@@ -276,6 +338,7 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
         oss << "-D FFT_SIZE="<<FFT_SIZE<<" ";
         oss << "-D PARA_NUM="<<num_fpara<<" ";
         oss << "-D PARA_NUM_SQ="<<num_fpara*num_fpara<<" ";
+        oss << "-D CONTRAIN_NUM="<<contrainSize<<" ";
         string option =oss.str();
 #ifdef DEBUG
         option += "-D DEBUG -Werror";
@@ -317,6 +380,9 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
     //energy_buffers create (per context)
     vector<cl::Buffer> w_factors;
     vector<vector<shellObjects>> shObjs;
+    vector<cl::Buffer> C_mats, D_vecs, C2_vecs;
+    const cl::NDRange local_item_size(1,1,1);
+    const cl::NDRange global_item_size(contrainSize,1,1);
     for (int i=0; i<plat_dev_list.contextsize(); i++){
         w_factors.push_back(cl::Buffer(plat_dev_list.context(i),CL_MEM_READ_WRITE,sizeof(cl_float2)*FFT_SIZE/2, 0, NULL));
         createSpinFactor(w_factors[i], plat_dev_list.queue(i,0), programs[i]);
@@ -336,6 +402,22 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
             shObjs[i][sh].setFreeFixPara("ss", freefixpara[sh][3]);
         }
         
+        
+        //contrain
+        C_mats.push_back(cl::Buffer(plat_dev_list.context(i),CL_MEM_READ_WRITE,sizeof(cl_float)*contrainSize*num_fpara, 0, NULL));
+        D_vecs.push_back(cl::Buffer(plat_dev_list.context(i),CL_MEM_READ_WRITE,sizeof(cl_float)*contrainSize, 0, NULL));
+        C2_vecs.push_back(cl::Buffer(plat_dev_list.context(i),CL_MEM_READ_WRITE,sizeof(cl_float)*contrainSize, 0, NULL));
+        for (int cn=0; cn<contrainSize; cn++) {
+            plat_dev_list.queue(i,0).enqueueWriteBuffer(C_mats[i], CL_TRUE, sizeof(cl_float)*num_fpara*cn, sizeof(cl_float)*num_fpara, &C_matrix[cn][0]);
+        }
+        plat_dev_list.queue(i,0).enqueueWriteBuffer(D_vecs[i], CL_TRUE, 0, sizeof(cl_float)*contrainSize, &D_vector[0]);
+        cl::Kernel kernel_contrain0(programs[i],"contrain_0");
+        kernel_contrain0.setArg(0, C_mats[i]);
+        kernel_contrain0.setArg(1, C2_vecs[i]);
+        plat_dev_list.queue(i,0).enqueueNDRangeKernel(kernel_contrain0, NULL, global_item_size, local_item_size, NULL, NULL);
+        plat_dev_list.queue(i,0).finish();
+        
+        
         processImageSizeYs.push_back(GPUmemoryControl(imgSizeX,imgSizeY,ksize,Rsize,qsize,num_shell,num_fpara,shObjs[i],plat_dev_list.queue(i,0)));
     }
     
@@ -352,8 +434,8 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
             if (input_th[j].joinable()) {
                 input_th[j].join();
                 input_th[j] = thread(data_input_thread, plat_dev_list.queue(j,0), programs[j],
-                                                       i, j, inp, paraName,shObjs[j],w_factors[j],
-                                                       processImageSizeYs[j]);
+                                     i, j, inp, paraName,shObjs[j],w_factors[j],processImageSizeYs[j],
+                                     contrainSize, C_mats[j], D_vecs[j], C2_vecs[j]);
                 i++;
                 if (i > endAngleNo) break;
             } else{
