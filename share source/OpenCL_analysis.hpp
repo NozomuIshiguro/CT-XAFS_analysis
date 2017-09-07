@@ -301,7 +301,6 @@ public:
 	float getLambda_t_fit();
     bool getCSbool();
     vector<float> getCSlambda();
-    int getCSit();
     
     vector<string> funcNameList;
     vector<string> LCFstd_paths;

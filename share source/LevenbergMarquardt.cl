@@ -222,6 +222,21 @@ __kernel void evaluateUpdateCandidate(__global float* tJdF_img, __global float* 
     lambda_img[global_ID] = (rho>=0.0f) ? l_A:l_B;
     nyu_img[global_ID] = (rho>=0.0f) ? 2.0f:2.0f*nyu;
     
+    
+    //update tJJ, tJdF
+    for(int i=0;i<PARA_NUM;i++){
+        float a = tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M];
+        tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M] = (rho>=0.0f) ? a:1.0f;
+        
+        a=tJdF_img[global_ID+i*IMAGESIZE_M];
+        tJdF_img[global_ID+i*IMAGESIZE_M] = (rho>=0.0f) ? a:0.0f;
+        for(int j=i+1;j<PARA_NUM;j++){
+            a = tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*IMAGESIZE_M];
+            tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*IMAGESIZE_M] = (rho>=0.0f) ? a:0.0f;
+        }
+    }
+    
+    
     rho_img[global_ID] = rho;
 }
 
@@ -272,9 +287,8 @@ __kernel void updateOrHold(__global float* para_img, __global float* para_img_cn
 
 
 
-__kernel void ISTA(__global float* fp_img, __global float* dp_img,
-                    __global float* tJJ_img, __global float* tJdF_img, __constant char *p_fix,
-                    __global float* lambda_LM, __constant float* lambda_fista){
+__kernel void ISTA(__global float* fp_img,__global float* tJJ_img,__constant char *p_fix,
+                   __global float* lambda_LM, __constant float* lambda_fista){
     
     const int x = get_global_id(0);
     const int y = get_global_id(1);
@@ -282,7 +296,7 @@ __kernel void ISTA(__global float* fp_img, __global float* dp_img,
 
     float lambda1 = lambda_LM[IDxy];
     
-    float dp_neighbor[4*PARA_NUM];
+    float fp_neighbor[4*PARA_NUM];
     const int px = x+1;
     const int py = y+1;
     const int mx = x-1;
@@ -291,19 +305,19 @@ __kernel void ISTA(__global float* fp_img, __global float* dp_img,
     const size_t IDmxy = mx+y*IMAGESIZE_X;
     const size_t IDxpy = x+py*IMAGESIZE_X;
     const size_t IDxmy = x+my*IMAGESIZE_X;
-    float fp[PARA_NUM], dp[PARA_NUM], dp_cnd[PARA_NUM];
-    float sigma[PARA_NUM], tJJ[PARA_NUM_SQ], tJdF[PARA_NUM];
+    float fp[PARA_NUM], fp_cnd[PARA_NUM];
+    float sigma[PARA_NUM], tJJ[PARA_NUM_SQ];
     
     
     //load tJJ fp, dp
     for(int i=0;i<PARA_NUM;i++){
+        if(p_fix[i]==48) continue;
+        
         fp[i] = fp_img[IDxy + i*IMAGESIZE_M];
-        dp[i] = dp_img[IDxy + i*IMAGESIZE_M];
-        sigma[i] = 0.0f;
-        dp_cnd[i] = 0.0f;
         tJJ[i+i*PARA_NUM] = tJJ_img[IDxy+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M];
         tJJ[i+i*PARA_NUM] *= (1.0f+lambda1);
         for(int j=i+1;j<PARA_NUM;j++){
+            
             tJJ[i+j*PARA_NUM] = tJJ_img[IDxy+(PARA_NUM*i-(i+1)*i/2+j)*IMAGESIZE_M];
             tJJ[j+i*PARA_NUM] = tJJ[i+j*PARA_NUM];
         }
@@ -313,36 +327,36 @@ __kernel void ISTA(__global float* fp_img, __global float* dp_img,
     for(int i=0;i<PARA_NUM;i++){
         if(p_fix[i]==48) continue;
         
-        //estimate neighbor fp_cnd (=fp+dp)
-        dp_neighbor[0+i*4]=(px>=IMAGESIZE_X)? dp[i]:fp_img[IDpxy+i*IMAGESIZE_M]+dp_img[IDpxy+i*IMAGESIZE_M]-fp[i];
-        dp_neighbor[1+i*4]=(py>=IMAGESIZE_Y)? dp[i]:fp_img[IDxpy+i*IMAGESIZE_M]+dp_img[IDxpy+i*IMAGESIZE_M]-fp[i];
-        dp_neighbor[2+i*4]=(mx < 0)			? dp[i]:fp_img[IDmxy+i*IMAGESIZE_M]+dp_img[IDmxy+i*IMAGESIZE_M]-fp[i];
-        dp_neighbor[3+i*4]=(my < 0)			? dp[i]:fp_img[IDxmy+i*IMAGESIZE_M]+dp_img[IDxmy+i*IMAGESIZE_M]-fp[i];
+        //estimate neighbor fp
+        fp_neighbor[0+i*4]=(px>=IMAGESIZE_X)? fp[i]:fp_img[IDpxy+i*IMAGESIZE_M];
+        fp_neighbor[1+i*4]=(py>=IMAGESIZE_Y)? fp[i]:fp_img[IDxpy+i*IMAGESIZE_M];
+        fp_neighbor[2+i*4]=(mx < 0)			? fp[i]:fp_img[IDmxy+i*IMAGESIZE_M];
+        fp_neighbor[3+i*4]=(my < 0)			? fp[i]:fp_img[IDxmy+i*IMAGESIZE_M];
         
         
-        //change order of fpdp_neibor[4]
-        float dp1, dp2;
+        //change order of fp_neighbor[4]
+        float fp1, fp2;
         int biggerN;
         for(int k=0;k<4;k++){
-            dp1 = dp_neighbor[k+i*4];
-            dp2 =dp1;
+            fp1 = fp_neighbor[k+i*4];
+            fp2 = fp1;
             biggerN = k;
             for(int j=k+1;j<4;j++){
-                biggerN = (dp_neighbor[j+i*4]>dp2) ? j:biggerN;
-                dp2 = (dp_neighbor[j+i*4]>dp2) ? dp_neighbor[j+i*4]:dp2;
+                biggerN = (fp_neighbor[j+i*4]>fp2) ? j:biggerN;
+                fp2 = (fp_neighbor[j+i*4]>fp2) ? fp_neighbor[j+i*4]:fp2;
             }
-            dp_neighbor[k+i*4] = dp2;
-            dp_neighbor[biggerN+i*4] = dp1;
+            fp_neighbor[k+i*4] = fp2;
+            fp_neighbor[biggerN+i*4] = fp1;
         }
         
         float lambda2 = lambda_fista[i];
         sigma[i] = 4.0f*lambda2;
-        sigma[i] = (dp[i]>=dp_neighbor[0+i*4]) ? sigma[i]:2.0f*lambda2;
-        sigma[i] = (dp[i]>=dp_neighbor[1+i*4]) ? sigma[i]:0.0f*lambda2;
-        sigma[i] = (dp[i]>=dp_neighbor[2+i*4]) ? sigma[i]:-2.0f*lambda2;
-        sigma[i] = (dp[i]>=dp_neighbor[3+i*4]) ? sigma[i]:-4.0f*lambda2;
+        sigma[i] = (fp[i]>=fp_neighbor[0+i*4]) ? sigma[i]:2.0f*lambda2;
+        sigma[i] = (fp[i]>=fp_neighbor[1+i*4]) ? sigma[i]:0.0f*lambda2;
+        sigma[i] = (fp[i]>=fp_neighbor[2+i*4]) ? sigma[i]:-2.0f*lambda2;
+        sigma[i] = (fp[i]>=fp_neighbor[3+i*4]) ? sigma[i]:-4.0f*lambda2;
     }
-    
+
     
     sim_linear_eq(tJJ,sigma,PARA_NUM,p_fix);
     
@@ -351,47 +365,34 @@ __kernel void ISTA(__global float* fp_img, __global float* dp_img,
     for(int i=0;i<PARA_NUM;i++){
         if(p_fix[i]==48) continue;
         
-        dp_cnd[i] = dp[i] - sigma[i];
-        if(dp[i]>=dp_neighbor[0+i*4]){
-            dp_cnd[i] = (dp_cnd[i]< dp_neighbor[0+i*4]) ? dp_neighbor[0+i*4]:dp_cnd[i];
-        }else if(dp[i]>=dp_neighbor[1+i*4]){
-            dp_cnd[i] = (dp_cnd[i]>=dp_neighbor[0+i*4]) ? dp_neighbor[0+i*4]:dp_cnd[i];
-            dp_cnd[i] = (dp_cnd[i]< dp_neighbor[1+i*4]) ? dp_neighbor[1+i*4]:dp_cnd[i];
-        }else if(dp[i]>=dp_neighbor[2+i*4]){
-            dp_cnd[i] = (dp_cnd[i]>=dp_neighbor[1+i*4]) ? dp_neighbor[1+i*4]:dp_cnd[i];
-            dp_cnd[i] = (dp_cnd[i]< dp_neighbor[2+i*4]) ? dp_neighbor[2+i*4]:dp_cnd[i];
-        }else if(dp[i]>=dp_neighbor[3+i*4]){
-            dp_cnd[i] = (dp_cnd[i]>=dp_neighbor[2+i*4]) ? dp_neighbor[2+i*4]:dp_cnd[i];
-            dp_cnd[i] = (dp_cnd[i]< dp_neighbor[3+i*4]) ? dp_neighbor[3+i*4]:dp_cnd[i];
+        float lambda2 = lambda_fista[i];
+        fp_cnd[i] = fp[i] - fmax(-10.0f*lambda2,fmin(10.0f*lambda2, sigma[i]));
+        if(fp[i]>=fp_neighbor[0+i*4]){
+            fp_cnd[i] = (fp_cnd[i]< fp_neighbor[0+i*4]) ? fp_neighbor[0+i*4]:fp_cnd[i];
+        }else if(fp[i]>=fp_neighbor[1+i*4]){
+            fp_cnd[i] = (fp_cnd[i]>=fp_neighbor[0+i*4]) ? fp_neighbor[0+i*4]:fp_cnd[i];
+            fp_cnd[i] = (fp_cnd[i]< fp_neighbor[1+i*4]) ? fp_neighbor[1+i*4]:fp_cnd[i];
+        }else if(fp[i]>=fp_neighbor[2+i*4]){
+            fp_cnd[i] = (fp_cnd[i]>=fp_neighbor[1+i*4]) ? fp_neighbor[1+i*4]:fp_cnd[i];
+            fp_cnd[i] = (fp_cnd[i]< fp_neighbor[2+i*4]) ? fp_neighbor[2+i*4]:fp_cnd[i];
+        }else if(fp[i]>=fp_neighbor[3+i*4]){
+            fp_cnd[i] = (fp_cnd[i]>=fp_neighbor[2+i*4]) ? fp_neighbor[2+i*4]:fp_cnd[i];
+            fp_cnd[i] = (fp_cnd[i]< fp_neighbor[3+i*4]) ? fp_neighbor[3+i*4]:fp_cnd[i];
         }
     }
     
     
-    //reload tJJ fp, dp
+    //save fp
     for(int i=0;i<PARA_NUM;i++){
-        tJJ[i+i*PARA_NUM] = tJJ_img[IDxy+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M];
-        tJJ[i+i*PARA_NUM] *= (1.0f+lambda1);
-        for(int j=i+1;j<PARA_NUM;j++){
-            tJJ[i+j*PARA_NUM] = tJJ_img[IDxy+(PARA_NUM*i-(i+1)*i/2+j)*IMAGESIZE_M];
-            tJJ[j+i*PARA_NUM] = tJJ[i+j*PARA_NUM];
-        }
-    }
-    
-    //estimate new tJdF cnd
-    linear_transform(tJJ, dp_cnd, tJdF, PARA_NUM, p_fix);
-    
-    //save dp
-    for(int i=0;i<PARA_NUM;i++){
-        dp_img[IDxy + i*IMAGESIZE_M] = dp_cnd[i];
-        tJdF_img[IDxy + i*IMAGESIZE_M] = tJdF[i];
+        if(p_fix[i]==48) continue;
+        fp_img[IDxy + i*IMAGESIZE_M] = fp_cnd[i];
     }
 }
 
 
-__kernel void FISTA(__global float* fp_img, __global float* dp_x_img, __global float* dp_w_img,
-                     __global float* tJJ_img, __global float* tJdF_img, __constant char *p_fix,
-                     __global float* lambda_LM, __constant float* lambda_fista,
-                     __global float* beta_img){
+__kernel void FISTA(__global float* fp_x_img, __global float* fp_w_img, __global float* beta_img,
+                     __global float* tJJ_img, __constant char *p_fix,
+                     __global float* lambda_LM, __constant float* lambda_fista){
     
     const int x = get_global_id(0);
     const int y = get_global_id(1);
@@ -399,7 +400,7 @@ __kernel void FISTA(__global float* fp_img, __global float* dp_x_img, __global f
     
     float lambda1 = lambda_LM[IDxy];
     
-    float dp_neighbor[4*PARA_NUM];
+    float fp_neighbor[4*PARA_NUM];
     const int px = x+1;
     const int py = y+1;
     const int mx = x-1;
@@ -408,20 +409,20 @@ __kernel void FISTA(__global float* fp_img, __global float* dp_x_img, __global f
     const size_t IDmxy = mx+y*IMAGESIZE_X;
     const size_t IDxpy = x+py*IMAGESIZE_X;
     const size_t IDxmy = x+my*IMAGESIZE_X;
-    float fp[PARA_NUM], dp_w[PARA_NUM], dp_x[PARA_NUM], dp_x_new[PARA_NUM];
-    float sigma[PARA_NUM], tJJ[PARA_NUM_SQ], tJdF[PARA_NUM];
+    float fp_x[PARA_NUM], fp_w[PARA_NUM], fp_x_new[PARA_NUM];
+    float sigma[PARA_NUM], tJJ[PARA_NUM_SQ];
     float beta = beta_img[IDxy];
     float beta_new = beta*beta*4.0f + 1.0f;
     beta_new = (sqrt(beta_new) + 1.0f)*0.5f;
+    float gamma = (beta-1.0f)/beta_new;
     
     
     //load tJJ fp, dp
     for(int i=0;i<PARA_NUM;i++){
-        fp[i] = fp_img[IDxy + i*IMAGESIZE_M];
-        dp_w[i] = dp_w_img[IDxy + i*IMAGESIZE_M];
-        dp_x[i] = dp_x_img[IDxy + i*IMAGESIZE_M];
-        sigma[i] = 0.0f;
-        dp_x_new[i] = 0.0f;
+        if(p_fix[i]==48) continue;
+        
+        fp_w[i] = fp_w_img[IDxy + i*IMAGESIZE_M];
+        fp_x[i] = fp_x_img[IDxy + i*IMAGESIZE_M];
         tJJ[i+i*PARA_NUM] = tJJ_img[IDxy+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M];
         tJJ[i+i*PARA_NUM] *= (1.0f+lambda1);
         for(int j=i+1;j<PARA_NUM;j++){
@@ -434,85 +435,72 @@ __kernel void FISTA(__global float* fp_img, __global float* dp_x_img, __global f
     for(int i=0;i<PARA_NUM;i++){
         if(p_fix[i]==48) continue;
         
-        //estimate neighbor fp_cnd (=fp+dp)
-        dp_neighbor[0+i*4]=(px>=IMAGESIZE_X)? dp_w[i]:fp_img[IDpxy+i*IMAGESIZE_M]+dp_w_img[IDpxy+i*IMAGESIZE_M]-fp[i];
-        dp_neighbor[1+i*4]=(py>=IMAGESIZE_Y)? dp_w[i]:fp_img[IDxpy+i*IMAGESIZE_M]+dp_w_img[IDxpy+i*IMAGESIZE_M]-fp[i];
-        dp_neighbor[2+i*4]=(mx < 0)			? dp_w[i]:fp_img[IDmxy+i*IMAGESIZE_M]+dp_w_img[IDmxy+i*IMAGESIZE_M]-fp[i];
-        dp_neighbor[3+i*4]=(my < 0)			? dp_w[i]:fp_img[IDxmy+i*IMAGESIZE_M]+dp_w_img[IDxmy+i*IMAGESIZE_M]-fp[i];
+        //estimate neighbor fp_w
+        fp_neighbor[0+i*4]=(px>=IMAGESIZE_X)? fp_w[i]:fp_w_img[IDpxy+i*IMAGESIZE_M];
+        fp_neighbor[1+i*4]=(py>=IMAGESIZE_Y)? fp_w[i]:fp_w_img[IDxpy+i*IMAGESIZE_M];
+        fp_neighbor[2+i*4]=(mx < 0)			? fp_w[i]:fp_w_img[IDmxy+i*IMAGESIZE_M];
+        fp_neighbor[3+i*4]=(my < 0)			? fp_w[i]:fp_w_img[IDxmy+i*IMAGESIZE_M];
         
         
         //change order of fpdp_neibor[4]
-        float dp1, dp2;
+        float fp1, fp2;
         int biggerN;
         for(int k=0;k<4;k++){
-            dp1 = dp_neighbor[k+i*4];
-            dp2 =dp1;
+            fp1 = fp_neighbor[k+i*4];
+            fp2 = fp1;
             biggerN = k;
             for(int j=k+1;j<4;j++){
-                biggerN = (dp_neighbor[j+i*4]>dp2) ? j:biggerN;
-                dp2 = (dp_neighbor[j+i*4]>dp2) ? dp_neighbor[j+i*4]:dp2;
+                biggerN = (fp_neighbor[j+i*4]>fp2) ? j:biggerN;
+                fp2 = (fp_neighbor[j+i*4]>fp2) ? fp_neighbor[j+i*4]:fp2;
             }
-            dp_neighbor[k+i*4] = dp2;
-            dp_neighbor[biggerN+i*4] = dp1;
+            fp_neighbor[k+i*4] = fp2;
+            fp_neighbor[biggerN+i*4] = fp1;
         }
         
         
         float lambda2 = lambda_fista[i];
         sigma[i] = 4.0f*lambda2;
-        sigma[i] = (dp_w[i]>=dp_neighbor[0+i*4]) ? sigma[i]:2.0f*lambda2;
-        sigma[i] = (dp_w[i]>=dp_neighbor[1+i*4]) ? sigma[i]:0.0f*lambda2;
-        sigma[i] = (dp_w[i]>=dp_neighbor[2+i*4]) ? sigma[i]:-2.0f*lambda2;
-        sigma[i] = (dp_w[i]>=dp_neighbor[3+i*4]) ? sigma[i]:-4.0f*lambda2;
+        sigma[i] = (fp_w[i]>=fp_neighbor[0+i*4]) ? sigma[i]:2.0f*lambda2;
+        sigma[i] = (fp_w[i]>=fp_neighbor[1+i*4]) ? sigma[i]:0.0f*lambda2;
+        sigma[i] = (fp_w[i]>=fp_neighbor[2+i*4]) ? sigma[i]:-2.0f*lambda2;
+        sigma[i] = (fp_w[i]>=fp_neighbor[3+i*4]) ? sigma[i]:-4.0f*lambda2;
     }
-    
     
     sim_linear_eq(tJJ,sigma,PARA_NUM,p_fix);
     
-    
-    
+    //apply soft threshold
     for(int i=0;i<PARA_NUM;i++){
         if(p_fix[i]==48) continue;
         
-        //apply soft threshold
-        dp_x_new[i] = dp_w[i] - sigma[i];
-        if(dp_w[i]>=dp_neighbor[0+i*4]){
-            dp_x_new[i] = (dp_x_new[i]< dp_neighbor[0+i*4]) ? dp_neighbor[0+i*4]:dp_x_new[i];
-        }else if(dp_w[i]>=dp_neighbor[1+i*4]){
-            dp_x_new[i] = (dp_x_new[i]>=dp_neighbor[0+i*4]) ? dp_neighbor[0+i*4]:dp_x_new[i];
-            dp_x_new[i] = (dp_x_new[i]< dp_neighbor[1+i*4]) ? dp_neighbor[1+i*4]:dp_x_new[i];
-        }else if(dp_w[i]>=dp_neighbor[2+i*4]){
-            dp_x_new[i] = (dp_x_new[i]>=dp_neighbor[1+i*4]) ? dp_neighbor[1+i*4]:dp_x_new[i];
-            dp_x_new[i] = (dp_x_new[i]< dp_neighbor[2+i*4]) ? dp_neighbor[2+i*4]:dp_x_new[i];
-        }else if(dp_w[i]>=dp_neighbor[3+i*4]){
-            dp_x_new[i] = (dp_x_new[i]>=dp_neighbor[2+i*4]) ? dp_neighbor[2+i*4]:dp_x_new[i];
-            dp_x_new[i] = (dp_x_new[i]< dp_neighbor[3+i*4]) ? dp_neighbor[3+i*4]:dp_x_new[i];
+        float lambda2 = lambda_fista[i];
+        fp_x_new[i] = fp_w[i] - fmax(-10.0f*lambda2,fmin(10.0f*lambda2, sigma[i]));
+        if(fp_w[i]>=fp_neighbor[0+i*4]){
+            fp_x_new[i] = (fp_x_new[i]< fp_neighbor[0+i*4]) ? fp_neighbor[0+i*4]:fp_x_new[i];
+        }else if(fp_w[i]>=fp_neighbor[1+i*4]){
+            fp_x_new[i] = (fp_x_new[i]>=fp_neighbor[0+i*4]) ? fp_neighbor[0+i*4]:fp_x_new[i];
+            fp_x_new[i] = (fp_x_new[i]< fp_neighbor[1+i*4]) ? fp_neighbor[1+i*4]:fp_x_new[i];
+        }else if(fp_w[i]>=fp_neighbor[2+i*4]){
+            fp_x_new[i] = (fp_x_new[i]>=fp_neighbor[1+i*4]) ? fp_neighbor[1+i*4]:fp_x_new[i];
+            fp_x_new[i] = (fp_x_new[i]< fp_neighbor[2+i*4]) ? fp_neighbor[2+i*4]:fp_x_new[i];
+        }else if(fp_w[i]>=fp_neighbor[3+i*4]){
+            fp_x_new[i] = (fp_x_new[i]>=fp_neighbor[2+i*4]) ? fp_neighbor[2+i*4]:fp_x_new[i];
+            fp_x_new[i] = (fp_x_new[i]< fp_neighbor[3+i*4]) ? fp_neighbor[3+i*4]:fp_x_new[i];
         }
         
         
         //update dp_w
-        dp_w[i] = dp_x_new[i] + (beta - 1.0f)*(dp_x_new[i] - dp_x[i])/beta_new;
+        fp_w[i] = (1.0f-gamma)*fp_x_new[i] + gamma*fp_x[i];
     }
-    
-    
-    //reload tJJ fp, dp
-    for(int i=0;i<PARA_NUM;i++){
-        tJJ[i+i*PARA_NUM] = tJJ_img[IDxy+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M];
-        tJJ[i+i*PARA_NUM] *= (1.0f+lambda1);
-        for(int j=i+1;j<PARA_NUM;j++){
-            tJJ[i+j*PARA_NUM] = tJJ_img[IDxy+(PARA_NUM*i-(i+1)*i/2+j)*IMAGESIZE_M];
-            tJJ[j+i*PARA_NUM] = tJJ[i+j*PARA_NUM];
-        }
-    }
-    
-    //estimate new tJdF cnd
-    linear_transform(tJJ, dp_x_new, tJdF, PARA_NUM, p_fix);
     
     //save dp
     for(int i=0;i<PARA_NUM;i++){
-        dp_x_img[IDxy + i*IMAGESIZE_M] = dp_x_new[i];
-        dp_w_img[IDxy + i*IMAGESIZE_M] = dp_w[i];
-        tJdF_img[IDxy + i*IMAGESIZE_M] = tJdF[i];
+        if(p_fix[i]==48) continue;
+        
+        fp_x_img[IDxy + i*IMAGESIZE_M] = fp_x_new[i];
+        fp_w_img[IDxy + i*IMAGESIZE_M] = fp_w[i];
     }
+    //save beta
+    beta_img[IDxy] = beta_new;
 }
 
 

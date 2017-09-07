@@ -395,10 +395,11 @@ __kernel void FISTA(__read_only image2d_array_t reconst_x_img,
     //update of beta image
     float beta_new = beta*beta*4.0f + 1.0f;
     beta_new = (sqrt(beta_new) + 1.0f)*0.5f;
+    float gamma=(beta-1.0f)/beta_new;
     write_imagef(reconst_b_new_img, xyz_i, (float4)(beta_new,0.0f,0.0f,1.0f));
     
     //update of w img
-    float w_new = fmax(1.0e-6f,x_img_new + (beta - 1.0f)*(x_img_new - x_img)/beta_new);
+    float w_new = gamma*x_img_new + (1.0f - gamma)*x_img;
     w_new = (isnan(w_new)) ? 1.0e-6f:w_new;
     write_imagef(reconst_w_new_img, xyz_i, (float4)(w_new,0.0f,0.0f,1.0f));
 }

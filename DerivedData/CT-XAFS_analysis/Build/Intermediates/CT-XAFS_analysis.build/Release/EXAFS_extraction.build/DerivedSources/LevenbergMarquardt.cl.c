@@ -13,7 +13,8 @@
 static void initBlocks(void);
 
 // Initialize static data structures
-static block_kernel_pair pair_map[10] = {
+static block_kernel_pair pair_map[11] = {
+      { NULL, NULL },
       { NULL, NULL },
       { NULL, NULL },
       { NULL, NULL },
@@ -26,7 +27,7 @@ static block_kernel_pair pair_map[10] = {
       { NULL, NULL }
 };
 
-static block_kernel_map bmap = { 0, 10, initBlocks, pair_map };
+static block_kernel_map bmap = { 0, 11, initBlocks, pair_map };
 
 // Block function
 void (^LevenbergMarquardt_kernel)(const cl_ndrange *ndrange, cl_float* tJdF_img, cl_float* tJJ_img, cl_float* dp_img, cl_float* lambda_img, cl_char* p_fix) =
@@ -167,8 +168,8 @@ void (^updateOrHold_kernel)(const cl_ndrange *ndrange, cl_float* para_img, cl_fl
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
-void (^FISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_img, cl_float* tJJ_img, cl_float* tJdF_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) =
-^(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_img, cl_float* tJJ_img, cl_float* tJdF_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) {
+void (^ISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* tJJ_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) =
+^(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* tJJ_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) {
   int err = 0;
   cl_kernel k = bmap.map[6].kernel;
   if (!k) {
@@ -176,13 +177,36 @@ void (^FISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_i
     k = bmap.map[6].kernel;
   }
   if (!k)
-    gcl_log_fatal("kernel FISTA does not exist for device");
+    gcl_log_fatal("kernel ISTA does not exist for device");
   kargs_struct kargs;
   gclCreateArgsAPPLE(k, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 0, fp_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 1, dp_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 2, tJJ_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 3, tJdF_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 1, tJJ_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 2, p_fix, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 3, lambda_LM, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 4, lambda_fista, &kargs);
+  gcl_log_cl_fatal(err, "setting argument for ISTA failed");
+  err = gclExecKernelAPPLE(k, ndrange, &kargs);
+  gcl_log_cl_fatal(err, "Executing ISTA failed");
+  gclDeleteArgsAPPLE(k, &kargs);
+};
+
+void (^FISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_x_img, cl_float* fp_w_img, cl_float* beta_img, cl_float* tJJ_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) =
+^(const cl_ndrange *ndrange, cl_float* fp_x_img, cl_float* fp_w_img, cl_float* beta_img, cl_float* tJJ_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) {
+  int err = 0;
+  cl_kernel k = bmap.map[7].kernel;
+  if (!k) {
+    initBlocks();
+    k = bmap.map[7].kernel;
+  }
+  if (!k)
+    gcl_log_fatal("kernel FISTA does not exist for device");
+  kargs_struct kargs;
+  gclCreateArgsAPPLE(k, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 0, fp_x_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 1, fp_w_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 2, beta_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 3, tJJ_img, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 4, p_fix, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 5, lambda_LM, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 6, lambda_fista, &kargs);
@@ -195,10 +219,10 @@ void (^FISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_i
 void (^contrain_0_kernel)(const cl_ndrange *ndrange, cl_float* C_mat, cl_float* C2_vec) =
 ^(const cl_ndrange *ndrange, cl_float* C_mat, cl_float* C2_vec) {
   int err = 0;
-  cl_kernel k = bmap.map[7].kernel;
+  cl_kernel k = bmap.map[8].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[7].kernel;
+    k = bmap.map[8].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel contrain_0 does not exist for device");
@@ -215,10 +239,10 @@ void (^contrain_0_kernel)(const cl_ndrange *ndrange, cl_float* C_mat, cl_float* 
 void (^contrain_1_kernel)(const cl_ndrange *ndrange, cl_float* fp_cnd_img, cl_float* eval_img, cl_float* C_mat, cl_int c_num, cl_int p_num) =
 ^(const cl_ndrange *ndrange, cl_float* fp_cnd_img, cl_float* eval_img, cl_float* C_mat, cl_int c_num, cl_int p_num) {
   int err = 0;
-  cl_kernel k = bmap.map[8].kernel;
+  cl_kernel k = bmap.map[9].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[8].kernel;
+    k = bmap.map[9].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel contrain_1 does not exist for device");
@@ -238,10 +262,10 @@ void (^contrain_1_kernel)(const cl_ndrange *ndrange, cl_float* fp_cnd_img, cl_fl
 void (^contrain_2_kernel)(const cl_ndrange *ndrange, cl_float* fp_cnd_img, cl_float* weight_img, cl_float* eval_img, cl_float* C_mat, cl_float* D_vec, cl_float* C2_vec, cl_int c_num, cl_int p_num, cl_char weight_b) =
 ^(const cl_ndrange *ndrange, cl_float* fp_cnd_img, cl_float* weight_img, cl_float* eval_img, cl_float* C_mat, cl_float* D_vec, cl_float* C2_vec, cl_int c_num, cl_int p_num, cl_char weight_b) {
   int err = 0;
-  cl_kernel k = bmap.map[9].kernel;
+  cl_kernel k = bmap.map[10].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[9].kernel;
+    k = bmap.map[10].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel contrain_2 does not exist for device");
@@ -281,14 +305,16 @@ static void initBlocks(void) {
           bmap.map[4].kernel = clCreateKernel(bmap.program, "updateOrRestore", &err);
           assert(bmap.map[5].block_ptr == updateOrHold_kernel && "mismatch block");
           bmap.map[5].kernel = clCreateKernel(bmap.program, "updateOrHold", &err);
-          assert(bmap.map[6].block_ptr == FISTA_kernel && "mismatch block");
-          bmap.map[6].kernel = clCreateKernel(bmap.program, "FISTA", &err);
-          assert(bmap.map[7].block_ptr == contrain_0_kernel && "mismatch block");
-          bmap.map[7].kernel = clCreateKernel(bmap.program, "contrain_0", &err);
-          assert(bmap.map[8].block_ptr == contrain_1_kernel && "mismatch block");
-          bmap.map[8].kernel = clCreateKernel(bmap.program, "contrain_1", &err);
-          assert(bmap.map[9].block_ptr == contrain_2_kernel && "mismatch block");
-          bmap.map[9].kernel = clCreateKernel(bmap.program, "contrain_2", &err);
+          assert(bmap.map[6].block_ptr == ISTA_kernel && "mismatch block");
+          bmap.map[6].kernel = clCreateKernel(bmap.program, "ISTA", &err);
+          assert(bmap.map[7].block_ptr == FISTA_kernel && "mismatch block");
+          bmap.map[7].kernel = clCreateKernel(bmap.program, "FISTA", &err);
+          assert(bmap.map[8].block_ptr == contrain_0_kernel && "mismatch block");
+          bmap.map[8].kernel = clCreateKernel(bmap.program, "contrain_0", &err);
+          assert(bmap.map[9].block_ptr == contrain_1_kernel && "mismatch block");
+          bmap.map[9].kernel = clCreateKernel(bmap.program, "contrain_1", &err);
+          assert(bmap.map[10].block_ptr == contrain_2_kernel && "mismatch block");
+          bmap.map[10].kernel = clCreateKernel(bmap.program, "contrain_2", &err);
        }
      });
 }
@@ -302,9 +328,10 @@ static void RegisterMap(void) {
   bmap.map[3].block_ptr = evaluateUpdateCandidate_kernel;
   bmap.map[4].block_ptr = updateOrRestore_kernel;
   bmap.map[5].block_ptr = updateOrHold_kernel;
-  bmap.map[6].block_ptr = FISTA_kernel;
-  bmap.map[7].block_ptr = contrain_0_kernel;
-  bmap.map[8].block_ptr = contrain_1_kernel;
-  bmap.map[9].block_ptr = contrain_2_kernel;
+  bmap.map[6].block_ptr = ISTA_kernel;
+  bmap.map[7].block_ptr = FISTA_kernel;
+  bmap.map[8].block_ptr = contrain_0_kernel;
+  bmap.map[9].block_ptr = contrain_1_kernel;
+  bmap.map[10].block_ptr = contrain_2_kernel;
 }
 

@@ -76,7 +76,6 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
     int Rsize = (int)ceil((min(float(Rend+WIN_DR),(float)MAX_R)-max(float(Rstart-WIN_DR),0.0f))/RGRID) + 1;
     int qsize = (int)ceil((min(float(qend+WIN_DK),(float)MAX_KQ)-max(float(qstart-WIN_DK),0.0f))/KGRID) + 1;
     bool CSbool = inp.getCSbool();
-    int CSit = inp.getCSit();
     
     
     //create fitting results img pointer
@@ -114,40 +113,27 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
         }
         
         
-		//cl_float2 *FFTchidata;
-		//FFTchidata = new cl_float2[procImgSizeM*Rsize];
         switch (fittingmode) {
             case 0: //k-fit
                 Data_buff=cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(cl_float2)*ksize*procImgSizeM,0,NULL);
                 //data input
                 ChiData_k(queue,program,Data_buff,move(chi_vec),kw, kstart, kend, imgSizeX, procImgSizeY, true, imgOffset);
-                //fitting
-                EXAFS_kFit(queue,program,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,imgSizeX,procImgSizeY, S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff,CSbool,CSit,CSlambda_buff);
                 break;
                 
             case 1: //R-fit
                 Data_buff=cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(cl_float2)*Rsize*procImgSizeM,0,NULL);
                 //data input
                 ChiData_R(queue,program,Data_buff,move(chi_vec),w_factor,kw,kstart,kend,Rstart,Rend,imgSizeX, procImgSizeY, FFTprocImgSizeY, true, imgOffset);
-				/*queue.enqueueReadBuffer(Data_buff, CL_TRUE, 0, sizeof(cl_float2)*procImgSizeM*Rsize, FFTchidata);
-				for (int i = 0; i < Rsize; i++) {
-					cout << FFTchidata[i*procImgSizeM+ procImgSizeM/2+96].x << "\t" << FFTchidata[i*procImgSizeM + procImgSizeM / 2+96 ].y << endl;
-				}*/
-				//fitting
-                EXAFS_RFit(queue,program,w_factor,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,Rstart,Rend, imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff,CSbool,CSit,CSlambda_buff);
                 break;
             
             case 2: //q-fit
                 Data_buff=cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(cl_float2)*qsize*procImgSizeM,0,NULL);
                 //data input
                 ChiData_q(queue,program,Data_buff,move(chi_vec),w_factor,kw,kstart,kend,Rstart,Rend, qstart,qend, imgSizeX, procImgSizeY, FFTprocImgSizeY, true, imgOffset);
-                //fitting
-                EXAFS_qFit(queue,program,w_factor,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,Rstart,Rend, qstart,qend,imgSizeX, procImgSizeY, FFTprocImgSizeY,S02freeFix,numTrial,lambda, contrainSize,  edgeJ_buff, C_matrix_buff, D_vector_buff, C2_vector_buff,CSbool,CSit,CSlambda_buff);
-                break;
-                
-            default:
                 break;
         }
+        //fitting
+        EXAFS_Fit(queue,program,w_factor,Data_buff,S02,Rfactor_buff,shObjs,kw,kstart,kend,Rstart,Rend,qstart,qend,imgSizeX,procImgSizeY, FFTprocImgSizeY,fittingmode,S02freeFix,numTrial,lambda,contrainSize,edgeJ_buff,C_matrix_buff,D_vector_buff,C2_vector_buff,CSbool,CSlambda_buff);
         
         
         //read fitting results
@@ -165,11 +151,6 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
         queue.enqueueReadBuffer(Rfactor_buff, CL_TRUE, 0, sizeof(float)*procImgSizeM, &Rfactor[imgOffset]);
     }
     
-    
-    //delete chi data
-    /*for (int i = 0; i<chi_vec.size(); i++) {
-        delete[] chi_vec[i];
-    }*/
 	delete[] edgeJ;
     
     //output thread

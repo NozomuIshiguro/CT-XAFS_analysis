@@ -134,10 +134,6 @@ vector<float> input_parameter_fitting::getCSlambda(){
     return CSlambda;
 }
 
-int input_parameter_fitting::getCSit(){
-    return CSit;
-}
-
 
 //set from dialog
 void input_parameter_fitting::setFittingOutputDirFromDialog(string message){
@@ -726,10 +722,6 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         }
         CSlambda.push_back(a);
         cout<<a<<endl;
-    }else if((string)buffer=="#Iteration number of CS-based iteration for XANES fitting"){
-        cout<<buffer<<endl;
-        (*inp_ifs)>>CSit;
-        cout<<"  "<<CSit<<endl;
     }else if((string)buffer=="#XANES fitting equation"){
         cout<<buffer<<endl;
         (*inp_ifs).getline(buffer, buffsize);
@@ -915,8 +907,12 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         CSbool = (dummy==1) ? true:false;
         cout<<"  "<< boolalpha <<CSbool<<endl;
     }else if((string)buffer=="#Update factor of CS-based iteration for EXAFS fitting"){
-        CSlambda.push_back(0.0001f); //for S02 (dummy)
         cout<<buffer<<endl;
+        
+        if(CSlambda.size()==0){
+            CSlambda.push_back(0.0001f); //for S02 (dummy)
+        }
+        
         for (int cn=0; cn<numShell; cn++) {
             (*inp_ifs).getline(buffer, buffsize);
             istringstream iss(buffer);
@@ -940,10 +936,6 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
             CSlambda.push_back(a);
         }
         cout<<a<<endl;
-    }else if((string)buffer=="#Iteration number of CS-based iteration for EXAFS fitting"){
-        cout<<buffer<<endl;
-        (*inp_ifs)>>CSit;
-        cout<<"  "<<CSit<<endl;
     }else if((string)buffer=="#Number of contrain equations"){
         cout<<buffer<<endl;
         (*inp_ifs)>>num_contrain_eq;
@@ -955,5 +947,9 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
             contrain_eq.push_back(buffer);
             cout<<"("<<i+1<<")  "<<contrain_eq[i]<<endl;
         }
+    }else if((string)buffer=="#Number of Levenberg-Marquardt cycles"){
+        cout<<buffer<<endl;
+        (*inp_ifs)>>num_trial_fit;
+        cout<<"  "<<num_trial_fit<<endl;
     }
 }

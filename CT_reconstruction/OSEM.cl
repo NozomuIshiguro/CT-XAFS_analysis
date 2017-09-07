@@ -61,7 +61,8 @@ __kernel void OSEM1(__read_only image2d_array_t reconst_img,
         prj += read_imagef(reconst_img,s_linear,xyz).x;
     }
     
-    rprj = read_imagef(prj_img,s_linear,XthZ).x;
+    rprj = max(1.0e-6f,read_imagef(prj_img,s_linear,XthZ).x);
+    rprj = (isnan(rprj)) ? 1.0e-6f:rprj;
     rprj = (prj<0.0001f) ? rprj:rprj/prj;
     write_imagef(rprj_img, XthZ, (float4)(rprj,0.0f,0.0f,1.0f));
 }

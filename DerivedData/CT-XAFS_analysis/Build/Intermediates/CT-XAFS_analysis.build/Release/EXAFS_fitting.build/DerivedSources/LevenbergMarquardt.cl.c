@@ -168,8 +168,8 @@ void (^updateOrHold_kernel)(const cl_ndrange *ndrange, cl_float* para_img, cl_fl
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
-void (^ISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_img, cl_float* tJJ_img, cl_float* tJdF_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) =
-^(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_img, cl_float* tJJ_img, cl_float* tJdF_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) {
+void (^ISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* tJJ_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) =
+^(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* tJJ_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) {
   int err = 0;
   cl_kernel k = bmap.map[6].kernel;
   if (!k) {
@@ -181,20 +181,18 @@ void (^ISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_im
   kargs_struct kargs;
   gclCreateArgsAPPLE(k, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 0, fp_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 1, dp_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 2, tJJ_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 3, tJdF_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 4, p_fix, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 5, lambda_LM, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 6, lambda_fista, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 1, tJJ_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 2, p_fix, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 3, lambda_LM, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 4, lambda_fista, &kargs);
   gcl_log_cl_fatal(err, "setting argument for ISTA failed");
   err = gclExecKernelAPPLE(k, ndrange, &kargs);
   gcl_log_cl_fatal(err, "Executing ISTA failed");
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
-void (^FISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_x_img, cl_float* dp_w_img, cl_float* tJJ_img, cl_float* tJdF_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista, cl_float* beta_img) =
-^(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_x_img, cl_float* dp_w_img, cl_float* tJJ_img, cl_float* tJdF_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista, cl_float* beta_img) {
+void (^FISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_x_img, cl_float* fp_w_img, cl_float* beta_img, cl_float* tJJ_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) =
+^(const cl_ndrange *ndrange, cl_float* fp_x_img, cl_float* fp_w_img, cl_float* beta_img, cl_float* tJJ_img, cl_char* p_fix, cl_float* lambda_LM, cl_float* lambda_fista) {
   int err = 0;
   cl_kernel k = bmap.map[7].kernel;
   if (!k) {
@@ -205,15 +203,13 @@ void (^FISTA_kernel)(const cl_ndrange *ndrange, cl_float* fp_img, cl_float* dp_x
     gcl_log_fatal("kernel FISTA does not exist for device");
   kargs_struct kargs;
   gclCreateArgsAPPLE(k, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 0, fp_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 1, dp_x_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 2, dp_w_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 0, fp_x_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 1, fp_w_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 2, beta_img, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 3, tJJ_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 4, tJdF_img, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 5, p_fix, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 6, lambda_LM, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 7, lambda_fista, &kargs);
-  err |= gclSetKernelArgMemAPPLE(k, 8, beta_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 4, p_fix, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 5, lambda_LM, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 6, lambda_fista, &kargs);
   gcl_log_cl_fatal(err, "setting argument for FISTA failed");
   err = gclExecKernelAPPLE(k, ndrange, &kargs);
   gcl_log_cl_fatal(err, "Executing FISTA failed");

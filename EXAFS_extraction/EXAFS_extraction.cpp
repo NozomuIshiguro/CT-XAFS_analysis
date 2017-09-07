@@ -185,6 +185,7 @@ int fitting(cl::CommandQueue queue, cl::Program program,
         queue.enqueueWriteBuffer(freeFix_buff, CL_TRUE, 0, sizeof(cl_char)*paramsize, fiteq.freefix_para());
         queue.enqueueWriteBuffer(funcMode_buff, CL_TRUE, 0, sizeof(cl_int)*fiteq.numFunc, &(fiteq.funcmode[0]), NULL, NULL);
         
+        
         //set kernel arguments
         //chi2(old), tJdF, tJJ calculation
         kernel_chi2tJdFtJJ.setArg(0, mt_img);
@@ -239,42 +240,18 @@ int fitting(cl::CommandQueue queue, cl::Program program,
         kernel_UorH.setArg(2, rho_buff);
         
 
-
         //L-M trial
         for (int trial=0; trial<numTrial; trial++) {
             errorzone = "calculating chi2 old, tJJ, tJdF";
             //chi2(old), tJdF, tJJ calculation
             queue.enqueueNDRangeKernel(kernel_chi2tJdFtJJ, NULL, global_item_size, local_item_size, NULL, NULL);
             queue.finish();
-            /*float* tJJ_data;
-            tJJ_data = new float[imgSizeM*paramsize*(paramsize+1)/2];
-            queue.enqueueReadBuffer(tJJ_buff, CL_TRUE, 0, sizeof(float)*imgSizeM*paramsize*(paramsize+1)/2, tJJ_data);
-            cout<<"tJJ"<<endl;
-            for (int i=0; i<paramsize*(paramsize+1)/2; i++) {
-                cout <<"tJJ["<<i<<"]: "<<tJJ_data[i*imgSizeM]<<endl;
-            }
-            cout<<endl;
-            cout<<"tJdF"<<endl;
-            float* tJdF_data;
-            tJdF_data = new float[imgSizeM*paramsize];
-            queue.enqueueReadBuffer(tJdF_buff, CL_TRUE, 0, sizeof(float)*imgSizeM*paramsize, tJdF_data);
-            for (int i=0; i<paramsize; i++) {
-                cout <<"tJdF["<<i<<"]: "<<tJdF_data[i*imgSizeM]<<endl;
-            }
-            cout<<endl;*/
+
             
             errorzone = "L-M";
             //L-M equation
             queue.enqueueNDRangeKernel(kernel_LM, NULL, global_item_size, local_item_size, NULL, NULL);
             queue.finish();
-            /*cout<<"dp"<<endl;
-            float* dp_data;
-            dp_data = new float[imgSizeM*paramsize];
-            queue.enqueueReadBuffer(dp_img, CL_TRUE, 0, sizeof(float)*imgSizeM*paramsize, dp_data);
-            for (int i=0; i<paramsize; i++) {
-                cout <<"dp["<<i<<"]: "<<dp_data[i*imgSizeM]<<endl;
-            }
-            cout<<endl;*/
             
             
             errorzone = "estimating dL";
@@ -288,20 +265,13 @@ int fitting(cl::CommandQueue queue, cl::Program program,
             queue.enqueueCopyBuffer(fp_img, fp_cnd_img, 0, 0, sizeof(cl_float)*imgSizeM*paramsize);
             queue.enqueueNDRangeKernel(kernel_cnd, NULL, global_item_size2, local_item_size, NULL, NULL);
             queue.finish();
-            /*cout<<"fp_cnd"<<endl;
-            float* fp_cnd_data;
-            fp_cnd_data = new float[imgSizeM*paramsize];
-            queue.enqueueReadBuffer(fp_cnd_img, CL_TRUE, 0, sizeof(float)*imgSizeM*paramsize, fp_cnd_data);
-            for (int i=0; i<paramsize; i++) {
-                cout <<"fp_cnd["<<i<<"]: "<<fp_cnd_data[i*imgSizeM]<<endl;
-            }
-            cout<<endl;*/
             
             
             errorzone = "calclating new chi2";
             //chi2(new) calculation
             queue.enqueueNDRangeKernel(kernel_chi2new, NULL, global_item_size, local_item_size, NULL, NULL);
             queue.finish();
+            
             
             errorzone = "evaluateUpdateCandidate";
             //evaluate rho
@@ -310,20 +280,6 @@ int fitting(cl::CommandQueue queue, cl::Program program,
             //update or hold parameter
             queue.enqueueNDRangeKernel(kernel_UorH, NULL, global_item_size2, local_item_size, NULL, NULL);
             queue.finish();
-            /*float* rho_data;
-            rho_data = new float[imgSizeM];
-            queue.enqueueReadBuffer(rho_buff, CL_TRUE, 0, sizeof(float)*imgSizeM, rho_data);
-            cout <<"rho: "<<rho_data[0]<<endl;
-            cout<<endl;
-            cout<<"fp"<<endl;
-            float* fp_data;
-            fp_data = new float[imgSizeM*paramsize];
-            queue.enqueueReadBuffer(fp_img, CL_TRUE, 0, sizeof(float)*imgSizeM*paramsize, fp_data);
-            for (int i=0; i<paramsize; i++) {
-                cout <<"fp["<<i<<"]: "<<fp_data[i*imgSizeM]<<endl;
-            }
-            cout<<endl;*/
-            
         }
     }catch (const cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")"<< errorzone << endl;
@@ -447,8 +403,10 @@ int PostEdgeEstimation(cl::CommandQueue queue, cl::Program program,
     cl::ImageFormat format(CL_R, CL_FLOAT);
     cl::Image1DArray refSpectra(context,CL_MEM_READ_WRITE,format,1,IMAGE_SIZE_E, 0, NULL);
     
+    
     //fitting
     fitting(queue, program, energy, mt_img, fp_img, refSpectra, fiteq, lambda, numTrial, startEn, endEn, imagesizeX, imagesizeY);
+    
     
     //estimate bkg image from fp image
     cl::Kernel kernel_ej(program,"estimateEJ");;
@@ -479,14 +437,13 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
     int N_ctrlP = (int)floor(2.0*(kend-kstart)*Rbkg/PI)+1;
     float knotStart = max(float(kstart-WIN_DK),0.0f);
     float knotPitch = (min(float(kend + WIN_DK),(float)MAX_KQ)-max(float(kstart-WIN_DK),0.0f))/(N_ctrlP-1);
-    //cout <<"N_ctrlP: "<<N_ctrlP<<endl;
-    //cout <<"knot pitch: "<<knotPitch<<endl;
     char* p_freefix;
     p_freefix = new char[N_ctrlP];
     for (int i=0; i<N_ctrlP-1; i++) {
         p_freefix[i]=49;
     }
     p_freefix[N_ctrlP-1]=(kendClamp) ? 48:49;
+    
     
     //CL objects
     cl_float2 iniChi={0.0f,0.0f};
@@ -543,14 +500,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
     kernel_redim.setArg(5, (cl_int)MAX_KRSIZE);
     queue.enqueueNDRangeKernel(kernel_redim, NULL, global_item_size, local_item_size1, NULL, NULL);
     queue.finish();
-    /*cl_float* chi_data;
-    chi_data = new cl_float[imageSizeM*MAX_KRSIZE];
-    queue.enqueueReadBuffer(chi_img, CL_TRUE, 0, sizeof(cl_float)*imageSizeM*MAX_KRSIZE, chi_data);
-    cout<<"chidata"<<endl;
-    for (int i=0; i<MAX_KRSIZE; i++) {
-        cout <<i*0.05f<<"\t"<<chi_data[i*imageSizeM]<<endl;
-    }
-    cout<<endl;*/
     
     
     //convert to complex chi
@@ -565,14 +514,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         queue.enqueueNDRangeKernel(kernel_cmplx, global_item_offset3, global_item_size, local_item_size1, NULL, NULL);
         queue.finish();
     }
-    /*cl_float2* chi_data;
-    chi_data = new cl_float2[imageSizeM*ksize];
-    queue.enqueueReadBuffer(chiData, CL_TRUE, 0, sizeof(cl_float2)*imageSizeM*ksize, chi_data);
-    cout<<"chidata"<<endl;
-    for (int i=0; i<ksize; i++) {
-        cout <<i*0.05f<<"\t"<<chi_data[i*imageSizeM].y<<endl;
-    }
-    cout<<endl;*/
     
     
     //initialize ctrlP
@@ -583,14 +524,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
     kernel_iniCtrlP.setArg(3, (cl_int)ksize);
     queue.enqueueNDRangeKernel(kernel_iniCtrlP, NULL, global_item_size_ctrlP, local_item_size1, NULL, NULL);
     queue.finish();
-    /*float* ctrlP_data;
-    ctrlP_data = new float[N_ctrlP];
-    queue.enqueueReadBuffer(fp_img, CL_TRUE, 0, sizeof(cl_float)*N_ctrlP, ctrlP_data);
-    cout<<"ctrlP"<<endl;
-    for (int i=0; i<N_ctrlP; i++) {
-        cout <<i*knotPitch<<"\t"<<ctrlP_data[i]<<endl;
-    }
-    cout<<endl;*/
+
     
     //create B-spline basis0
     cl::Kernel kernel_basis0(program,"Bspline_basis_zero");
@@ -601,14 +535,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
     kernel_basis0.setArg(4, (cl_int)4);
     queue.enqueueNDRangeKernel(kernel_basis0, global_item_offset2, global_item_size_basis, local_item_size2, NULL, NULL);
     queue.finish();
-    /*float* basisData;
-    basisData = new float[(N_ctrlP+4)*ksize];
-    queue.enqueueReadBuffer(basis, CL_TRUE, 0, sizeof(cl_float)*(N_ctrlP+4)*ksize, basisData);
-    cout<<"basis"<<endl;
-    for (int i=0; i<ksize; i++) {
-        cout <<(koffset+i)*0.05f<<"\t"<<basisData[13+i*(N_ctrlP+4)]<<endl;
-    }
-    cout<<endl;*/
     
     
     //update order of basis
@@ -626,15 +552,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         queue.enqueueCopyBuffer(basis_dummy, basis, 0, 0, sizeof(cl_float)*(N_ctrlP+4)*ksize);
         queue.finish();
     }
-    /*float* basisData;
-    basisData = new float[(N_ctrlP+4)*ksize];
-    queue.enqueueReadBuffer(basis, CL_TRUE, 0, sizeof(cl_float)*(N_ctrlP+4)*ksize, basisData);
-    cout<<"basis"<<endl;
-    for (int i=0; i<ksize; i++) {
-        cout <<(koffset+i)*0.05f<<"\t"<<basisData[i*(N_ctrlP+4)]<<endl;
-    }
-    cout<<endl;*/
-    
     
     
     //fitting loop
@@ -696,7 +613,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
     cl::Kernel kernel_kw(program,"kweight");
     kernel_kw.setArg(0, J_dummy);
     kernel_kw.setArg(1, (cl_int)kw);
-    
     //estimate Jacobian (put outside of loop because J are independent from fp)
     cl::Kernel kernel_jacob(program,"Jacobian_BsplineRemoval");
     kernel_jacob.setArg(0, J_dummy);
@@ -704,6 +620,8 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
     kernel_jacob.setArg(3, (cl_int)N_ctrlP);
     kernel_jacob.setArg(4, (cl_int)4);
     kernel_jacob.setArg(5, (cl_int)4);
+    
+    
     //Jacobian
     //reset Jacobian
     for(int i=0;i<N_ctrlP;i++){
@@ -744,14 +662,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
             pn++;
         }
     }
-    /*float* tJJ_data;
-    tJJ_data = new float[imageSizeM*N_ctrlP*(N_ctrlP+1)/2];
-    queue.enqueueReadBuffer(tJJ, CL_TRUE, 0, sizeof(float)*imageSizeM*N_ctrlP*(N_ctrlP+1)/2, tJJ_data);
-    cout<<"tJJ"<<endl;
-    for (int i=0; i<N_ctrlP*(N_ctrlP+1)/2; i++) {
-        cout <<"tJJ["<<i<<"]: "<<tJJ_data[i*imageSizeM]<<endl;
-    }
-    cout<<endl;*/
+
     
     kernel_kw.setArg(0, chiFit);
     kernel_kwindow.setArg(0, chiFit);
@@ -760,14 +671,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         queue.enqueueFillBuffer(dF2_old, (cl_float)0.0f, 0, sizeof(cl_float)*imageSizeM);
         queue.enqueueFillBuffer(dF2_new, (cl_float)0.0f, 0, sizeof(cl_float)*imageSizeM);
         queue.enqueueFillBuffer(tJdF, (cl_float)0.0f, 0, sizeof(cl_float)*imageSizeM*N_ctrlP);
-        /*float* fp_data;
-        fp_data = new float[imageSizeM*N_ctrlP];
-        queue.enqueueReadBuffer(fp_img, CL_TRUE, 0, sizeof(float)*imageSizeM*N_ctrlP, fp_data);
-        cout<<"fp"<<endl;
-        for (int i=0; i<N_ctrlP; i++) {
-            cout <<"fp["<<i<<"]: "<<fp_data[i*imageSizeM]<<endl;
-        }
-        cout<<endl;*/
         
         
         //chiFit
@@ -801,14 +704,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
                 queue.finish();
             }
         }
-        /*cout<<"tJdF"<<endl;
-        float* tJdF_data;
-        tJdF_data = new float[imageSizeM*N_ctrlP];
-        queue.enqueueReadBuffer(tJdF, CL_TRUE, 0, sizeof(float)*imageSizeM*N_ctrlP, tJdF_data);
-        for (int i=0; i<N_ctrlP; i++) {
-            cout <<"tJdF["<<i<<"]: "<<tJdF_data[i*imageSizeM]<<endl;
-        }
-        cout<<endl;*/
         
         
         //estimate dF2
@@ -820,13 +715,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         //Levenberg-Marquardt
         queue.enqueueNDRangeKernel(kernel_LM,NULL,global_item_size,local_item_size1, NULL, NULL);
         queue.finish();
-        /*float* dp_data;
-        dp_data = new float[imageSizeM*N_ctrlP];
-        queue.enqueueReadBuffer(dp_img, CL_TRUE, 0, sizeof(float)*imageSizeM*N_ctrlP, dp_data);
-        cout<<"dp"<<endl;
-        for (int i=0; i<N_ctrlP; i++) {
-            cout <<"dp["<<i<<"]: "<<dp_data[i*imageSizeM]<<endl;
-        }*/
         
         
         //estimate dL
@@ -872,20 +760,11 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         //update or hold parameter
         queue.enqueueNDRangeKernel(kernel_UorH,NULL,global_item_size_para,local_item_size1,NULL, NULL);
         queue.finish();
-        /*float* fp_data;
-        fp_data = new float[imageSizeM*N_ctrlP];
-        queue.enqueueReadBuffer(fp_img, CL_TRUE, 0, sizeof(float)*imageSizeM*N_ctrlP, fp_data);
-        cout<<"fp"<<endl;
-        for (int i=0; i<N_ctrlP; i++) {
-            cout <<"fp["<<i<<"]: "<<fp_data[i*imageSizeM]<<endl;
-        }
-        cout<<endl;*/
     }
     
     
     //estimate final chiFit(spline removed chiData)
     //reset chiFit
-    //queue.enqueueFillBuffer(chiData, iniChi, 0, sizeof(cl_float2)*imageSizeM*ksize);
     queue.enqueueFillBuffer(chiFit, iniChi, 0, sizeof(cl_float2)*imageSizeM*ksize);
     queue.enqueueFillBuffer(FTchiFit, iniChi, 0, sizeof(cl_float2)*imageSizeM*Rsize);
     //estimate chiFit
@@ -901,6 +780,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
     queue.enqueueNDRangeKernel(kernel_c2real,global_item_offset1,global_item_size_stack,local_item_size1,NULL, NULL);
     queue.finish();
 
+    
 	//fill 0 before kstart and after kend
 	queue.enqueueFillBuffer(chi_img, (cl_float)0.0f, 0, sizeof(cl_float)*imageSizeM*koffset);
 	queue.enqueueFillBuffer(chi_img, (cl_float)0.0f, sizeof(cl_float)*imageSizeM*(koffset+ksize), sizeof(cl_float)*imageSizeM*(MAX_KRSIZE-koffset-ksize));
