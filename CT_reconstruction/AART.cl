@@ -63,6 +63,7 @@ __kernel void AART1(__read_only image2d_array_t reconst_img,
     }
     
     dprj = read_imagef(prj_img,s_linear,XthZ).x;
+    dprj = (isnan(dprj)) ? 0.0f:dprj;
     dprj = dprj - prj;
     write_imagef(dprj_img, XthZ, (float4)(dprj,0.0f,0.0f,1.0f));
 }
@@ -82,7 +83,6 @@ __kernel void AART2(__read_only image2d_array_t reconst_img,
     XthZ.z = Z;
     float bprj=0.0f;
     float img;
-    int th;
     float angle_pr;
     
     //back projection from delta
@@ -92,7 +92,7 @@ __kernel void AART2(__read_only image2d_array_t reconst_img,
     // reconst_dest_img:    lambda(k+1) = lambda' x lambda(k)
     float4 xyz_f = (float4)(X,Y,Z,0.0f);
     int4 xyz_i = (int4)(X,Y,Z,0);
-    for(th=sub;th<PRJ_ANGLESIZE;th+=SS){
+    for(int th=sub;th<PRJ_ANGLESIZE;th+=SS){
         angle_pr = angle[th]*PI/180.0f;
         XthZ.x =  (X-IMAGESIZE_X*0.5f)*cos(angle_pr)-(Y-IMAGESIZE_Y*0.5f)*sin(angle_pr) + PRJ_IMAGESIZE*0.5f + 0.5f;
         XthZ.y = th + 0.5f;

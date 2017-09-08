@@ -1,4 +1,4 @@
-﻿//
+//
 //  main.cpp
 //  RotationCenterSearch
 //
@@ -44,9 +44,7 @@ int correctionMode = 1; //投影像補正 0:なし,1:x方向,2:θ方向,3:x+θ�
 float amp = 1.0f; //強度増幅因子
 int baseupOrder =4;//baseup 減少速度次数
 bool CSitBool = false; //圧縮センシング逐次計算
-float CSepsilon = 1.0e-8f; //圧縮センシング逐次計算ノイズファクター
-float CSalpha = 0.1f; //圧縮センシング逐次計算加算ファクター
-int CSit = 5; //圧縮センシング逐次計算回数
+float CSlambda = 1.0e-8f; //圧縮センシング逐次計算ノイズファクター
 
 mutex m1,m2;
 int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang);

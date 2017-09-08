@@ -210,7 +210,7 @@ __kernel void partialDerivativeOfGradiant(__read_only image2d_array_t original_i
 }
 
 //projection of trial image and calculate delta between projected image data
-__kernel void Profection(__read_only image2d_array_t reconst_img,
+__kernel void projection(__read_only image2d_array_t reconst_img,
                            __write_only image2d_array_t prj_img,
                            __constant float *angle, int sub){
     
@@ -254,6 +254,7 @@ __kernel void backProjection(__write_only image2d_array_t reconst_dest_img,
     XthZ.z = Z;
     float bprj=0.0f;
     float img;
+    float prj;
     
     //back projection
     float4 xyz_f = (float4)(X,Y,Z,0.0f);
@@ -263,8 +264,9 @@ __kernel void backProjection(__write_only image2d_array_t reconst_dest_img,
         angle_pr = angle[th]*PI/180.0f;
         XthZ.x =  (X-IMAGESIZE_X/2)*cos(angle_pr)-(Y-IMAGESIZE_Y/2)*sin(angle_pr) + PRJ_IMAGESIZE/2 + 0.5f;
         XthZ.y = th + 0.5f;
-        
-        bprj += read_imagef(prj_img,s_nearest,XthZ).x;
+        prj = read_imagef(prj_img,s_nearest,XthZ).x;
+        prj = (isnan(prj)) ? 0.0f:prj;
+        bprj += prj;
     }
     
     //update assumed img

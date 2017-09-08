@@ -13,32 +13,10 @@ vector<thread> input_th,fitting_th, output_th_fit;
 
 int main(int argc, const char * argv[]) {
     
-    /*vector<string> contrain_eqs;
-    vector<string> fparaName;
-    vector<vector<float>> C_matrix;
-    vector<float> D_vector;
-    contrain_eqs.push_back("CN_Pt-Pt - 3*CN_Pt-O = 12 - 2*CN_Pt-Co");
-    contrain_eqs.push_back("R_Pt-Pt > 2.70");
-    fparaName.push_back("S02");
-    fparaName.push_back("CN_Pt-Pt");
-    fparaName.push_back("CN_Pt-O");
-    fparaName.push_back("CN_Pt-Co");
-    fparaName.push_back("R_Pt-Pt");
-    int num_contrain = createContrainMatrix(contrain_eqs,fparaName,&C_matrix,&D_vector);
-    int num_fpara = (int)fparaName.size();
-    correctBondDistanceContrain(&C_matrix, &D_vector,4,2.7713f);
-    cout<<endl<<"C_matrix | D_vector"<<endl;
-    for (int i=0; i<num_contrain; i++) {
-        for (int j=0; j<num_fpara-1; j++) {
-            cout << C_matrix[i][j] <<" ";
-        }
-        cout<< C_matrix[i][num_fpara-1] <<" | "<< D_vector[i] << endl;
-    }*/
-    
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "             Imaging EXAFS fittting" <<endl<<endl;
     cout << "         First version: Aug. 10th, 2017"<<endl;
-    cout << "         Last update: Sep. 5th, 2017"<<endl<<endl;
+    cout << "         Last update: Sep. 8th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     
