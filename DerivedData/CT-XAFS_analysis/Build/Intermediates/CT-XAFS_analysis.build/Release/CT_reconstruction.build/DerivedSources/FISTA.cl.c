@@ -13,7 +13,9 @@
 static void initBlocks(void);
 
 // Initialize static data structures
-static block_kernel_pair pair_map[8] = {
+static block_kernel_pair pair_map[10] = {
+      { NULL, NULL },
+      { NULL, NULL },
       { NULL, NULL },
       { NULL, NULL },
       { NULL, NULL },
@@ -24,7 +26,7 @@ static block_kernel_pair pair_map[8] = {
       { NULL, NULL }
 };
 
-static block_kernel_map bmap = { 0, 8, initBlocks, pair_map };
+static block_kernel_map bmap = { 0, 10, initBlocks, pair_map };
 
 // Block function
 void (^powerIter1_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image prj_img, cl_float* angle) =
@@ -205,6 +207,54 @@ void (^FISTA_kernel)(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
+void (^ISTA3D_kernel)(const cl_ndrange *ndrange, cl_image reconst_v_img, cl_image reconst_x_new_img, cl_int sub, cl_float* L) =
+^(const cl_ndrange *ndrange, cl_image reconst_v_img, cl_image reconst_x_new_img, cl_int sub, cl_float* L) {
+  int err = 0;
+  cl_kernel k = bmap.map[8].kernel;
+  if (!k) {
+    initBlocks();
+    k = bmap.map[8].kernel;
+  }
+  if (!k)
+    gcl_log_fatal("kernel ISTA3D does not exist for device");
+  kargs_struct kargs;
+  gclCreateArgsAPPLE(k, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 0, reconst_v_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 1, reconst_x_new_img, &kargs);
+  err |= gclSetKernelArgAPPLE(k, 2, sizeof(sub), &sub, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 3, L, &kargs);
+  gcl_log_cl_fatal(err, "setting argument for ISTA3D failed");
+  err = gclExecKernelAPPLE(k, ndrange, &kargs);
+  gcl_log_cl_fatal(err, "Executing ISTA3D failed");
+  gclDeleteArgsAPPLE(k, &kargs);
+};
+
+void (^FISTA3D_kernel)(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image reconst_v_img, cl_image reconst_b_img, cl_image reconst_w_new_img, cl_image reconst_x_new_img, cl_image reconst_b_new_img, cl_int sub, cl_float* L) =
+^(const cl_ndrange *ndrange, cl_image reconst_x_img, cl_image reconst_v_img, cl_image reconst_b_img, cl_image reconst_w_new_img, cl_image reconst_x_new_img, cl_image reconst_b_new_img, cl_int sub, cl_float* L) {
+  int err = 0;
+  cl_kernel k = bmap.map[9].kernel;
+  if (!k) {
+    initBlocks();
+    k = bmap.map[9].kernel;
+  }
+  if (!k)
+    gcl_log_fatal("kernel FISTA3D does not exist for device");
+  kargs_struct kargs;
+  gclCreateArgsAPPLE(k, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 0, reconst_x_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 1, reconst_v_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 2, reconst_b_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 3, reconst_w_new_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 4, reconst_x_new_img, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 5, reconst_b_new_img, &kargs);
+  err |= gclSetKernelArgAPPLE(k, 6, sizeof(sub), &sub, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 7, L, &kargs);
+  gcl_log_cl_fatal(err, "setting argument for FISTA3D failed");
+  err = gclExecKernelAPPLE(k, ndrange, &kargs);
+  gcl_log_cl_fatal(err, "Executing FISTA3D failed");
+  gclDeleteArgsAPPLE(k, &kargs);
+};
+
 // Initialization functions
 static void initBlocks(void) {
   const char* build_opts = "";
@@ -228,6 +278,10 @@ static void initBlocks(void) {
           bmap.map[6].kernel = clCreateKernel(bmap.program, "ISTA", &err);
           assert(bmap.map[7].block_ptr == FISTA_kernel && "mismatch block");
           bmap.map[7].kernel = clCreateKernel(bmap.program, "FISTA", &err);
+          assert(bmap.map[8].block_ptr == ISTA3D_kernel && "mismatch block");
+          bmap.map[8].kernel = clCreateKernel(bmap.program, "ISTA3D", &err);
+          assert(bmap.map[9].block_ptr == FISTA3D_kernel && "mismatch block");
+          bmap.map[9].kernel = clCreateKernel(bmap.program, "FISTA3D", &err);
        }
      });
 }
@@ -243,5 +297,7 @@ static void RegisterMap(void) {
   bmap.map[5].block_ptr = FISTAbackProjection_kernel;
   bmap.map[6].block_ptr = ISTA_kernel;
   bmap.map[7].block_ptr = FISTA_kernel;
+  bmap.map[8].block_ptr = ISTA3D_kernel;
+  bmap.map[9].block_ptr = FISTA3D_kernel;
 }
 

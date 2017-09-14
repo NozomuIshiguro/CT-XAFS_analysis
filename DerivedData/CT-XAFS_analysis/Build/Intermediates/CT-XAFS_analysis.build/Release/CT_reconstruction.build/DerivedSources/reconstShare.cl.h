@@ -9,5 +9,5 @@ extern void (^baseUp_kernel)(const cl_ndrange *ndrange, cl_image img_src, cl_ima
 extern void (^findMinimumX_kernel)(const cl_ndrange *ndrange, cl_image img_src, size_t loc_mem, cl_float* minimumY);
 extern void (^findMinimumY_kernel)(const cl_ndrange *ndrange, cl_float* minimumY, size_t loc_mem, cl_float* minimum);
 extern void (^partialDerivativeOfGradiant_kernel)(const cl_ndrange *ndrange, cl_image original_img_src, cl_image img_src, cl_image img_dest, cl_float epsilon, cl_float alpha);
-extern void (^Profection_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image prj_img, cl_float* angle, cl_int sub);
+extern void (^projection_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image prj_img, cl_float* angle, cl_int sub);
 extern void (^backProjection_kernel)(const cl_ndrange *ndrange, cl_image reconst_dest_img, cl_image prj_img, cl_float* angle, cl_int sub);

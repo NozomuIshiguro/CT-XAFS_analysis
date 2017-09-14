@@ -44,6 +44,7 @@ float amp = 1.0f; //強度増幅因子
 int baseupOrder =4;//baseup 減少速度次数
 bool CSitBool = false; //圧縮センシング逐次計算
 float CSlambda = 0.0001f; //圧縮センシング逐次計算加算ファクター
+int CSoverlap = 1; //圧縮センシングレイヤー計算オーバーラップ
 
 //int CPU();
 int GPU();
@@ -55,7 +56,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "            Batch CT reconstruction" <<endl<<endl;
     cout << "         First version: Jun. 19th, 2015"<<endl;
-    cout << "         Last update: Sep. 5th, 2017"<<endl<<endl;
+    cout << "         Last update: Sep. 8th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     

@@ -473,6 +473,29 @@ int XANES_fit_thread(cl::CommandQueue command_queue, cl::Program program,
             }
             
             
+            //contrain (final)
+            errorzone = "setting contrain";
+            kernel_contrain1.setArg(0, results_img);
+            kernel_contrain2.setArg(0, results_img);
+            for (int i=0; i<contrainSize; i++) {
+                kernel_contrain1.setArg(3, (cl_int)i);
+                kernel_contrain2.setArg(6, (cl_int)i);
+                command_queue.enqueueFillBuffer(eval_img, (cl_float)0.0f, 0, sizeof(cl_float)*processImgSizeM);
+                for (int j=0; j<paramsize; j++) {
+                    const cl::NDRange global_item_offset(0,0,j);
+                    kernel_contrain1.setArg(4, (cl_int)j);
+                    command_queue.enqueueNDRangeKernel(kernel_contrain1, global_item_offset, global_item_size, local_item_size, NULL, NULL);
+                    command_queue.finish();
+                }
+                for (int j=0; j<paramsize; j++) {
+                    const cl::NDRange global_item_offset(0,0,j);
+                    kernel_contrain2.setArg(7, (cl_int)j);
+                    command_queue.enqueueNDRangeKernel(kernel_contrain2, global_item_offset, global_item_size, local_item_size, NULL, NULL);
+                    command_queue.finish();
+                }
+            }
+            
+            
             errorzone = "setting mask";
             //set mask
             kernel_mask.setArg(0, mt_img);

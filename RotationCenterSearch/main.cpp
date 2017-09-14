@@ -45,6 +45,7 @@ float amp = 1.0f; //強度増幅因子
 int baseupOrder =4;//baseup 減少速度次数
 bool CSitBool = false; //圧縮センシング逐次計算
 float CSlambda = 1.0e-8f; //圧縮センシング逐次計算ノイズファクター
+int CSoverlap = 1; //圧縮センシングレイヤー計算オーバーラップ
 
 mutex m1,m2;
 int rotationCenterSearch(string fileName_base, input_parameter inp, float *ang);

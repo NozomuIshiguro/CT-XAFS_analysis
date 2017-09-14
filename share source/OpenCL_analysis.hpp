@@ -591,4 +591,5 @@ class CL_objects {
 extern mutex m1,m2;
 extern vector<thread> input_th, imageReg_th, fitting_th, output_th, output_th_fit;
 
+string ifs_getline(ifstream *inp_ifs);
 #endif

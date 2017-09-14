@@ -48,7 +48,7 @@ int main(int argc, const char * argv[]) {
     struct dirent *dp;
     dir=opendir(fileName_base.c_str());
     if (dir==NULL) {
-        cout <<"Directory not found."<<endl;
+        cout <<"Input directory not found."<<endl;
         cout <<  "Press 'Enter' to quit." << endl;
         string dummy;
         getline(cin,dummy);
@@ -80,7 +80,7 @@ int main(int argc, const char * argv[]) {
 	string fileName_base_ej = inp.getInputDir_EJ();
 	dir = opendir(fileName_base_ej.c_str());
 	if (dir == NULL) {
-		cout << "Directory not found." << endl;
+		cout << "Edge Jump image directory not found." << endl;
         cout <<  "Press 'Enter' to quit." << endl;
         string dummy;
         getline(cin,dummy);

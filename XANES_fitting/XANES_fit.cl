@@ -362,7 +362,7 @@ __kernel void chi2Stack(__global float* mt_img, __global float* fp_img,
     for(int en=startEnum; en<=endEnum; en++){
         mt_data = mt_img[global_ID+en*IMAGESIZE_M];
         mt_fit = mtFit(fp,energy[en],funcModeList,refSpectra);
-        weight = weight_img[global_ID+en*IMAGESIZE_M];
+        weight = weight_img[global_ID+(en-startEnum)*IMAGESIZE_M];
         
         chi  += (mt_data-mt_fit)*weight;
         chi2 += (mt_data-mt_fit)*(mt_data-mt_fit)*weight;
@@ -425,7 +425,7 @@ __kernel void chi2_tJdF_tJJ_Stack(__global float* mt_img, __global float* fp_img
                 tJJ[PARA_NUM*i-(i+1)*i/2+j] += J[i]*J[j]*weight;
             }
         }
-        weight_img[global_ID+en*IMAGESIZE_M]=weight;
+        weight_img[global_ID+(en-startEnum)*IMAGESIZE_M]=weight;
     }
     
     

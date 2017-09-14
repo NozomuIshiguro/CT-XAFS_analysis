@@ -15,7 +15,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "            Imaging EXAFS extraction" <<endl<<endl;
     cout << "         First version: Aug. 17th, 2017"<<endl;
-    cout << "         Last update: Aug. 17th, 2017"<<endl<<endl;
+    cout << "         Last update: Sep. 12th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     
@@ -48,7 +48,7 @@ int main(int argc, const char * argv[]) {
 	struct dirent *dp;
 	dir = opendir(fileName_base.c_str());
 	if (dir == NULL) {
-		cout << "Directory not found." << endl;
+		cout << "Input directory not found." << endl;
         cout <<  "Press 'Enter' to quit." << endl;
         string dummy;
         getline(cin,dummy);
@@ -59,7 +59,7 @@ int main(int argc, const char * argv[]) {
 
 		//Image registration by OpenCL pr
 		if (Edirname.find("0001.raw") != string::npos) {
-			cout << "    Edge jump raw image file found: " << Edirname << endl << endl;
+			cout << "    mt raw image file found: " << Edirname << endl << endl;
 			fileName_base += +"/" + Edirname;
 			fileName_base.erase(fileName_base.size() - 8);
 			fileName_base.erase(0, inp.getInputDir().size() + 4);
@@ -67,7 +67,7 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 	if (dp == NULL) {
-		cout << "No edge jump raw image file found." << endl;
+		cout << "No mt raw image file found." << endl;
         cout <<  "Press 'Enter' to quit." << endl;
         string dummy;
         getline(cin,dummy);

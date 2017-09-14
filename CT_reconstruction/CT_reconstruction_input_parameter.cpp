@@ -174,6 +174,10 @@ void getparameter_inp(string inputfile_path){
                 cout << buffer << endl;
                 inp_ifs>>CSlambda;
                 cout << CSlambda << endl << endl;
+            }else if((string)buffer=="#逐次圧縮センシング計算重複レイヤー数"){
+                cout << buffer << endl;
+                inp_ifs>>CSoverlap;
+                cout << CSoverlap << endl << endl;
             }
             
 

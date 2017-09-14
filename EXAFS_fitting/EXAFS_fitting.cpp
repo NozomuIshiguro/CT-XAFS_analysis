@@ -1017,6 +1017,50 @@ int EXAFS_Fit(cl::CommandQueue queue, cl::Program program, cl::Buffer w_factor,
                     }
                 }
             }
+            
+            
+            //contrain
+            for (int cn=0; cn<contrainSize; cn++) {
+                kernel_contrain1.setArg(3, (cl_int)cn);
+                kernel_contrain2.setArg(6, (cl_int)cn);
+                queue.enqueueFillBuffer(eval_img, (cl_float)0.0f, 0, sizeof(cl_float)*imageSizeM);
+                //contrain 1
+                fpn = 0;
+                //S02
+                if(freeS02){
+                    kernel_contrain1.setArg(4, (cl_int)fpn);
+                    queue.enqueueNDRangeKernel(kernel_contrain1,NULL,global_item_size,local_item_size,NULL,NULL);
+                    queue.finish();
+                    fpn++;
+                }
+                //others
+                for (int sh=0; sh<shObj.size(); sh++) {
+                    for (int paraN=0; paraN<7; paraN++) {
+                        if(shObj[sh].getFreeFixPara(paraN+1)){
+                            shObj[sh].constrain1(eval_img, C_matrix_buff, cn, fpn, paraN+1);
+                            fpn++;
+                        }
+                    }
+                }
+                //contrain 2
+                fpn = 0;
+                //S02
+                if(freeS02){
+                    kernel_contrain2.setArg(7, (cl_int)fpn);
+                    queue.enqueueNDRangeKernel(kernel_contrain2,NULL,global_item_size,local_item_size,NULL,NULL);
+                    queue.finish();
+                    fpn++;
+                }
+                //others
+                for (int sh=0; sh<shObj.size(); sh++) {
+                    for (int paraN=0; paraN<7; paraN++) {
+                        if(shObj[sh].getFreeFixPara(paraN+1)){
+                            shObj[sh].constrain2(eval_img, edgeJ, C_matrix_buff, D_vector_buff, C2_vector_buff, cn, fpn, paraN+1);
+                            fpn++;
+                        }
+                    }
+                }
+            }
         }
         
         

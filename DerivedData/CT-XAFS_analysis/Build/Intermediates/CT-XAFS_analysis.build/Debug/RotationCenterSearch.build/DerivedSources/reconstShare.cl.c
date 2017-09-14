@@ -159,7 +159,7 @@ void (^partialDerivativeOfGradiant_kernel)(const cl_ndrange *ndrange, cl_image o
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
-void (^Profection_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image prj_img, cl_float* angle, cl_int sub) =
+void (^projection_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_image prj_img, cl_float* angle, cl_int sub) =
 ^(const cl_ndrange *ndrange, cl_image reconst_img, cl_image prj_img, cl_float* angle, cl_int sub) {
   int err = 0;
   cl_kernel k = bmap.map[6].kernel;
@@ -168,16 +168,16 @@ void (^Profection_kernel)(const cl_ndrange *ndrange, cl_image reconst_img, cl_im
     k = bmap.map[6].kernel;
   }
   if (!k)
-    gcl_log_fatal("kernel Profection does not exist for device");
+    gcl_log_fatal("kernel projection does not exist for device");
   kargs_struct kargs;
   gclCreateArgsAPPLE(k, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 0, reconst_img, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 1, prj_img, &kargs);
   err |= gclSetKernelArgMemAPPLE(k, 2, angle, &kargs);
   err |= gclSetKernelArgAPPLE(k, 3, sizeof(sub), &sub, &kargs);
-  gcl_log_cl_fatal(err, "setting argument for Profection failed");
+  gcl_log_cl_fatal(err, "setting argument for projection failed");
   err = gclExecKernelAPPLE(k, ndrange, &kargs);
-  gcl_log_cl_fatal(err, "Executing Profection failed");
+  gcl_log_cl_fatal(err, "Executing projection failed");
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
@@ -222,8 +222,8 @@ static void initBlocks(void) {
           bmap.map[4].kernel = clCreateKernel(bmap.program, "findMinimumY", &err);
           assert(bmap.map[5].block_ptr == partialDerivativeOfGradiant_kernel && "mismatch block");
           bmap.map[5].kernel = clCreateKernel(bmap.program, "partialDerivativeOfGradiant", &err);
-          assert(bmap.map[6].block_ptr == Profection_kernel && "mismatch block");
-          bmap.map[6].kernel = clCreateKernel(bmap.program, "Profection", &err);
+          assert(bmap.map[6].block_ptr == projection_kernel && "mismatch block");
+          bmap.map[6].kernel = clCreateKernel(bmap.program, "projection", &err);
           assert(bmap.map[7].block_ptr == backProjection_kernel && "mismatch block");
           bmap.map[7].kernel = clCreateKernel(bmap.program, "backProjection", &err);
        }
@@ -239,7 +239,7 @@ static void RegisterMap(void) {
   bmap.map[3].block_ptr = findMinimumX_kernel;
   bmap.map[4].block_ptr = findMinimumY_kernel;
   bmap.map[5].block_ptr = partialDerivativeOfGradiant_kernel;
-  bmap.map[6].block_ptr = Profection_kernel;
+  bmap.map[6].block_ptr = projection_kernel;
   bmap.map[7].block_ptr = backProjection_kernel;
 }
 

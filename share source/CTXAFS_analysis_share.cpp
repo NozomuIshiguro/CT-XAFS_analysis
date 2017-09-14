@@ -8,6 +8,23 @@
 
 #include "OpenCL_analysis.hpp"
 
+static int buffersize=512;
+
+string ifs_getline(ifstream *inp_ifs){
+    
+    char *buffer;
+    buffer = new char[buffersize];
+    (*inp_ifs).getline(buffer, buffersize);
+    
+    string str=buffer;
+    if (str.find('\r')!=string::npos) {
+        str.erase(str.end()-1);
+    }
+    
+    
+    return str;
+}
+
 string output_flag(string flag, int argc, const char * argv[]){
     
     string output;

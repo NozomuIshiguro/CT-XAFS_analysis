@@ -83,7 +83,7 @@ int GPU(){
             FBP_ocl(plat_dev_list, g_ang);
             break;
         case 8: //FBP-OS-EM hybrid
-            cout << "Processing by FBP-OE-SM hybrid method";
+            cout << "Processing by FBP+OS-EM hybrid method";
             if(CSitBool) cout << " with FISTA compressed sensing"<<endl<<endl;
             else cout << endl << endl;
             hybrid_ocl(plat_dev_list, g_ang, g_ss);
@@ -96,9 +96,9 @@ int GPU(){
     return 0;
 }
 
-int output_thread(int startN, int endN, vector<float*> imgs){
+int output_thread(int startN, int endN, vector<float*> imgs,int offset){
     time_t t1;
-    for (int i=startN; i<=endN; i++) {
+    for (int i=startN+offset; i<=endN; i++) {
         ostringstream oss2;
         oss2<<base_f2<<setfill('0')<<setw(4)<<i<<tale_f2;
         string f2=oss2.str();
@@ -108,13 +108,16 @@ int output_thread(int startN, int endN, vector<float*> imgs){
     
     time(&t1);
     cout<<endl;
-    for (int i=startN; i<=endN; i++) {
+    for (int i=startN+offset; i<=endN; i++) {
         cout<<"[Layer " << setfill('0')<<setw(4)<< i <<"/"<< g_st -1 + g_num<<"] ";
         cout<<(float)(t1-g_t0)<<"秒経過"<<endl;
-        
-        delete [] imgs[i-startN];
     }
-	cout << endl;
+    cout << endl;
+    
+    for (int i=0; i<imgs.size(); i++) {
+        delete [] imgs[i];
+    }
+	
     
     return 0;
 }
@@ -450,6 +453,8 @@ int OSEM_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
     }
     
     
+    int CSoffset = (CSitBool && startN>g_st) ? CSoverlap:0;
+    int outputEndN = (CSitBool && endN<g_st+g_num-1) ? endN-CSoverlap:endN;
     
     //read memory objects from GPUs
     for (int i=0; i<dN; i++) {
@@ -459,7 +464,7 @@ int OSEM_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
     
     //output file
     output_th[thread_id].join();
-    output_th[thread_id]=thread(output_thread,startN,endN,move(imgs));
+    output_th[thread_id]=thread(output_thread,startN,outputEndN,move(imgs),CSoffset);
     
 #ifndef BATCHEXE
     for (int i=startN; i<=endN; i++) {
@@ -547,8 +552,8 @@ int OSEM_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     kernels[0].push_back(cl::Kernel::Kernel(program,"OSEM1", &ret));//0
     kernels[0].push_back(cl::Kernel::Kernel(program,"OSEM2", &ret));//1
     kernels[0].push_back(cl::Kernel::Kernel(program,"sinogramCorrection", &ret));//2
-    kernels[0].push_back(cl::Kernel::Kernel(program,"ISTA", &ret));//3
-    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA", &ret));//4
+    kernels[0].push_back(cl::Kernel::Kernel(program,"ISTA3D", &ret));//3
+    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA3D", &ret));//4
     
     return 0;
 }
@@ -620,6 +625,7 @@ int OSEM_ocl(OCL_platform_device plat_dev_list, float *ang, int ss){
     
     
     //start thread
+    int CSdelta = (CSitBool) ? CSoverlap:0;
     for (int j = 0; j<plat_dev_list.contextsize(); j++) {
         input_th.push_back(thread(dummy));
         reconst_th.push_back(thread(dummy));
@@ -634,7 +640,7 @@ int OSEM_ocl(OCL_platform_device plat_dev_list, float *ang, int ss){
                                angle_buffers[j],
                                sub/*_buffers[j]*/,N,min(N+dN[j]-1,g_st-1+g_num),g_it,j);
                 
-                N+=dN[j];
+                N+=dN[j]-2*CSdelta;
                 if (N >= g_st + g_num) break;
                 
             } else this_thread::sleep_for(chrono::seconds(1));
@@ -875,7 +881,7 @@ int FBP_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
     
     //output file
     output_th[thread_id].join();
-    output_th[thread_id]=thread(output_thread,startN,endN,move(imgs));
+    output_th[thread_id]=thread(output_thread,startN,endN,move(imgs),0);
     
 #ifndef BATCHEXE
     for (int i=startN; i<=endN; i++) {
@@ -1261,7 +1267,7 @@ int AART_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
     
     //output file
     output_th[thread_id].join();
-    output_th[thread_id]=thread(output_thread,startN,endN,move(imgs));
+    output_th[thread_id]=thread(output_thread,startN,endN,move(imgs),0);
     
 #ifndef BATCHEXE
     for (int i=startN; i<=endN; i++) {
@@ -1550,14 +1556,6 @@ int hybrid_thread(cl::CommandQueue command_queue,
 			command_queue.enqueueNDRangeKernel(kernel_fbp[11], NULL, global_item_size1_1, local_item_size_n, NULL, NULL);
 			command_queue.finish();
 
-			/*float* minimum_p;
-			minimum_p = new float[dN];
-			command_queue.enqueueReadBuffer(minimum, CL_TRUE, 0, dN, minimum_p, NULL, NULL);
-			for (int l = 0; l < dN; l++) {
-				cout << minimum_p[l]<<",";
-			}
-			cout << endl;*/
-
 			//baseup
 			kernel_fbp[12].setArg(0, reconst_dummy_img);
 			kernel_fbp[12].setArg(1, reconst_img);
@@ -1589,10 +1587,12 @@ int hybrid_thread(cl::CommandQueue command_queue,
         exit(ret.err());
     }
     
+    int CSoffset = (CSitBool && startN>g_st) ? CSoverlap:0;
+    int outputEndN = (CSitBool && endN<g_st+g_num-1) ? endN-CSoverlap:endN;
     
     //output file
     output_th[thread_id].join();
-    output_th[thread_id]=thread(output_thread,startN,endN,move(imgs));
+    output_th[thread_id]=thread(output_thread,startN,outputEndN,move(imgs),CSoffset);
     
 #ifndef BATCHEXE
     for (int i=startN; i<=endN; i++) {
@@ -1715,6 +1715,7 @@ int hybrid_ocl(OCL_platform_device plat_dev_list, float *ang, int ss){
 
     
     //thread start
+    int CSdelta = (CSitBool) ? CSoverlap:0;
     for (int j = 0; j<plat_dev_list.contextsize(); j++) {
         input_th.push_back(thread(dummy));
         reconst_th.push_back(thread(dummy));
@@ -1730,7 +1731,7 @@ int hybrid_ocl(OCL_platform_device plat_dev_list, float *ang, int ss){
                                      angle_buffers[cotextID_OfQueue[j]],
                                      sub,N,min(N+dN[j]-1,g_st-1+g_num),g_it,j);
                 
-                N+=dN[j];
+                N+=dN[j]-2*CSdelta;
                 if (N >= g_st + g_num) break;
                 
             } else this_thread::sleep_for(chrono::seconds(1));
@@ -1974,9 +1975,12 @@ int FISTA_thread(cl::CommandQueue command_queue, vector<cl::Kernel> kernel,
         command_queue.enqueueReadImage(reconst_img,CL_TRUE,origin_img,region_img,0,0,imgs[i],NULL,NULL);
     }
     
+    int CSoffset = (startN>g_st) ? CSoverlap:0;
+    int outputEndN = (endN<g_st+g_num-1) ? endN-CSoverlap:endN;
+    
     //output file
     output_th[thread_id].join();
-    output_th[thread_id]=thread(output_thread,startN,endN,move(imgs));
+    output_th[thread_id]=thread(output_thread,startN,outputEndN,move(imgs),CSoffset);
     
 #ifndef BATCHEXE
     for (int i=startN; i<=endN; i++) {
@@ -2064,8 +2068,8 @@ int FISTA_programBuild(cl::Context context,vector<cl::Kernel> *kernels){
     kernels[0].push_back(cl::Kernel::Kernel(program,"imageL2AbsY", &ret));//4
     kernels[0].push_back(cl::Kernel::Kernel(program,"AART1", &ret));//5
     kernels[0].push_back(cl::Kernel::Kernel(program,"FISTAbackProjection", &ret));//6
-    kernels[0].push_back(cl::Kernel::Kernel(program,"ISTA", &ret));//7
-    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA", &ret));//8
+    kernels[0].push_back(cl::Kernel::Kernel(program,"ISTA3D", &ret));//7
+    kernels[0].push_back(cl::Kernel::Kernel(program,"FISTA3D", &ret));//8
     kernels[0].push_back(cl::Kernel::Kernel(program,"sinogramCorrection", &ret));//9
 	kernels[0].push_back(cl::Kernel::Kernel(program,"backProjection", &ret));//10
     
@@ -2272,7 +2276,7 @@ int FISTA_ocl(OCL_platform_device plat_dev_list, float *ang, int ss){
                                      angle_buffers[j],L2norm_buffers[j],
                                      sub,N,min(N+dN[j]-1,g_st-1+g_num),g_it,j);
                 
-                N+=dN[j];
+                N+=dN[j]-2*CSoverlap;
                 if (N >= g_st + g_num) break;
                 
             } else this_thread::sleep_for(chrono::seconds(1));

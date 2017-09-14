@@ -132,6 +132,6 @@ extern float amp; //強度増幅因子
 extern int baseupOrder;//baseup 減少速度次数
 extern bool CSitBool; //圧縮センシング逐次計算
 extern float CSlambda; //圧縮センシング逐次計算加算ファクター
-
+extern int CSoverlap; //圧縮センシングレイヤー計算オーバーラップ
 
 #endif

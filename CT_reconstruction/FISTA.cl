@@ -403,3 +403,192 @@ __kernel void FISTA(__read_only image2d_array_t reconst_x_img,
     w_new = (isnan(w_new)) ? 1.0e-6f:w_new;
     write_imagef(reconst_w_new_img, xyz_i, (float4)(w_new,0.0f,0.0f,1.0f));
 }
+
+
+//ISTA update image (only for 0th cycle for FISTA)
+__kernel void ISTA3D(__read_only image2d_array_t reconst_v_img,
+                     __write_only image2d_array_t reconst_x_new_img,
+                     int sub, __constant float *L){
+    
+    const int X = get_global_id(0);
+    const int Y = get_global_id(1);
+    const int Z = get_global_id(2);
+    const int Zsize = get_global_size(2);
+    
+    const float4 xyz = (float4)(X+0.5f,Y+0.5f,Z,0.0f);
+    const int4 xyz_i = (int4)(X,Y,Z,0);
+    const float4 xpyz = (float4)(X+1.5f,Y,Z,0.0f);
+    const float4 xmyz = (float4)(X-0.5f,Y,Z,0.0f);
+    const float4 xypz = (float4)(X,Y+1.5f,Z,0.0f);
+    const float4 xymz = (float4)(X,Y-0.5f,Z,0.0f);
+    const float4 xyzp = (float4)(X+0.5f,Y+0.5f,fmin(Z+1.0f,Zsize-1.0f),0.0f);
+    const float4 xyzm = (float4)(X+0.5f,Y+0.5f,fmin(Z-1.0f,0.0f),0.0f);
+    const float lambda = LAMBDA_FISTA/L[sub]*0.5f;
+    
+    
+    float img_neibor[6];
+    img_neibor[0] = read_imagef(reconst_v_img,s_nearest,xpyz).x;
+    img_neibor[1] = read_imagef(reconst_v_img,s_nearest,xmyz).x;
+    img_neibor[2] = read_imagef(reconst_v_img,s_nearest,xypz).x;
+    img_neibor[3] = read_imagef(reconst_v_img,s_nearest,xymz).x;
+    img_neibor[4] = read_imagef(reconst_v_img,s_nearest,xyzp).x;
+    img_neibor[5] = read_imagef(reconst_v_img,s_nearest,xyzm).x;
+    float v_img = read_imagef(reconst_v_img,s_nearest,xyz).x;
+    
+    //change order of img_neibor[4]
+    float img1, img2;
+    int biggerN;
+    for(int i=0;i<6;i++){
+        img1 = img_neibor[i];
+        img2 =img1;
+        biggerN = i;
+        for(int j=i+1;j<6;j++){
+            biggerN = (img_neibor[j]>img2) ? j:biggerN;
+            img2 = (img_neibor[j]>img2) ? img_neibor[j]:img2;
+        }
+        img_neibor[i] = img2;
+        img_neibor[biggerN] = img1;
+    }
+    
+    float img_cnd[13];
+    img_cnd[0] = v_img - 6.0f*lambda;
+    img_cnd[1] = img_neibor[0];
+    img_cnd[2] = v_img - 4.0f*lambda;
+    img_cnd[3] = img_neibor[1];
+    img_cnd[4] = v_img - 2.0f*lambda;
+    img_cnd[5] = img_neibor[2];
+    img_cnd[6] = v_img;
+    img_cnd[7] = img_neibor[3];
+    img_cnd[8] = v_img + 2.0f*lambda;
+    img_cnd[9] = img_neibor[4];
+    img_cnd[10]= v_img + 4.0f*lambda;
+    img_cnd[11]= img_neibor[5];
+    img_cnd[12]= v_img + 6.0f*lambda;
+    
+    
+    float v_img_range[12];
+    v_img_range[0] = img_neibor[0] + 6.0f*lambda;
+    v_img_range[1] = img_neibor[0] + 4.0f*lambda;
+    v_img_range[2] = img_neibor[1] + 4.0f*lambda;
+    v_img_range[3] = img_neibor[1] + 2.0f*lambda;
+    v_img_range[4] = img_neibor[2] + 2.0f*lambda;
+    v_img_range[5] = img_neibor[2];
+    v_img_range[6] = img_neibor[3];
+    v_img_range[7] = img_neibor[3] - 2.0f*lambda;
+    v_img_range[8] = img_neibor[4] - 2.0f*lambda;
+    v_img_range[9] = img_neibor[4] - 4.0f*lambda;
+    v_img_range[10]= img_neibor[5] - 4.0f*lambda;
+    v_img_range[11]= img_neibor[5] - 6.0f*lambda;
+    
+    
+    float x_img_new=img_cnd[0];
+    for(int i=0;i<12;i++){
+        x_img_new = (v_img<v_img_range[i]) ? img_cnd[i+1]:x_img_new;
+    }
+    x_img_new = fmax(1.0e-6f, x_img_new);
+    x_img_new = (isnan(x_img_new)) ? 1.0e-6f:x_img_new;
+    
+    //update of x img
+    write_imagef(reconst_x_new_img, xyz_i, (float4)(x_img_new,0.0f,0.0f,1.0f));
+}
+
+
+//FISTA update image (more than 1st cycle)
+__kernel void FISTA3D(__read_only image2d_array_t reconst_x_img,
+                    __read_only image2d_array_t reconst_v_img,
+                    __read_only image2d_array_t reconst_b_img,
+                    __write_only image2d_array_t reconst_w_new_img,
+                    __write_only image2d_array_t reconst_x_new_img,
+                    __write_only image2d_array_t reconst_b_new_img,
+                    int sub, __constant float *L){
+    
+    const int X = get_global_id(0);
+    const int Y = get_global_id(1);
+    const int Z = get_global_id(2);
+    const int Zsize = get_global_size(2);
+    
+    const float4 xyz = (float4)(X+0.5f,Y+0.5f,Z,0.0f);
+    const int4 xyz_i = (int4)(X,Y,Z,0);
+    const float4 xpyz = (float4)(X+1.5f,Y,Z,0.0f);
+    const float4 xmyz = (float4)(X-0.5f,Y,Z,0.0f);
+    const float4 xypz = (float4)(X,Y+1.5f,Z,0.0f);
+    const float4 xymz = (float4)(X,Y-0.5f,Z,0.0f);
+    const float4 xyzp = (float4)(X+0.5f,Y+0.5f,fmin(Z+1.0f,Zsize-1.0f),0.0f);
+    const float4 xyzm = (float4)(X+0.5f,Y+0.5f,fmin(Z-1.0f,0.0f),0.0f);
+    const float lambda = LAMBDA_FISTA/L[sub]*0.5f;
+    
+    
+    float x_img = read_imagef(reconst_x_img,s_nearest,xyz).x;
+    float img_neibor[6];
+    img_neibor[0] = read_imagef(reconst_v_img,s_nearest,xpyz).x;
+    img_neibor[1] = read_imagef(reconst_v_img,s_nearest,xmyz).x;
+    img_neibor[2] = read_imagef(reconst_v_img,s_nearest,xypz).x;
+    img_neibor[3] = read_imagef(reconst_v_img,s_nearest,xymz).x;
+    img_neibor[4] = read_imagef(reconst_v_img,s_nearest,xyzp).x;
+    img_neibor[5] = read_imagef(reconst_v_img,s_nearest,xyzm).x;
+    float v_img = read_imagef(reconst_v_img,s_nearest,xyz).x;
+    float beta = read_imagef(reconst_b_img,s_nearest,xyz).x;
+    
+    //change order of img_neibor[4]
+    float img1, img2;
+    int biggerN;
+    for(int i=0;i<6;i++){
+        img1 = img_neibor[i];
+        img2 =img1;
+        biggerN = i;
+        for(int j=i+1;j<6;j++){
+            biggerN = (img_neibor[j]>img2) ? j:biggerN;
+            img2 = (img_neibor[j]>img2) ? img_neibor[j]:img2;
+        }
+        img_neibor[i] = img2;
+        img_neibor[biggerN] = img1;
+    }
+    
+    float img_cnd[13];
+    img_cnd[0] = v_img - 6.0f*lambda;
+    img_cnd[1] = img_neibor[0];
+    img_cnd[2] = v_img - 4.0f*lambda;
+    img_cnd[3] = img_neibor[1];
+    img_cnd[4] = v_img - 2.0f*lambda;
+    img_cnd[5] = img_neibor[2];
+    img_cnd[6] = v_img;
+    img_cnd[7] = img_neibor[3];
+    img_cnd[8] = v_img + 2.0f*lambda;
+    img_cnd[9] = img_neibor[4];
+    img_cnd[10]= v_img + 4.0f*lambda;
+    img_cnd[11]= img_neibor[5];
+    img_cnd[12]= v_img + 6.0f*lambda;
+    
+    float v_img_range[12];
+    v_img_range[0] = img_neibor[0] + 6.0f*lambda;
+    v_img_range[1] = img_neibor[0] + 4.0f*lambda;
+    v_img_range[2] = img_neibor[1] + 4.0f*lambda;
+    v_img_range[3] = img_neibor[1] + 2.0f*lambda;
+    v_img_range[4] = img_neibor[2] + 2.0f*lambda;
+    v_img_range[5] = img_neibor[2];
+    v_img_range[6] = img_neibor[3];
+    v_img_range[7] = img_neibor[3] - 2.0f*lambda;
+    v_img_range[8] = img_neibor[4] - 2.0f*lambda;
+    v_img_range[9] = img_neibor[4] - 4.0f*lambda;
+    v_img_range[10]= img_neibor[5] - 4.0f*lambda;
+    v_img_range[11]= img_neibor[5] - 6.0f*lambda;
+    
+    float x_img_new=img_cnd[0];
+    for(int i=0;i<12;i++){
+        x_img_new = (v_img<v_img_range[i]) ? img_cnd[i+1]:x_img_new;
+    }
+    
+    //update of x img
+    write_imagef(reconst_x_new_img, xyz_i, (float4)(x_img_new,0.0f,0.0f,1.0f));
+    
+    //update of beta image
+    float beta_new = beta*beta*4.0f + 1.0f;
+    beta_new = (sqrt(beta_new) + 1.0f)*0.5f;
+    float gamma=(beta-1.0f)/beta_new;
+    write_imagef(reconst_b_new_img, xyz_i, (float4)(beta_new,0.0f,0.0f,1.0f));
+    
+    //update of w img
+    float w_new = gamma*x_img_new + (1.0f - gamma)*x_img;
+    w_new = (isnan(w_new)) ? 1.0e-6f:w_new;
+    write_imagef(reconst_w_new_img, xyz_i, (float4)(w_new,0.0f,0.0f,1.0f));
+}

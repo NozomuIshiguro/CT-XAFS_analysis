@@ -206,6 +206,8 @@ __kernel void evaluateUpdateCandidate(__global float* tJdF_img, __global float* 
     const size_t global_x = get_global_id(0);
     const size_t global_y = get_global_id(1);
     const size_t imageSizeX = get_global_size(0);
+    const size_t imageSizeY = get_global_size(1);
+    const size_t imageSizeM = imageSizeX*imageSizeY;
     const size_t global_ID = global_x+global_y*imageSizeX;
     
     float d_L = dL_img[global_ID];
@@ -225,14 +227,14 @@ __kernel void evaluateUpdateCandidate(__global float* tJdF_img, __global float* 
     
     //update tJJ, tJdF
     for(int i=0;i<PARA_NUM;i++){
-        float a = tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M];
-        tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*IMAGESIZE_M] = (rho>=0.0f) ? a:1.0f;
+        float a = tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*imageSizeM];
+        tJJ_img[global_ID+(PARA_NUM*i-(i-1)*i/2)*imageSizeM] = (rho>=0.0f) ? a:1.0f;
         
-        a=tJdF_img[global_ID+i*IMAGESIZE_M];
-        tJdF_img[global_ID+i*IMAGESIZE_M] = (rho>=0.0f) ? a:0.0f;
+        a=tJdF_img[global_ID+i*imageSizeM];
+        tJdF_img[global_ID+i*imageSizeM] = (rho>=0.0f) ? a:0.0f;
         for(int j=i+1;j<PARA_NUM;j++){
-            a = tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*IMAGESIZE_M];
-            tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*IMAGESIZE_M] = (rho>=0.0f) ? a:0.0f;
+            a = tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*imageSizeM];
+            tJJ_img[global_ID+(PARA_NUM*i-(i+1)*i/2+j)*imageSizeM] = (rho>=0.0f) ? a:0.0f;
         }
     }
     
@@ -365,8 +367,8 @@ __kernel void ISTA(__global float* fp_img,__global float* tJJ_img,__constant cha
     for(int i=0;i<PARA_NUM;i++){
         if(p_fix[i]==48) continue;
         
-        float lambda2 = lambda_fista[i];
-        fp_cnd[i] = fp[i] - fmax(-10.0f*lambda2,fmin(10.0f*lambda2, sigma[i]));
+       // float lambda2 = lambda_fista[i];
+        fp_cnd[i] = fp[i] - sigma[i];//fmax(-10.0f*lambda2,fmin(10.0f*lambda2, sigma[i]));
         if(fp[i]>=fp_neighbor[0+i*4]){
             fp_cnd[i] = (fp_cnd[i]< fp_neighbor[0+i*4]) ? fp_neighbor[0+i*4]:fp_cnd[i];
         }else if(fp[i]>=fp_neighbor[1+i*4]){
@@ -472,8 +474,9 @@ __kernel void FISTA(__global float* fp_x_img, __global float* fp_w_img, __global
     for(int i=0;i<PARA_NUM;i++){
         if(p_fix[i]==48) continue;
         
-        float lambda2 = lambda_fista[i];
-        fp_x_new[i] = fp_w[i] - fmax(-10.0f*lambda2,fmin(10.0f*lambda2, sigma[i]));
+        
+        //float lambda2 = lambda_fista[i];
+        fp_x_new[i] = fp_w[i] - sigma[i];//fmax(-10.0f*lambda2,fmin(10.0f*lambda2, sigma[i]));
         if(fp_w[i]>=fp_neighbor[0+i*4]){
             fp_x_new[i] = (fp_x_new[i]< fp_neighbor[0+i*4]) ? fp_neighbor[0+i*4]:fp_x_new[i];
         }else if(fp_w[i]>=fp_neighbor[1+i*4]){
