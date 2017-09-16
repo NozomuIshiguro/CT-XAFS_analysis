@@ -101,7 +101,7 @@ int main(int argc, const char * argv[]) {
         
         //Image registration by OpenCL pr
         if (Edirname.find("0001.raw")!=string::npos) {
-            cout << "    raw file found: " << Edirname <<endl<<endl;
+            cout << "raw image file found: " << Edirname <<endl<<endl;
             fileName_base += +"/"+Edirname;
             fileName_base.erase(fileName_base.size()-8);
             fileName_base.erase(0,inp.getInputDir().size()+paraName.size()+1);

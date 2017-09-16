@@ -72,6 +72,45 @@ int main(int argc, const char * argv[]) {
     }
     getparameter_inp(inputfile_path);
     
+    
+    //入力ディレクトリ確認
+    DIR *dir;
+    struct dirent *dp;
+    dir=opendir(g_d1.c_str());
+    if (dir==NULL) {
+        cout <<"Directory not found."<<endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
+    }
+    for(dp=readdir(dir);dp!=NULL;dp=readdir(dir)){
+        string Edirname = dp->d_name;
+        
+        //Image registration by OpenCL pr
+        string base_f1=g_f1;
+        base_f1.erase(g_f1.find_first_of("*"),g_f1.length()-1);
+        string tale_f1=g_f1;
+        tale_f1.erase(0,g_f1.find_last_of("*")+1);
+        ostringstream oss1;
+        oss1<<base_f1<<setfill('0')<<setw(4)<<g_st<<tale_f1;
+        if (Edirname.find(oss1.str())!=string::npos) {
+            cout << "raw sinogram file found: " << Edirname <<endl<<endl;
+            break;
+        }
+    }
+    if (dp==NULL) {
+        cout <<"No raw file found."<<endl;
+        cout <<  "Press 'Enter' to quit." << endl;
+        string dummy;
+        getline(cin,dummy);
+        exit(-1);
+    }
+    closedir(dir);
+    //cout<<fileName_base;
+    
+    
+    
     time(&g_t0);
     g_ang = new float[(unsigned long)g_pa];
     read_log(g_f3, g_pa);
@@ -83,10 +122,7 @@ int main(int argc, const char * argv[]) {
 		getline(cin, dummy);
 		exit(ret);
 	}
-	/*for (int i= 0; i < g_pa; i++) {
-		cout << g_ang[i] << endl;
-	}*/
-    
-    //CPU();
+
+
     GPU();
 }
