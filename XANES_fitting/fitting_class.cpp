@@ -205,10 +205,12 @@ fitting_eq::fitting_eq(input_parameter inp){
         LCFstd_size.push_back(0);
 		int j = 0;
         do {
-			string a,b;
-			energy_ifs >> a >> b;
-
+			string str,a,b;
+            str=ifs_getline(&energy_ifs);
             if (energy_ifs.eof()) break;
+            
+            istringstream iss(str);
+            iss >> a >> b;
 			float aa, bb;
 			try {
 				aa = stof(a);

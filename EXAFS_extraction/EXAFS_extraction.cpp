@@ -1121,9 +1121,13 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
     vector<float> energy;
     int i=0;
     do {
-        string a;
-        energy_ifs>>a;
+        string str;
+        str = ifs_getline(&energy_ifs) ;
         if (energy_ifs.eof()) break;
+        
+        istringstream iss(str);
+        string a;
+        iss >> a;
         float aa;
         try {
             aa = stof(a);

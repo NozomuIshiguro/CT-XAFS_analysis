@@ -149,83 +149,83 @@ input_parameter_reslice::input_parameter_reslice(string inputfile_path){
     }
 }
 
-void input_parameter_reslice::inputFromFile_reslice(char *buffer, ifstream *inp_ifs){
-    if((string)buffer=="#Image baseup"){
-        cout<<buffer<<endl;
+void input_parameter_reslice::inputFromFile_reslice(string str, ifstream *inp_ifs){
+    if(str=="#Image baseup"){
+        cout<<str<<endl;
         (*inp_ifs)>>baseup;
         cout<<"  "<<baseup<<endl;
-    }else if((string)buffer=="#Z-correction"){
-        cout<<buffer<<endl;
+    }else if(str=="#Z-correction"){
+        cout<<str<<endl;
         (*inp_ifs)>>Z_corr;
         cout<<"  "<<baseup<<endl;
-    }else if((string)buffer=="#X-correction"){
-        cout<<buffer<<endl;
+    }else if(str=="#X-correction"){
+        cout<<str<<endl;
         (*inp_ifs)>>X_corr;
         cout<<"  "<<baseup<<endl;
-    }else if((string)buffer=="#X range of correction evaluation"){
-        cout<<buffer<<endl;
+    }else if(str=="#X range of correction evaluation"){
+        cout<<str<<endl;
         (*inp_ifs)>>startX; (*inp_ifs).ignore() >> endX;
         cout<<"  "<<startX<<"-"<<endX<<endl;
-    }else if((string)buffer=="#Z range of correction evaluation"){
-        cout<<buffer<<endl;
+    }else if(str=="#Z range of correction evaluation"){
+        cout<<str<<endl;
         (*inp_ifs)>>startZ; (*inp_ifs).ignore() >> endZ;
         cout<<"  "<<startZ<<"-"<<endZ<<endl;
-    }else if((string)buffer=="#Start shift for rotation center search"){
-        cout<<buffer<<endl;
+    }else if(str=="#Start shift for rotation center search"){
+        cout<<str<<endl;
         (*inp_ifs)>>rotCenterShiftStart;
         cout<<"  "<<rotCenterShiftStart<<endl;
-    }else if((string)buffer=="#Number of shift step for rotation center search"){
-        cout<<buffer<<endl;
+    }else if(str=="#Number of shift step for rotation center search"){
+        cout<<str<<endl;
         (*inp_ifs)>>rotCenterShiftN;
         cout<<"  "<<rotCenterShiftN<<endl;
-    }else if((string)buffer=="#Shift step for rotation center search"){
-        cout<<buffer<<endl;
+    }else if(str=="#Shift step for rotation center search"){
+        cout<<str<<endl;
         (*inp_ifs)>>rotCenterShiftStep;
         cout<<"  "<<rotCenterShiftStep<<endl;
-    }else if((string)buffer=="#Image baseup"){
-        cout<<buffer<<endl;
+    }else if(str=="#Image baseup"){
+        cout<<str<<endl;
         (*inp_ifs)>>baseup;
         cout<<"  "<<baseup<<endl;
-    }else if((string)buffer=="#Z-correction"){
-        cout<<buffer<<endl;
+    }else if(str=="#Z-correction"){
+        cout<<str<<endl;
         (*inp_ifs)>>Z_corr;
         cout<<"  "<<baseup<<endl;
-    }else if((string)buffer=="#X-correction"){
-        cout<<buffer<<endl;
+    }else if(str=="#X-correction"){
+        cout<<str<<endl;
         (*inp_ifs)>>X_corr;
         cout<<"  "<<baseup<<endl;
-    }else if((string)buffer=="#X range of correction evaluation"){
-        cout<<buffer<<endl;
+    }else if(str=="#X range of correction evaluation"){
+        cout<<str<<endl;
         (*inp_ifs)>>startX; (*inp_ifs).ignore() >> endX;
         cout<<"  "<<startX<<"-"<<endX<<endl;
-    }else if((string)buffer=="#Z range of correction evaluation"){
-        cout<<buffer<<endl;
+    }else if(str=="#Z range of correction evaluation"){
+        cout<<str<<endl;
         (*inp_ifs)>>startZ; (*inp_ifs).ignore() >> endZ;
         cout<<"  "<<startZ<<"-"<<endZ<<endl;
-    }else if((string)buffer=="#Start shift for rotation center search"){
-        cout<<buffer<<endl;
+    }else if(str=="#Start shift for rotation center search"){
+        cout<<str<<endl;
         (*inp_ifs)>>rotCenterShiftStart;
         cout<<"  "<<rotCenterShiftStart<<endl;
-    }else if((string)buffer=="#Number of shift step for rotation center search"){
-        cout<<buffer<<endl;
+    }else if(str=="#Number of shift step for rotation center search"){
+        cout<<str<<endl;
         (*inp_ifs)>>rotCenterShiftN;
         cout<<"  "<<rotCenterShiftN<<endl;
-    }else if((string)buffer=="#Shift step for rotation center search"){
-        cout<<buffer<<endl;
+    }else if(str=="#Shift step for rotation center search"){
+        cout<<str<<endl;
         (*inp_ifs)>>rotCenterShiftStep;
         cout<<"  "<<rotCenterShiftStep<<endl;
-    }else if ((string)buffer == "#Target layer number for rotation center search") {
-        cout << buffer << endl;
+    }else if (str == "#Target layer number for rotation center search") {
+        cout << str << endl;
         (*inp_ifs) >> layerN;
         cout << "  " << layerN << endl;
-    }else if ((string)buffer == "#Output Layer No. range") {
-        cout << buffer << endl;
+    }else if (str == "#Output Layer No. range") {
+        cout << str << endl;
         (*inp_ifs) >> startLayer; (*inp_ifs).ignore()>>endLayer;
         cout << "  " << startLayer << endLayer << endl;
-    }else if ((string)buffer == "#Noise removal") {
-        cout << buffer << endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
+    }else if (str == "#Noise removal") {
+        cout << str << endl;
+        str=ifs_getline(inp_ifs);
+        istringstream iss(str);
         char b;
         (*inp_ifs) >> b;
         if (atoi(&b)==1) {
@@ -234,8 +234,8 @@ void input_parameter_reslice::inputFromFile_reslice(char *buffer, ifstream *inp_
             denoise=false;
         }
         cout<<"  "<< boolalpha <<denoise<<endl;
-    }else if ((string)buffer == "#Noise removal threshold") {
-        cout << buffer << endl;
+    }else if (str == "#Noise removal threshold") {
+        cout << str << endl;
         (*inp_ifs) >> denoise_threshold;
         cout << "  " << denoise_threshold << endl;
     }

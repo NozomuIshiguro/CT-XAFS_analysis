@@ -314,86 +314,84 @@ input_parameter::input_parameter(string inputfile_path){
     if(inp_ifs) {
         cout<<"input file found."<<endl<<endl;
         while (!inp_ifs.eof()) {
-			char *buffer;
-			buffer = new char[buffsize];
-            inp_ifs.getline(buffer, buffsize);
-            inputFromFile_mask(buffer,&inp_ifs);
-            inputFromFile_fitting(buffer,&inp_ifs);
-            inputFromFile_reslice(buffer,&inp_ifs);
-            if((string)buffer=="#Open CL Platform & Device No"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                ocl_plat_dev_list=buffer;
+            string str = ifs_getline(&inp_ifs);
+            inputFromFile_mask(str,&inp_ifs);
+            inputFromFile_fitting(str,&inp_ifs);
+            inputFromFile_reslice(str,&inp_ifs);
+            if(str=="#Open CL Platform & Device No"){
+                cout<<str<<endl;
+                str = ifs_getline(&inp_ifs);
+                ocl_plat_dev_list=str;
                 cout<<"  "<<ocl_plat_dev_list<<endl;
-            }else if((string)buffer=="#Number of Parallel processing per one device"){
-                cout<<buffer<<endl;
+            }else if(str=="#Number of Parallel processing per one device"){
+                cout<<str<<endl;
                 inp_ifs>>numParallel;
                 cout<<"  "<<numParallel<<endl;
-            }else if((string)buffer=="#Input directory path"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                data_input_dir=buffer;
+            }else if(str=="#Input directory path"){
+                cout<<str<<endl;
+                str = ifs_getline(&inp_ifs);
+                data_input_dir=str;
                 cout<<"  "<<data_input_dir<<endl;
-            }else if((string)buffer=="#Output directory path"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                data_output_dir=buffer;
+            }else if(str=="#Output directory path"){
+                cout<<str<<endl;
+                str = ifs_getline(&inp_ifs);
+                data_output_dir=str;
                 cout<<"  "<<data_output_dir<<endl;
-            }else if((string)buffer=="#Output file base name"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                output_filebase=buffer;
+            }else if(str=="#Output file base name"){
+                cout<<str<<endl;
+                str = ifs_getline(&inp_ifs);
+                output_filebase=str;
                 cout<<"  "<<output_filebase<<endl;
-            }else if((string)buffer=="#Initial transform parameter file path for image registration"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                iniFilePath=buffer;
+            }else if(str == "#Initial transform parameter file path for image registration"){
+                cout<<str<<endl;
+                str = ifs_getline(&inp_ifs);
+                iniFilePath=str;
                 cout<<"  "<<iniFilePath<<endl;
-            }else if((string)buffer=="#Reference energy number for image registration"){
-                cout<<buffer<<endl;
+            }else if(str=="#Reference energy number for image registration"){
+                cout<<str<<endl;
                 inp_ifs>>targetEnergyNo;
                 cout<<"  "<<targetEnergyNo<<endl;
-            }else if((string)buffer=="#Target energy number for rotation center search"){
-                cout<<buffer<<endl;
+            }else if(str=="#Target energy number for rotation center search"){
+                cout<<str<<endl;
                 inp_ifs>>targetEnergyNo;
                 cout<<"  "<<targetEnergyNo<<endl;
-            }else if((string)buffer=="#Reference  number for image registration"){
-                cout<<buffer<<endl;
+            }else if(str=="#Reference  number for image registration"){
+                cout<<str<<endl;
                 inp_ifs>>targetAngleNo;
                 cout<<"  "<<targetAngleNo<<endl;
-            }else if((string)buffer=="#Reference loop number for image registration"){
-                cout<<buffer<<endl;
+            }else if(str=="#Reference loop number for image registration"){
+                cout<<str<<endl;
                 inp_ifs>>targetAngleNo; //use targetAngleNo as target loop No.
                 cout<<"  "<<targetAngleNo<<endl;
-            }else if((string)buffer=="#Angle number range"){
-                cout<<buffer<<endl;
+            }else if(str=="#Angle number range"){
+                cout<<str<<endl;
                 inp_ifs>>startAngleNo; inp_ifs.ignore() >> endAngleNo;
                 cout<<"  "<<startAngleNo<<"-"<<endAngleNo<<endl;
-            }else if((string)buffer=="#Loop number range"){
-                cout<<buffer<<endl;
+            }else if(str=="#Loop number range"){
+                cout<<str<<endl;
                 inp_ifs>>startAngleNo; inp_ifs.ignore() >> endAngleNo;
                 //use start/endAngleNo as start/end loop No.
                 cout<<"  "<<startAngleNo<<"-"<<endAngleNo<<endl;
-            }else if((string)buffer=="#Energy number range"){
-                cout<<buffer<<endl;
+            }else if(str=="#Energy number range"){
+                cout<<str<<endl;
                 inp_ifs>>startEnergyNo; inp_ifs.ignore() >> endEnergyNo;
                 cout<<"  "<<startEnergyNo<<"-"<<endEnergyNo<<endl;
-            }else if((string)buffer=="#Registration mode"){
-                cout<<buffer<<endl;
+            }else if(str=="#Registration mode"){
+                cout<<str<<endl;
                 inp_ifs>>regMode;
                 cout<<"  "<<regMode<<endl;
-            }else if((string)buffer=="#Number of trial for LM-optimization"){
-                cout<<buffer<<endl;
+            }else if(str=="#Number of trial for LM-optimization"){
+                cout<<str<<endl;
                 inp_ifs>>num_trial;
                 cout<<"  "<<num_trial<<endl;
-            }else if((string)buffer=="#Damping parameter for LM-optimization"){
-                cout<<buffer<<endl;
+            }else if(str=="#Damping parameter for LM-optimization"){
+                cout<<str<<endl;
                 inp_ifs>>lamda_t;
                 cout<<"  "<<lamda_t<<endl;
-            }else if((string)buffer=="#Initial transform parameter for image registration"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                istringstream iss(buffer);
+            }else if(str=="#Initial transform parameter for image registration"){
+                cout<<str<<endl;
+                str = ifs_getline(&inp_ifs);
+                istringstream iss(str);
                 float a;
                 cout<<"  ";
                 for (iss>>a; !iss.eof(); iss.ignore()>>a) {
@@ -402,10 +400,10 @@ input_parameter::input_parameter(string inputfile_path){
                 }
                 reg_inipara.push_back(a);
                 cout<<a<<endl;
-            }else if ((string)buffer == "#Free/fix parameter for image registration") {
-				cout << buffer << endl;
-				inp_ifs.getline(buffer, buffsize);
-				istringstream iss(buffer);
+            }else if (str == "#Free/fix parameter for image registration") {
+				cout << str << endl;
+				str = ifs_getline(&inp_ifs);
+				istringstream iss(str);
 				char a;
 				cout << "  ";
 				for (iss >> a; !iss.eof(); iss.ignore() >> a) {
@@ -415,32 +413,32 @@ input_parameter::input_parameter(string inputfile_path){
 				reg_fixpara.push_back(a);
 				cout << a << endl;
 			}
-			else if ((string)buffer == "#Number of scan for I0 and dark image") {
-                cout << buffer << endl;
+			else if (str == "#Number of scan for I0 and dark image") {
+                cout << str << endl;
                 inp_ifs >> scanN;
                 cout << "  " << scanN << endl;
 
-            }else if ((string)buffer == "#Number of scan for I0 and dark image") {
-                cout << buffer << endl;
+            }else if (str == "#Number of scan for I0 and dark image") {
+                cout << str << endl;
                 inp_ifs >> scanN;
                 cout << "  " << scanN << endl;
-            }else if((string)buffer=="#Raw angle data file path"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                rawAngleFilePath=buffer;
+            }else if(str=="#Raw angle data file path"){
+                cout<<str<<endl;
+                str = ifs_getline(&inp_ifs);
+                rawAngleFilePath=str;
                 cout<<"  "<<rawAngleFilePath<<endl;
-            }else if((string)buffer=="#XAFS parameter file path"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                XAFSparameterFilePath=buffer;
+            }else if(str=="#XAFS parameter file path"){
+                cout<<str<<endl;
+                str = ifs_getline(&inp_ifs);
+                XAFSparameterFilePath=str;
                 cout<<"  "<<XAFSparameterFilePath<<endl;
-            }else if((string)buffer=="#Output smoothed energy data file path"){
-                cout<<buffer<<endl;
-                inp_ifs.getline(buffer, buffsize);
-                energyFilePath=buffer;
+            }else if(str=="#Output smoothed energy data file path"){
+                cout<<str<<endl;
+                str = ifs_getline(&inp_ifs);
+                energyFilePath=str;
                 cout<<"  "<<energyFilePath<<endl;
-            }else if((string)buffer=="#Enable/disable smoothing"){
-                cout<<buffer<<endl;
+            }else if(str=="#Enable/disable smoothing"){
+                cout<<str<<endl;
                 int a;
                 inp_ifs>>a;
                 if(a==1){
@@ -448,21 +446,21 @@ input_parameter::input_parameter(string inputfile_path){
                 }else{
                     enableSmoothing=false;
                 }
-            }else if((string)buffer=="#Number of scans for dark/I0 images"){
-                cout<<buffer<<endl;
+            }else if(str=="#Number of scans for dark/I0 images"){
+                cout<<str<<endl;
                 inp_ifs>>scanN;
                 cout<<"  "<<scanN<<endl;
-            }else if((string)buffer=="#Image pixel size"){
-                cout<<buffer<<endl;
+            }else if(str=="#Image pixel size"){
+                cout<<str<<endl;
                 inp_ifs>>imageSizeX; inp_ifs.ignore() >> imageSizeY;
                 cout<<"  "<<imageSizeX<<"x"<<imageSizeY<<endl;
                 endLayer=imageSizeY;
-            }else if((string)buffer=="#Image binning size"){
-                cout<<buffer<<endl;
+            }else if(str=="#Image binning size"){
+                cout<<str<<endl;
                 inp_ifs>>mergeN;
                 cout<<"  "<<mergeN<<endl;
-            }else if((string)buffer=="#Contrast adjustment"){
-                cout<<buffer<<endl;
+            }else if(str=="#Contrast adjustment"){
+                cout<<str<<endl;
                 inp_ifs>>cntFit;
                 cout<<"  "<<cntFit<<endl;
             }

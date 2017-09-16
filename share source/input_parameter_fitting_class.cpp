@@ -542,61 +542,58 @@ input_parameter_fitting::input_parameter_fitting(string inputfile_path){
 }
 
 
-void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_ifs){
-    if((string)buffer=="#Output directory path for XANES fitting"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        fitting_output_dir=buffer;
+void input_parameter_fitting::inputFromFile_fitting(string str, ifstream *inp_ifs){
+    if(str=="#Output directory path for XANES fitting"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        fitting_output_dir=str;
         cout<<"  "<<fitting_output_dir<<endl;
-    }else if((string)buffer=="#Output file base name for XANES fitting"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        fitting_filebase=buffer;
+    }else if(str=="#Output file base name for XANES fitting"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        fitting_filebase=str;
         cout<<"  "<<fitting_filebase<<endl;
-    }else if((string)buffer=="#Energy data file path"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        energyFilePath=buffer;
+    }else if(str=="#Energy data file path"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        energyFilePath=str;
         cout<<"  "<<energyFilePath<<endl;
-    }else if((string)buffer=="#E0"){
-        cout<<buffer<<endl;
+    }else if(str=="#E0"){
+        cout<<str<<endl;
         (*inp_ifs)>>E0;
         cout<<"  "<<E0<<endl;
-    }else if((string)buffer=="#Energy range"){
-        cout<<buffer<<endl;
+    }else if(str=="#Energy range"){
+        cout<<str<<endl;
         (*inp_ifs)>>startEnergy; (*inp_ifs).ignore() >> endEnergy;
         cout<<"  "<<startEnergy<<"-"<<endEnergy<<endl;
-    }else if((string)buffer=="#Fitting parameter name"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
+    }else if(str=="#Fitting parameter name"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        istringstream iss(str);
         cout<<"  ";
         for (int i=0;(!iss.eof())&&(i<numParameter);i++) {
-            iss.get(buffer, buffsize,',');
-            parameter_name.push_back(buffer);
-            cout<<buffer;
-            iss.ignore();
+            getline(iss, str, ',');
+            parameter_name.push_back(str);
+            cout<<str;
             if(iss.eof()) cout<<endl;
             else cout<<",";
         }
-    }else if((string)buffer=="#Processing parameter name"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-		//cout << buffer << endl;
-        istringstream iss(buffer);
+    }else if(str=="#Processing parameter name"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        istringstream iss(str);
         cout<<"  ";
         for (int i=0;!iss.eof();i++) {
-            iss.get(buffer, buffsize,',');
-            parameter_name.push_back(buffer);
-            cout<<buffer;
-            iss.ignore();
+            getline(iss, str, ',');
+            parameter_name.push_back(str);
+            cout<<str;
             if(iss.eof()) cout<<endl;
             else cout<<",";
         }
-    }else if((string)buffer=="#Initial fitting parameter"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
+    }else if(str=="#Initial fitting parameter"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        istringstream iss(str);
         float a;
         int i;
         cout<<"  ";
@@ -606,10 +603,10 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         }
         fitting_para.push_back(a);
         cout<<a<<endl;
-    }else if((string)buffer=="#Free/fix parameter for XANES fitting"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
+    }else if(str=="#Free/fix parameter for XANES fitting"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        istringstream iss(str);
         char b;
         int i;
         cout<<"  ";
@@ -629,10 +626,10 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         }
         cout<<endl;
     }
-	else if ((string)buffer == "#Free/fix parameter") {
-		cout << buffer << endl;
-		(*inp_ifs).getline(buffer, buffsize);
-		istringstream iss(buffer);
+	else if (str == "#Free/fix parameter") {
+		cout << str << endl;
+		str = ifs_getline(inp_ifs);
+		istringstream iss(str);
 		char b;
 		int i;
 		cout << "  ";
@@ -652,10 +649,10 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
 		}
 		cout << endl;
 	}
-	else if((string)buffer=="#Valid parameter lower limit"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
+	else if(str=="#Valid parameter lower limit"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        istringstream iss(str);
         float a;
         int i;
         cout<<"  ";
@@ -671,10 +668,10 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
             cout<<",-INF";
         }
         cout<<endl;
-    }else if((string)buffer=="#Valid parameter upper limit"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
+    }else if(str=="#Valid parameter upper limit"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        istringstream iss(str);
         float a;
         int i;
         cout<<"  ";
@@ -690,10 +687,10 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
             cout<<",INF";
         }
         cout<<endl;
-    }else if((string)buffer=="#Parameter attenuator for reconstruction"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
+    }else if(str=="#Parameter attenuator for reconstruction"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        istringstream iss(str);
         float a;
         int i;
         cout<<"  ";
@@ -703,16 +700,16 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         }
         para_attenuator.push_back(a);
         cout<<a<<endl;
-    }else if((string)buffer=="#CS-based iteration for XANES fitting"){
-        cout<<buffer<<endl;
+    }else if(str=="#CS-based iteration for XANES fitting"){
+        cout<<str<<endl;
         int dummy;
         (*inp_ifs)>>dummy;
         CSbool = (dummy==1) ? true:false;
         cout<<"  "<< boolalpha <<CSbool<<endl;
-    }else if((string)buffer=="#Update factor of CS-based iteration for XANES fitting"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
+    }else if(str=="#Update factor of CS-based iteration for XANES fitting"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        istringstream iss(str);
         float a;
         int i;
         cout<<"  ";
@@ -722,15 +719,14 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
         }
         CSlambda.push_back(a);
         cout<<a<<endl;
-    }else if((string)buffer=="#XANES fitting equation"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        istringstream iss(buffer);
+    }else if(str=="#XANES fitting equation"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        istringstream iss(str);
         cout<<"  ";
         string funcname;
         for (;!iss.eof();) {
-            iss.get(buffer, buffsize,'+');
-            funcname = buffer;
+            getline(iss, funcname, '+');
 			size_t pos;
 			while ((pos = funcname.find_first_of(" 　\t")) != string::npos) {
 				funcname.erase(pos, 1);
@@ -765,78 +761,76 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
                 numLCF++;
                 numParameter += 2;
             }
-
-            iss.ignore();
             if(iss.eof()) cout<<endl;
             else cout<<"+";
         }
-    }else if((string)buffer=="#Standard XANES spectra data file paths for LCF"){
-        cout<<buffer<<endl;
+    }else if(str=="#Standard XANES spectra data file paths for LCF"){
+        cout<<str<<endl;
         for (int i=0; i<numLCF; i++) {
-			(*inp_ifs).getline(buffer, buffsize);
-            LCFstd_paths.push_back(buffer);
+			str = ifs_getline(inp_ifs);
+            LCFstd_paths.push_back(str);
             cout<<"("<<i+1<<")  "<<LCFstd_paths[i]<<endl;
         }
-    }else if((string)buffer=="#Output directory path for EXAFS fitting"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        fitting_output_dir=buffer;
+    }else if(str=="#Output directory path for EXAFS fitting"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        fitting_output_dir=str;
         cout<<"  "<<fitting_output_dir<<endl;
-    }else if((string)buffer=="#Use edge jump images"){
-        cout<<buffer<<endl;
+    }else if(str=="#Use edge jump images"){
+        cout<<str<<endl;
         int dummy;
         (*inp_ifs)>>dummy;
         useEdgeJ = (dummy==1) ? true:false;
         cout<<"  "<< boolalpha <<useEdgeJ<<endl;
-    }else if((string)buffer=="#Input directory path of edge jump image"){
-        cout<<buffer<<endl;
-        (*inp_ifs).getline(buffer, buffsize);
-        edgeJ_dir_path=buffer;
+    }else if(str=="#Input directory path of edge jump image"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        edgeJ_dir_path=str;
         cout<<"  "<<edgeJ_dir_path<<endl;
-    }else if((string)buffer=="#EXAFS fitting mode"){
-        cout<<buffer<<endl;
+    }else if(str=="#EXAFS fitting mode"){
+        cout<<str<<endl;
         (*inp_ifs)>>EXAFSfittingMode;
         cout<<"  "<<EXAFSfittingMode<<endl;
-    }else if((string)buffer=="#k-weight"){
-        cout<<buffer<<endl;
+    }else if(str=="#k-weight"){
+        cout<<str<<endl;
         (*inp_ifs)>>kw;
         cout<<"  "<<kw<<endl;
-    }else if((string)buffer=="#k-range"){
-        cout<<buffer<<endl;
+    }else if(str=="#k-range"){
+        cout<<str<<endl;
         (*inp_ifs)>>kstart; (*inp_ifs).ignore() >> kend;
         cout<<"  "<<kstart<<"-"<<kend<<endl;
-    }else if((string)buffer=="#R-range"){
-        cout<<buffer<<endl;
+    }else if(str=="#R-range"){
+        cout<<str<<endl;
         (*inp_ifs)>>Rstart; (*inp_ifs).ignore() >> Rend;
         cout<<"  "<<Rstart<<"-"<<Rend<<endl;
-    }else if((string)buffer=="#q-range"){
-        cout<<buffer<<endl;
+    }else if(str=="#q-range"){
+        cout<<str<<endl;
         (*inp_ifs)>>qstart; (*inp_ifs).ignore() >> qend;
         cout<<"  "<<qstart<<"-"<<qend<<endl;
-    }else if((string)buffer=="#Number of EXAFS fitting shells"){
-        cout<<buffer<<endl;
+    }else if(str=="#Number of EXAFS fitting shells"){
+        cout<<str<<endl;
         (*inp_ifs)>>numShell;
         cout<<"  "<<numShell<<endl;
-    }else if((string)buffer=="#Shell names"){
-        cout<<buffer<<endl;
+    }else if(str=="#Shell names"){
+        cout<<str<<endl;
         for (int i=0; i<numShell; i++) {
-            (*inp_ifs).getline(buffer, buffsize);
-            shellname.push_back(buffer);
+            str = ifs_getline(inp_ifs);
+            shellname.push_back(str);
             cout<<"("<<i+1<<")  "<<shellname[i]<<endl;
         }
-    }else if((string)buffer=="#feffxxxx.dat file paths"){
-        cout<<buffer<<endl;
+    }else if(str=="#feffxxxx.dat file paths"){
+        cout<<str<<endl;
         for (int i=0; i<numShell; i++) {
-            (*inp_ifs).getline(buffer, buffsize);
-            feffxxxxdat_path.push_back(buffer);
+            str = ifs_getline(inp_ifs);
+            feffxxxxdat_path.push_back(str);
             cout<<"("<<i+1<<")  "<<feffxxxxdat_path[i]<<endl;
         }
-    }else if((string)buffer=="#EXAFS initial fitting parameter"){
-        cout<<buffer<<endl;
+    }else if(str=="#EXAFS initial fitting parameter"){
+        cout<<str<<endl;
         for (int i=0; i<numShell; i++) {
             vector<float> EXAFS_iniPara_atSh;
-            (*inp_ifs).getline(buffer, buffsize);
-            istringstream iss(buffer);
+            str = ifs_getline(inp_ifs);
+            istringstream iss(str);
             float a;
             int j;
             cout<<"  ";
@@ -848,12 +842,12 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
             cout<<a<<endl;
             EXAFS_iniPara.push_back(EXAFS_iniPara_atSh);
         }
-    }else if((string)buffer=="#EXAFS free/fix parameter"){
-        cout<<buffer<<endl;
+    }else if(str=="#EXAFS free/fix parameter"){
+        cout<<str<<endl;
         for (int i=0; i<numShell; i++) {
             vector<bool> EXAFS_freeFixPara_atSh;
-            (*inp_ifs).getline(buffer, buffsize);
-            istringstream iss(buffer);
+            str = ifs_getline(inp_ifs);
+            istringstream iss(str);
             char b;
             int j;
             cout<<"  ";
@@ -874,48 +868,48 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
             cout<<endl;
             EXAFS_freeFixPara.push_back(EXAFS_freeFixPara_atSh);
         }
-    }else if((string)buffer=="#initial S02 value"){
-        cout<<buffer<<endl;
+    }else if(str=="#initial S02 value"){
+        cout<<str<<endl;
         (*inp_ifs)>>ini_S02;
         cout<<"  "<<ini_S02<<endl;
-    }else if((string)buffer=="#Free/fix S02"){
-        cout<<buffer<<endl;
+    }else if(str=="#Free/fix S02"){
+        cout<<str<<endl;
         int dummy;
         (*inp_ifs)>>dummy;
         S02_freefix = (dummy==1) ? true:false;
         cout<<"  "<< boolalpha <<S02_freefix<<endl;
-    }else if((string)buffer=="#Rbkg"){
-        cout<<buffer<<endl;
+    }else if(str=="#Rbkg"){
+        cout<<str<<endl;
         (*inp_ifs)>>Rbkg;
         cout<<"  "<<Rbkg<<endl;
-    }else if((string)buffer=="#Pre-edge fitting energy range"){
-        cout<<buffer<<endl;
+    }else if(str=="#Pre-edge fitting energy range"){
+        cout<<str<<endl;
         (*inp_ifs)>>preEdgeStartEnergy; (*inp_ifs).ignore() >> preEdgeEndEnergy;
         cout<<"  "<<preEdgeStartEnergy<<"-"<<preEdgeEndEnergy<<endl;
-    }else if((string)buffer=="#Post-edge fitting energy range"){
-        cout<<buffer<<endl;
+    }else if(str=="#Post-edge fitting energy range"){
+        cout<<str<<endl;
         (*inp_ifs)>>postEdgeStartEnergy; (*inp_ifs).ignore() >> postEdgeEndEnergy;
         cout<<"  "<<postEdgeStartEnergy<<"-"<<postEdgeEndEnergy<<endl;
-    }else if((string)buffer=="#Pre-edge fitting equation"){
-        cout<<buffer<<endl;
+    }else if(str=="#Pre-edge fitting equation"){
+        cout<<str<<endl;
         (*inp_ifs)>>bkgFittingMode;
         cout<<"  "<<bkgFittingMode<<endl;
-    }else if((string)buffer=="#CS-based iteration for EXAFS fitting"){
-        cout<<buffer<<endl;
+    }else if(str=="#CS-based iteration for EXAFS fitting"){
+        cout<<str<<endl;
         int dummy;
         (*inp_ifs)>>dummy;
         CSbool = (dummy==1) ? true:false;
         cout<<"  "<< boolalpha <<CSbool<<endl;
-    }else if((string)buffer=="#Update factor of CS-based iteration for EXAFS fitting"){
-        cout<<buffer<<endl;
+    }else if(str=="#Update factor of CS-based iteration for EXAFS fitting"){
+        cout<<str<<endl;
         
         if(CSlambda.size()==0){
             CSlambda.push_back(0.0001f); //for S02 (dummy)
         }
         
         for (int cn=0; cn<numShell; cn++) {
-            (*inp_ifs).getline(buffer, buffsize);
-            istringstream iss(buffer);
+            str = ifs_getline(inp_ifs);
+            istringstream iss(str);
             float a;
             int i;
             cout<<"("<<cn+1<<")  ";
@@ -926,7 +920,7 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
             CSlambda.push_back(a);
             cout<<a<<endl;
         }
-    }else if((string)buffer=="#Update factor of CS-based iteration for EXAFS fitting (S02)"){
+    }else if(str=="#Update factor of CS-based iteration for EXAFS fitting (S02)"){
         float a;
         (*inp_ifs)>>a;
         
@@ -936,19 +930,19 @@ void input_parameter_fitting::inputFromFile_fitting(char *buffer, ifstream *inp_
             CSlambda.push_back(a);
         }
         cout<<a<<endl;
-    }else if((string)buffer=="#Number of contrain equations"){
-        cout<<buffer<<endl;
+    }else if(str=="#Number of contrain equations"){
+        cout<<str<<endl;
         (*inp_ifs)>>num_contrain_eq;
         cout<<"  "<<num_contrain_eq<<endl;
-    }else if((string)buffer=="#Contrain equations"){
-        cout<<buffer<<endl;
+    }else if(str=="#Contrain equations"){
+        cout<<str<<endl;
         for (int i=0; i<num_contrain_eq; i++) {
-            (*inp_ifs).getline(buffer, buffsize);
-            contrain_eq.push_back(buffer);
+            str = ifs_getline(inp_ifs);
+            contrain_eq.push_back(str);
             cout<<"("<<i+1<<")  "<<contrain_eq[i]<<endl;
         }
-    }else if((string)buffer=="#Number of Levenberg-Marquardt cycles"){
-        cout<<buffer<<endl;
+    }else if(str=="#Number of Levenberg-Marquardt cycles"){
+        cout<<str<<endl;
         (*inp_ifs)>>num_trial_fit;
         cout<<"  "<<num_trial_fit<<endl;
     }

@@ -56,7 +56,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "            Batch CT reconstruction" <<endl<<endl;
     cout << "         First version: Jun. 19th, 2015"<<endl;
-    cout << "         Last update: Sep. 8th, 2017"<<endl<<endl;
+    cout << "         Last update: Sep. 14th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     

@@ -16,7 +16,11 @@ void read_log(string fi, int num){
         cerr << "file open error ["<< fi <<"]."<<endl;
         exit(1);
     }
-    for (k = 0; k < num; k++) inp_ifs>>g_ang[k];
+    for (k = 0; k < num; k++) {
+        string str=ifs_getline(&inp_ifs);
+        istringstream iss(str);
+        iss>>g_ang[k];
+    }
 }
 void read_data_input(string di, string fi, float *img, int size){
     string fi2=di+"/"+fi;

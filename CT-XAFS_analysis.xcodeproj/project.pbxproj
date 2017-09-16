@@ -118,6 +118,7 @@
 		2E4E540A1EB7262C00E990AE /* XANES_fit.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E57CFF11AD237720086362B /* XANES_fit.cl */; };
 		2E671AC61EBB89190039840A /* FISTA.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E671AC51EBB89190039840A /* FISTA.cl */; };
 		2E671AC91EBEE08F0039840A /* AART.cl in Sources */ = {isa = PBXBuildFile; fileRef = 2E671AC81EBEE08F0039840A /* AART.cl */; };
+		2E77048B1F6AA42900D39DCB /* CTXAFS_analysis_share.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E23042F1AA91629005A0A54 /* CTXAFS_analysis_share.cpp */; };
 		2E7874601E55E087002E9EB5 /* fileIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E3B76141B367F2900BDFBF9 /* fileIO.cpp */; };
 		2E8887801F3EC1CB00F5688F /* EXAFS_fitting.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2ECC35841C3A7DC7002215B2 /* EXAFS_fitting.cpp */; };
 		2E8887811F3EC1CE00F5688F /* FEFF_shell_class.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2E2ED4401F2B1F100093DA92 /* FEFF_shell_class.cpp */; };
@@ -1251,6 +1252,7 @@
 			files = (
 				2E671AC61EBB89190039840A /* FISTA.cl in Sources */,
 				2E3B76801B38499500BDFBF9 /* FBP.cl in Sources */,
+				2E77048B1F6AA42900D39DCB /* CTXAFS_analysis_share.cpp in Sources */,
 				2E3B767F1B38499500BDFBF9 /* OSEM.cl in Sources */,
 				2E3B767D1B38499500BDFBF9 /* GPU.cpp in Sources */,
 				2E3B76811B3849B700BDFBF9 /* OCL_platform_device_class.cpp in Sources */,

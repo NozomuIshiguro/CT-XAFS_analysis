@@ -7,7 +7,6 @@
 //
 
 #include "EXAFS.hpp"
-static int buffsize=512;
 
 FEFF_shell::FEFF_shell(string path){
     ifstream feff_ifs(path,ios::in);
@@ -21,10 +20,9 @@ FEFF_shell::FEFF_shell(string path){
     
     //seeking header
     while (!feff_ifs.eof()) {
-        char *buffer;
-        buffer = new char[buffsize];
-        feff_ifs.getline(buffer, buffsize);
-        if((string)buffer==" -----------------------------------------------------------------------"){
+        string str;
+        str=ifs_getline(&feff_ifs);
+        if(str==" -----------------------------------------------------------------------"){
             break;
         }/*else{
             cout<<buffer<<endl;;
@@ -34,17 +32,18 @@ FEFF_shell::FEFF_shell(string path){
     //reading Reff
     string nleg_s, deg_s, reff_s, rnrmav_s, edge_s;
     float nleg, rnrmav, edge;
-    feff_ifs >> nleg >> degen >> reff >> rnrmav >> edge;
+    string str=ifs_getline(&feff_ifs);
+    istringstream iss(str);
+    iss >> nleg >> degen >> reff >> rnrmav >> edge;
     //cout << "nleg, deg, reff, rnrmav, edge" << endl;
     //cout << nleg << "," << degen << "," << reff <<"," << rnrmav << "," << edge;
     
     //seeking header
     while (!feff_ifs.eof()) {
-        char *buffer;
-        buffer = new char[buffsize];
-        feff_ifs.getline(buffer, buffsize);
+        string str;
+        str=ifs_getline(&feff_ifs);
         
-        if((string)buffer=="    k   real[2*phc]   mag[feff]  phase[feff] red factor   lambda     real[p]@#"){
+        if(str=="    k   real[2*phc]   mag[feff]  phase[feff] red factor   lambda     real[p]@#"){
             break;
         }/*else{
             cout<<buffer<<endl;;
@@ -60,7 +59,9 @@ FEFF_shell::FEFF_shell(string path){
         if (feff_ifs.eof()) break;
         string a1,a2,a3,a4,a5,a6,a7;
         float aa1,aa2,aa3,aa4,aa5,aa6,aa7;
-        feff_ifs >> aa1 >> aa2 >> aa3 >>aa4 >> aa5 >> aa6 >> aa7;
+        string str=ifs_getline(&feff_ifs);
+        istringstream iss2(str);
+        iss2 >> aa1 >> aa2 >> aa3 >>aa4 >> aa5 >> aa6 >> aa7;
         kw.push_back(aa1);
         real2phc.push_back(aa2);
         mag.push_back(aa3);

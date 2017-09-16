@@ -180,7 +180,7 @@ public:
     int getSampleMask_height();
     float getSampleMask_angle();
     
-    void inputFromFile_mask(char* buffer,ifstream *inp_ifs);
+    void inputFromFile_mask(string str,ifstream *inp_ifs);
 };
 
 
@@ -342,7 +342,7 @@ public:
     void setCSlambda(string CSepsilon_inp);
     void setCSit(int CSit_inp);
     
-    void inputFromFile_fitting(char* buffer,ifstream *inp_ifs);
+    void inputFromFile_fitting(string str,ifstream *inp_ifs);
 };
 
 class input_parameter_reslice{
@@ -396,7 +396,7 @@ public:
     void setRotCenterShiftN(string str);
     void setRotCenterShiftStep(string str);
     
-    void inputFromFile_reslice(char* buffer, ifstream *inp_ifs);
+    void inputFromFile_reslice(string str, ifstream *inp_ifs);
 };
 
 class input_parameter : public input_parameter_mask,public input_parameter_fitting,

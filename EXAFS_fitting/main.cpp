@@ -16,7 +16,7 @@ int main(int argc, const char * argv[]) {
     cout << "-----------------------------------------------"<<endl<<endl;
     cout << "             Imaging EXAFS fittting" <<endl<<endl;
     cout << "         First version: Aug. 10th, 2017"<<endl;
-    cout << "         Last update: Sep. 8th, 2017"<<endl<<endl;
+    cout << "         Last update: Sep. 14th, 2017"<<endl<<endl;
     cout << "          Created by Nozomu Ishiguro"<<endl<<endl;
     cout << "-----------------------------------------------"<<endl<<endl;
     
