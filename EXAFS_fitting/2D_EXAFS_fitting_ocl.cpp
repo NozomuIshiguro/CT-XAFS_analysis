@@ -1,4 +1,4 @@
-﻿//
+//
 //  2D_EXAFS_fitting.cpp
 //  CT-XANES_analysis
 //
@@ -10,6 +10,95 @@
 #include "EXAFS_fit_cl.hpp"
 #include "threeD_FFT_cl.hpp"
 #include "LevenbergMarquardt_cl.hpp"
+
+int outputFittingcondition(input_parameter inp, string filepath){
+    ofstream ofs(filepath,ios::out|ios::trunc);
+    
+    //get date & time
+    time_t t = time(nullptr);
+    tm lt;
+    LOCALTIME(&t,&lt);
+    stringstream s;
+    s<<"20"<<lt.tm_year-100<<"/"<<lt.tm_mon+1<<"/"<<lt.tm_mday;
+    s<<" ";
+    s<<lt.tm_hour<<":"<<lt.tm_min<<":"<<lt.tm_sec;
+    
+    ofs<<"EXAFS fitting executed at "<< s.str() << endl<<endl;
+    ofs<< "fitting mode: ";
+    switch (inp.getEXAFSfittingMode()) {
+        case 0: //kspace
+            ofs <<"k-space"<<endl<<endl;
+            break;
+        
+        case 1: //Rspace
+            ofs <<"R-space"<<endl<<endl;
+            break;
+            
+        case 2: //qspace
+            ofs <<"q-space"<<endl<<endl;
+            break;
+    }
+    
+    ofs<<"k-weight: "<<inp.get_kw()<<endl<<endl;
+    
+    switch (inp.getEXAFSfittingMode()) {
+        case 0: //kspace
+            ofs <<"k range: "<< inp.get_kstart() << " - "<< inp.get_kend() << endl;
+            break;
+            
+        case 1: //Rspace
+            ofs <<"k range: "<< inp.get_kstart() << " - "<< inp.get_kend() << endl;
+            ofs <<"R range: "<< inp.get_Rstart() << " - "<< inp.get_Rend() << endl;
+            break;
+            
+        case 2: //qspace
+            ofs <<"k range: "<< inp.get_kstart() << " - "<< inp.get_kend() << endl;
+            ofs <<"R range: "<< inp.get_Rstart() << " - "<< inp.get_Rend() << endl;
+            ofs <<"k range: "<< inp.get_qstart() << " - "<< inp.get_qend() << endl;
+            break;
+    }
+    ofs << endl;
+    
+    for (int i=0; i<inp.getShellNum(); i++) {
+        ofs<<"Shell "<<i+1<<": "<<inp.getShellName()[i]<<endl;
+        ofs<<"\t"<<inp.getFeffxxxxdatPath()[i]<<endl;
+    }
+    ofs<<endl;
+    
+    ofs<<"Free paramater: ";
+    bool ini=false;
+    if (inp.getS02freeFix()) {
+        ofs<<"S02";
+        ini=true;
+    }
+    for (int i=0; i<inp.getShellNum(); i++) {
+        if (inp.getEXAFSfreeFixPara()[i][0]) {
+            if(ini) ofs<<",";
+            ofs<<"CN_"<<inp.getShellName()[i];
+            ini=true;
+        }
+        if (inp.getEXAFSfreeFixPara()[i][1]) {
+            if(ini) ofs<<",";
+            ofs<<"R_"<<inp.getShellName()[i];
+            ini=true;
+        }
+        if (inp.getEXAFSfreeFixPara()[i][2]) {
+            if(ini) ofs<<",";
+            ofs<<"dE0_"<<inp.getShellName()[i];
+            ini=true;
+        }
+        if (inp.getEXAFSfreeFixPara()[i][3]) {
+            if(ini) ofs<<",";
+            ofs<<"ss_"<<inp.getShellName()[i];
+            ini=true;
+        }
+    }
+    ofs<<endl<<endl;
+    
+    
+    return 0;
+}
+
 
 int correctBondDistanceContrain(vector<vector<float>> *C_matrix, vector<float> *D_vector,
                                 int fpnum, float Reff){
@@ -24,7 +113,8 @@ int correctBondDistanceContrain(vector<vector<float>> *C_matrix, vector<float> *
 
 
 int EXAFSfitresult_output_thread(int AngleNo, string output_dir, vector<string> paraName,
-                                 vector<float*> result_outputs, float* Rfactor, int imageSizeM){
+                                 vector<float*> result_outputs, float* Rfactor,
+                                 vector<float*> chiFitData, int imageSizeM, bool chifitout){
     
     ostringstream oss;
     for (int i=0; i<paraName.size(); i++) {
@@ -35,6 +125,17 @@ int EXAFSfitresult_output_thread(int AngleNo, string output_dir, vector<string> 
     string fileName_output= output_dir+ "/Rfactor"+ AnumTagString(AngleNo,"/i", ".raw");
     oss << "output file: " << fileName_output << endl;
     outputRawFile_stream(fileName_output,Rfactor,imageSizeM);
+    
+    if (chifitout) {
+        string fileName_output= output_dir+ "/chiFit" + AnumTagString(AngleNo,"/chiFit", ".raw");
+        outputRawFile_stream_batch(fileName_output, chiFitData, imageSizeM);
+        oss << "output file: " << fileName_output << endl;
+        
+        for (int i=0; i<chiFitData.size(); i++) {
+            delete [] chiFitData[i];
+        }
+    }
+    
     oss << endl;
     cout << oss.str();
     for (int i=0; i<paraName.size(); i++) {
@@ -95,7 +196,17 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
     float* Rfactor;
     Rfactor = new float[imgSizeM];
     
-    
+    bool chiFitOut=inp.getChiFitOutBool();;
+    vector<float*> chiFitData;
+    int startkNo = 0;
+    int endkNo = 20/KGRID;
+    int num_chi = endkNo -startkNo +1;
+    if (chiFitOut) {
+        for (int i=0; i<num_chi; i++) {
+            chiFitData.push_back(new float[imgSizeM]);
+        }
+    }
+
     //S02 img buffer;
     cl::Buffer S02(context,CL_MEM_READ_WRITE,sizeof(cl_float)*procImgSizeM,0,NULL);
     cl::Buffer Data_buff;
@@ -149,14 +260,28 @@ int EXAFS_fit_thread(cl::CommandQueue queue, cl::Program program,
         }
         //Rfactor
         queue.enqueueReadBuffer(Rfactor_buff, CL_TRUE, 0, sizeof(float)*procImgSizeM, &Rfactor[imgOffset]);
+        
+        //output chiFit
+        if (chiFitOut) {
+            cl::Buffer chiFit_buff(context,CL_MEM_READ_WRITE,sizeof(cl_float)*procImgSizeM*num_chi,0,NULL);
+            
+            outputFit_r(queue, program, chiFit_buff, S02, shObjs, 0, 20, imgSizeX, procImgSizeY, 0);
+            
+            for (int i=0; i<num_chi; i++) {
+                queue.enqueueReadBuffer(chiFit_buff, CL_TRUE, sizeof(cl_float)*procImgSizeM*i, sizeof(cl_float)*procImgSizeM, &chiFitData[i][imgOffset]);
+            }
+        }
     }
     
 	delete[] edgeJ;
     
+    
+    
     //output thread
     output_th_fit[thread_id].join();
-    output_th_fit[thread_id]=thread(EXAFSfitresult_output_thread, AngleNo,
-                                    output_dir, paraName, move(results_vec),move(Rfactor),imgSizeM);
+    output_th_fit[thread_id]=thread(EXAFSfitresult_output_thread, AngleNo,output_dir, paraName,
+                                    move(results_vec),move(Rfactor),move(chiFitData),
+                                    imgSizeM,chiFitOut);
     
     
     return 0;
@@ -303,6 +428,11 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
     }
     string fileName_output = inp.getFittingOutputDir() + "/Rfactor";
     MKDIR(fileName_output.c_str());
+    bool chiFitout=inp.getChiFitOutBool();
+    if (chiFitout) {
+        string fileName_output = inp.getFittingOutputDir() + "/chiFit";
+        MKDIR(fileName_output.c_str());
+    }
     
 
     
@@ -418,7 +548,8 @@ int EXAFS_fit_ocl(input_parameter inp, OCL_platform_device plat_dev_list,vector<
         }
     }
     
-    
+    string filepath=inp.getFittingOutputDir() + "/fittingCondition.log";
+    outputFittingcondition(inp, filepath);
     
     //start thread
     for (int j = 0; j<plat_dev_list.contextsize(); j++) {

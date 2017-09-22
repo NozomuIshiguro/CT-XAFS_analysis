@@ -1,4 +1,4 @@
-﻿//
+//
 //  2D_EXAFS_fitting_ocl.cpp
 //  CT-XANES_analysis
 //
@@ -404,6 +404,36 @@ int outputFit(cl::CommandQueue queue, cl::Program program,
         break;
     }
     
+    
+    return 0;
+}
+
+
+int outputFit_r(cl::CommandQueue queue, cl::Program program,cl::Buffer Fit, cl::Buffer S02,
+                vector<shellObjects> shObj, float kstart, float kend,
+                int imageSizeX, int imageSizeY, int kw){
+    
+    int imageSizeM = imageSizeX*imageSizeY;
+    int ksize = (int)ceil((min(float(kend+WIN_DK),(float)MAX_KQ)-max(float(kstart-WIN_DK),0.0f))/KGRID)+1;
+    int koffset = (int)floor(max((float)(kstart-WIN_DK),0.0f)/KGRID);
+    
+    cl_float2 iniChi={0.0f,0.0f};
+    
+    size_t maxWorkGroupSize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    const cl::NDRange local_item_size(min((int)maxWorkGroupSize,imageSizeX),1,1);
+    const cl::NDRange global_item_offset(0,0,koffset);
+    const cl::NDRange global_item_size_stack(imageSizeX,imageSizeY,ksize);
+    
+    cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
+    cl::Buffer chiFit;
+    cl::Buffer FTchiFit;
+    
+    queue.enqueueFillBuffer(Fit, iniChi, 0, sizeof(cl_float)*imageSizeM*ksize);
+    queue.finish();
+    //estimate chiFit
+    for (int sh=0; sh<shObj.size(); sh++) {
+        shObj[sh].outputChiFit_r(Fit, S02, kw, kstart, kend);
+    }
     
     return 0;
 }

@@ -374,7 +374,7 @@
 		2E2ACFF11B2C33290073211A /* CT_reconstruction_input_parameter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CT_reconstruction_input_parameter.cpp; sourceTree = "<group>"; };
 		2E2ACFF31B2C33650073211A /* CT_reconstruction.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = CT_reconstruction.hpp; sourceTree = "<group>"; };
 		2E2ACFF71B32687C0073211A /* OSEM.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; lineEnding = 0; path = OSEM.cl; sourceTree = "<group>"; };
-		2E2ED43F1F2B16F20093DA92 /* EXAFS.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = EXAFS.hpp; sourceTree = "<group>"; };
+		2E2ED43F1F2B16F20093DA92 /* EXAFS.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = EXAFS.hpp; sourceTree = "<group>"; };
 		2E2ED4401F2B1F100093DA92 /* FEFF_shell_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FEFF_shell_class.cpp; sourceTree = "<group>"; };
 		2E2ED4551F2D980D0093DA92 /* shellObject_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = shellObject_class.cpp; sourceTree = "<group>"; };
 		2E32FBD51A8ED16F00A2927C /* imageregistration_kernel_src_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = imageregistration_kernel_src_cl.hpp; path = "../ImageReg share source/imageregistration_kernel_src_cl.hpp"; sourceTree = "<group>"; };
@@ -411,7 +411,7 @@
 		2E4E54071EB36B5C00E990AE /* 2D_XANES_fitting_ocl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = 2D_XANES_fitting_ocl.cpp; sourceTree = "<group>"; };
 		2E5065B91B20025F0060C00A /* imageReg.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = imageReg.hpp; path = "ImageReg share source/imageReg.hpp"; sourceTree = SOURCE_ROOT; };
 		2E57CFF11AD237720086362B /* XANES_fit.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = XANES_fit.cl; sourceTree = "<group>"; };
-		2E57CFF51AD246F50086362B /* XANES_fit_cl.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = XANES_fit_cl.hpp; sourceTree = "<group>"; };
+		2E57CFF51AD246F50086362B /* XANES_fit_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = XANES_fit_cl.hpp; sourceTree = "<group>"; };
 		2E671AC51EBB89190039840A /* FISTA.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; name = FISTA.cl; path = CT_reconstruction/FISTA.cl; sourceTree = SOURCE_ROOT; xcLanguageSpecificationIdentifier = xcode.lang.opencl; };
 		2E671AC71EBBB8740039840A /* FISTA_cl.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = FISTA_cl.hpp; sourceTree = "<group>"; };
 		2E671AC81EBEE08F0039840A /* AART.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = AART.cl; sourceTree = "<group>"; };
@@ -436,8 +436,8 @@
 		2EB728451F1DCFD1003C0F2F /* imageBatchBinning.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = imageBatchBinning.hpp; sourceTree = "<group>"; };
 		2EB88F1E1BA47FE10053944A /* FBP_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = FBP_cl.hpp; sourceTree = "<group>"; };
 		2EB976A21E24AD6D00B5258D /* threeD_FFT.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = threeD_FFT.cl; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.opencl; };
-		2EBEB7C61F3461990068B9D1 /* EXAFS_fit_cl.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = EXAFS_fit_cl.hpp; sourceTree = "<group>"; };
-		2EBEB7C71F34625F0068B9D1 /* threeD_FFT_cl.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = threeD_FFT_cl.hpp; sourceTree = "<group>"; };
+		2EBEB7C61F3461990068B9D1 /* EXAFS_fit_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = EXAFS_fit_cl.hpp; sourceTree = "<group>"; };
+		2EBEB7C71F34625F0068B9D1 /* threeD_FFT_cl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = threeD_FFT_cl.hpp; sourceTree = "<group>"; };
 		2EBEB7C81F3483220068B9D1 /* 2D_EXAFS_fitting_ocl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = 2D_EXAFS_fitting_ocl.cpp; path = EXAFS_fitting/2D_EXAFS_fitting_ocl.cpp; sourceTree = SOURCE_ROOT; };
 		2EC3E1761C01A30D0039438B /* input_parameter_reslice_class.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = input_parameter_reslice_class.cpp; sourceTree = "<group>"; };
 		2ECC2BED1ECEBB8D0029EE38 /* ImagingXAFS_RegAndBkgRemoval */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ImagingXAFS_RegAndBkgRemoval; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -446,7 +446,7 @@
 		2ECC2BF51ECEBCB70029EE38 /* ImagingXAFS_RegAndBkgRemoval.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ImagingXAFS_RegAndBkgRemoval.cpp; sourceTree = "<group>"; };
 		2ECC2C011ECED9DC0029EE38 /* RegAndBkgRemoval.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = RegAndBkgRemoval.cl; sourceTree = "<group>"; };
 		2ECC357B1C3A4183002215B2 /* EXAFS_fitting */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = EXAFS_fitting; sourceTree = BUILT_PRODUCTS_DIR; };
-		2ECC357D1C3A4183002215B2 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		2ECC357D1C3A4183002215B2 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		2ECC35821C3A41BF002215B2 /* EXAFS_fit.cl */ = {isa = PBXFileReference; explicitFileType = sourcecode.opencl; fileEncoding = 4; lineEnding = 0; path = EXAFS_fit.cl; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.opencl; };
 		2ECC35841C3A7DC7002215B2 /* EXAFS_fitting.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EXAFS_fitting.cpp; sourceTree = "<group>"; };
 		2EED262F1E5541AE008CFBC5 /* XAFSreconst_fitting */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = XAFSreconst_fitting; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1101,7 +1101,7 @@
 		2E464B3A1A4113A100BE6BE0 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0800;
+				LastUpgradeCheck = 0900;
 				ORGANIZATIONNAME = "Nozomu Ishiguro";
 				TargetAttributes = {
 					2E1522F11B16B22C00239AA9 = {
@@ -1702,7 +1702,9 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_CXX0X_EXTENSIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
@@ -1710,7 +1712,11 @@
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -1750,7 +1756,9 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_CXX0X_EXTENSIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
@@ -1758,7 +1766,11 @@
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;

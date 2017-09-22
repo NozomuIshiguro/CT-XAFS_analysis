@@ -61,7 +61,7 @@ sysctl(mib, 2, &(ram), &length, NULL, 0);\
 mkdir((const char*)(c), 0755)
 #define FILEOPEN(fp,c,s) \
 ((FILE*)(fp)) = fopen((const char*)(c),((const char*)(s)))
-
+#define LOCALTIME(t,lt) localtime_r(((const time_t*)(t)),((struct tm*)(lt)))
 
 #elif defined (_M_X64)  //Windows 64 bit
 #include <windows.h>
@@ -81,7 +81,7 @@ mkdir((const char*)(c), 0755)
 _mkdir((const char*)(c))
 #define FILEOPEN(fp,c,s) \
 fopen_s(&((FILE*)(fp)),((const char*)(c)),((const char*)(s)))
-
+#define LOCALTIME(t,lt) localtime_s(((struct tm*)(lt)),((const time_t*)(t)))
 
 #elif defined (_WIN32)  //Windows 32 bit
 #include <windows.h>
@@ -103,7 +103,7 @@ GlobalMemoryStatusEx(&status);\
 _mkdir((const char*)(c))
 #define FILEOPEN(fp,c,s) \
 fopen_s(&((FILE*)(fp)),((const char*)(c)),((const char*)(s)))
-
+#define LOCALTIME(t,lt) localtime_s(((struct tm*)(lt)),((const time_t*)(t)))
 
 #elif defined (__linux__)   //Linux
 #include <CL/cl.hpp>
@@ -118,6 +118,7 @@ fopen_s(&((FILE*)(fp)),((const char*)(c)),((const char*)(s)))
 mkdir((const char*)(c), 0766)
 #define FILEOPEN(fp,c,s) \
 ((FILE*)(fp)) = fopen(((const char*)(c)),((const char*)(s)))
+#define LOCALTIME(t,lt) localtime_r(((const time_t*)(t)),((struct tm*)(lt)))
 #endif
 
 using namespace std;
@@ -243,6 +244,9 @@ protected:
     int num_contrain_eq;
     vector<string> contrain_eq;
     
+    bool chifitout;
+    bool extparaout;
+    
 public:
     input_parameter_fitting();
     input_parameter_fitting(string inputfile_path);
@@ -301,6 +305,9 @@ public:
 	float getLambda_t_fit();
     bool getCSbool();
     vector<float> getCSlambda();
+    
+    bool getChiFitOutBool();
+    bool getExtParaOutBool();
     
     vector<string> funcNameList;
     vector<string> LCFstd_paths;

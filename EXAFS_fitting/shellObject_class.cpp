@@ -1,4 +1,4 @@
-﻿//
+//
 //  shellObject_class.cpp
 //  CT-XANES_analysis
 //
@@ -46,6 +46,7 @@ shellObjects::shellObjects(cl::CommandQueue commandQueue, cl::Program program, F
     
     kernel_feff = cl::Kernel(program,"redimension_feffShellPara");
     kernel_chiout = cl::Kernel(program,"outputchi");
+    kernel_chiout_r = cl::Kernel(program,"outputchi_r");
     kernel_jacob_k = cl::Kernel(program,"Jacobian_k");
     kernel_CNw = cl::Kernel(program,"CNweighten");
     kernel_update = cl::Kernel(program,"updatePara");
@@ -162,6 +163,41 @@ int shellObjects::outputChiFit(cl::Buffer chi, cl::Buffer S02, int kw,
     kernel_chiout.setArg(15, real_p);
     kernel_chiout.setArg(16, (cl_int)kw);
     queue.enqueueNDRangeKernel(kernel_chiout, global_item_offset, global_item_size, local_item_size, NULL, NULL);
+    
+    
+    return 0;
+}
+
+int shellObjects::outputChiFit_r(cl::Buffer chi, cl::Buffer S02, int kw,
+                                 float kstart, float kend){
+    
+    int ksize = (int)ceil((min(float(kend+WIN_DK),(float)MAX_KQ)-max(float(kstart-WIN_DK),0.0f))/KGRID)+1;
+    int koffset = (int)floor(max((float)(kstart-WIN_DK),0.0f)/KGRID);
+    
+    size_t maxWorkGroupSize = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    const cl::NDRange local_item_size(min((int)maxWorkGroupSize,imageSizeX),1,1);
+    const cl::NDRange global_item_size(imageSizeX,imageSizeY,ksize);
+    const cl::NDRange global_item_offset(0,0,koffset);
+    
+    
+    kernel_chiout_r.setArg(0, chi);
+    kernel_chiout_r.setArg(1, (cl_float)Reff);
+    kernel_chiout_r.setArg(2, S02);
+    kernel_chiout_r.setArg(3, CN);
+    kernel_chiout_r.setArg(4, dR);
+    kernel_chiout_r.setArg(5, dE0);
+    kernel_chiout_r.setArg(6, ss);
+    kernel_chiout_r.setArg(7, E0imag);
+    kernel_chiout_r.setArg(8, C3);
+    kernel_chiout_r.setArg(9, C4);
+    kernel_chiout_r.setArg(10, real_2phc);
+    kernel_chiout_r.setArg(11, mag);
+    kernel_chiout_r.setArg(12, phase);
+    kernel_chiout_r.setArg(13, redFactor);
+    kernel_chiout_r.setArg(14, lambda);
+    kernel_chiout_r.setArg(15, real_p);
+    kernel_chiout_r.setArg(16, (cl_int)kw);
+    queue.enqueueNDRangeKernel(kernel_chiout_r, global_item_offset, global_item_size, local_item_size, NULL, NULL);
     
     
     return 0;

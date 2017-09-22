@@ -1,4 +1,4 @@
-//
+﻿//
 //  EXAFS_extraction.hpp
 //  CT-XANES_analysis
 //

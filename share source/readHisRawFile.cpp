@@ -1,4 +1,4 @@
-﻿//
+//
 //  readHisFile.cpp
 //  CT-XANES_analysis
 //
@@ -103,6 +103,18 @@ int outputRawFile_stream(string filename,float *data, size_t pnt_size){
     fout.open(filename, ios::out|ios::binary|ios::trunc);
     
     fout.write((char*)data,sizeof(float)*pnt_size);
+    fout.close();
+    
+    return 0;
+}
+
+int outputRawFile_stream_batch(string filename,vector<float*> data, size_t pnt_size){
+    ofstream fout;
+    fout.open(filename, ios::out|ios::binary|ios::trunc);
+    
+    for (int i=0; i<data.size(); i++) {
+        fout.write((char*)data[i],sizeof(float)*pnt_size);
+    }
     fout.close();
     
     return 0;

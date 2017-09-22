@@ -126,6 +126,61 @@ __kernel void redimension_mt2chi(__global float* mt_img, __global float* chi_img
 }
 
 
+__kernel void redimension_chi2mt(__global float* mt_img, __global float* chi_img,
+                                 __constant float* energy, int numPnts,
+                                 int koffset, int ksize){
+    
+    const size_t global_x = get_global_id(0);
+    const size_t global_y = get_global_id(1);
+    const size_t size_x = get_global_size(0);
+    const size_t size_y = get_global_size(1);
+    const size_t size_M = size_x*size_y;
+    const size_t ID = global_x + global_y*size_x;
+    
+    
+    float e1, e2, e3;
+    float chi1, chi2;
+    float X;
+    
+    int en=0;
+    e3 = energy[en];
+    float e_offset = koffset*K_PITCH;
+    e_offset *= e_offset;
+    e_offset /= EFF;
+    while(e3<=e_offset){
+        en++;
+        e3 = energy[en];
+        if(en==numPnts) break;
+    }
+    
+    //if(ID==0) printf("%f\n",energy[numPnts-1]);
+    for(int kn=koffset; kn<koffset+ksize-1; kn++){
+        e1 = kn*K_PITCH;
+        e1 *= e1;
+        e1 /=EFF;
+        e2 = (kn+1.0f)*K_PITCH;
+        e2 *= e2;
+        e2 /=EFF;
+        
+        chi1 = chi_img[ID+kn*size_M];
+        chi2 = chi_img[ID+(kn+1)*size_M];
+        
+        if(e1<energy[numPnts-1]){
+            e3 = energy[en];
+            while(e3<=e2){
+                X=(e3-e1)/(e2-e1);
+                mt_img[ID + en*size_M] = (1.0f-X)*chi1 + X*chi2;
+                //if(ID==0) printf("  %d,%f\n", en, e3);
+                en++;
+                e3 = energy[en];
+                if(en==numPnts) break;
+            }
+        }
+        if(en==numPnts) break;
+    }
+}
+
+
 __kernel void convert2realChi(__global float2* chi_cmplx_img, __global float* chi_img){
     const size_t global_x = get_global_id(0);
     const size_t global_y = get_global_id(1);
@@ -221,7 +276,7 @@ __kernel void Bspline_basis_updateOrder(__global float* basis_src, __global floa
 
 //xy-dimensions are image dimension
 //z-dimension is k-space
-__kernel void Bspline(__global float* spline, __global float* basis, __global float* ctrlP,
+__kernel void Bspline(__global float2* spline, __global float* basis, __global float* ctrlP,
                             int N_ctrlP, int basisOffset, int order){
     
     const size_t global_x = get_global_id(0);
@@ -249,7 +304,7 @@ __kernel void Bspline(__global float* spline, __global float* basis, __global fl
         spine_p += ctrlP[ID2]*basis[ID3];
     }
     
-    spline[ID1] = spine_p;
+    spline[ID1] = (float2)(0.0f,spine_p);
 }
 
 

@@ -13,7 +13,8 @@
 static void initBlocks(void);
 
 // Initialize static data structures
-static block_kernel_pair pair_map[14] = {
+static block_kernel_pair pair_map[15] = {
+      { NULL, NULL },
       { NULL, NULL },
       { NULL, NULL },
       { NULL, NULL },
@@ -30,7 +31,7 @@ static block_kernel_pair pair_map[14] = {
       { NULL, NULL }
 };
 
-static block_kernel_map bmap = { 0, 14, initBlocks, pair_map };
+static block_kernel_map bmap = { 0, 15, initBlocks, pair_map };
 
 // Block function
 void (^hanningWindowFuncIMGarray_kernel)(const cl_ndrange *ndrange, cl_float2* wave, cl_float zmin, cl_float zmax, cl_float windz, cl_float zgrid) =
@@ -113,13 +114,48 @@ void (^outputchi_kernel)(const cl_ndrange *ndrange, cl_float2* chi, cl_float Ref
   gclDeleteArgsAPPLE(k, &kargs);
 };
 
-void (^Jacobian_k_new_kernel)(const cl_ndrange *ndrange, cl_float2* J, cl_float Reff, cl_float* S02, cl_float* CN, cl_float* dR, cl_float* dE0, cl_float* ss, cl_float* E0imag, cl_float* C3, cl_float* C4, cl_float* real2phcW, cl_float* magW, cl_float* phaseW, cl_float* redFactorW, cl_float* lambdaW, cl_float* real_pW, cl_int kw, cl_int paramode, cl_int realpart) =
-^(const cl_ndrange *ndrange, cl_float2* J, cl_float Reff, cl_float* S02, cl_float* CN, cl_float* dR, cl_float* dE0, cl_float* ss, cl_float* E0imag, cl_float* C3, cl_float* C4, cl_float* real2phcW, cl_float* magW, cl_float* phaseW, cl_float* redFactorW, cl_float* lambdaW, cl_float* real_pW, cl_int kw, cl_int paramode, cl_int realpart) {
+void (^outputchi_r_kernel)(const cl_ndrange *ndrange, cl_float* chi, cl_float Reff, cl_float* S02, cl_float* CN, cl_float* dR, cl_float* dE0, cl_float* ss, cl_float* E0imag, cl_float* C3, cl_float* C4, cl_float* real2phcW, cl_float* magW, cl_float* phaseW, cl_float* redFactorW, cl_float* lambdaW, cl_float* real_pW, cl_int kw) =
+^(const cl_ndrange *ndrange, cl_float* chi, cl_float Reff, cl_float* S02, cl_float* CN, cl_float* dR, cl_float* dE0, cl_float* ss, cl_float* E0imag, cl_float* C3, cl_float* C4, cl_float* real2phcW, cl_float* magW, cl_float* phaseW, cl_float* redFactorW, cl_float* lambdaW, cl_float* real_pW, cl_int kw) {
   int err = 0;
   cl_kernel k = bmap.map[3].kernel;
   if (!k) {
     initBlocks();
     k = bmap.map[3].kernel;
+  }
+  if (!k)
+    gcl_log_fatal("kernel outputchi_r does not exist for device");
+  kargs_struct kargs;
+  gclCreateArgsAPPLE(k, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 0, chi, &kargs);
+  err |= gclSetKernelArgAPPLE(k, 1, sizeof(Reff), &Reff, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 2, S02, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 3, CN, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 4, dR, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 5, dE0, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 6, ss, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 7, E0imag, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 8, C3, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 9, C4, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 10, real2phcW, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 11, magW, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 12, phaseW, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 13, redFactorW, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 14, lambdaW, &kargs);
+  err |= gclSetKernelArgMemAPPLE(k, 15, real_pW, &kargs);
+  err |= gclSetKernelArgAPPLE(k, 16, sizeof(kw), &kw, &kargs);
+  gcl_log_cl_fatal(err, "setting argument for outputchi_r failed");
+  err = gclExecKernelAPPLE(k, ndrange, &kargs);
+  gcl_log_cl_fatal(err, "Executing outputchi_r failed");
+  gclDeleteArgsAPPLE(k, &kargs);
+};
+
+void (^Jacobian_k_new_kernel)(const cl_ndrange *ndrange, cl_float2* J, cl_float Reff, cl_float* S02, cl_float* CN, cl_float* dR, cl_float* dE0, cl_float* ss, cl_float* E0imag, cl_float* C3, cl_float* C4, cl_float* real2phcW, cl_float* magW, cl_float* phaseW, cl_float* redFactorW, cl_float* lambdaW, cl_float* real_pW, cl_int kw, cl_int paramode, cl_int realpart) =
+^(const cl_ndrange *ndrange, cl_float2* J, cl_float Reff, cl_float* S02, cl_float* CN, cl_float* dR, cl_float* dE0, cl_float* ss, cl_float* E0imag, cl_float* C3, cl_float* C4, cl_float* real2phcW, cl_float* magW, cl_float* phaseW, cl_float* redFactorW, cl_float* lambdaW, cl_float* real_pW, cl_int kw, cl_int paramode, cl_int realpart) {
+  int err = 0;
+  cl_kernel k = bmap.map[4].kernel;
+  if (!k) {
+    initBlocks();
+    k = bmap.map[4].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel Jacobian_k_new does not exist for device");
@@ -153,10 +189,10 @@ void (^Jacobian_k_new_kernel)(const cl_ndrange *ndrange, cl_float2* J, cl_float 
 void (^Jacobian_k_kernel)(const cl_ndrange *ndrange, cl_float2* J, cl_float Reff, cl_float* S02, cl_float* CN, cl_float* dR, cl_float* dE0, cl_float* ss, cl_float* E0imag, cl_float* C3, cl_float* C4, cl_float* real2phcW, cl_float* magW, cl_float* phaseW, cl_float* redFactorW, cl_float* lambdaW, cl_float* real_pW, cl_int kw, cl_int paramode, cl_int realpart) =
 ^(const cl_ndrange *ndrange, cl_float2* J, cl_float Reff, cl_float* S02, cl_float* CN, cl_float* dR, cl_float* dE0, cl_float* ss, cl_float* E0imag, cl_float* C3, cl_float* C4, cl_float* real2phcW, cl_float* magW, cl_float* phaseW, cl_float* redFactorW, cl_float* lambdaW, cl_float* real_pW, cl_int kw, cl_int paramode, cl_int realpart) {
   int err = 0;
-  cl_kernel k = bmap.map[4].kernel;
+  cl_kernel k = bmap.map[5].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[4].kernel;
+    k = bmap.map[5].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel Jacobian_k does not exist for device");
@@ -190,10 +226,10 @@ void (^Jacobian_k_kernel)(const cl_ndrange *ndrange, cl_float2* J, cl_float Reff
 void (^estimate_tJJ_kernel)(const cl_ndrange *ndrange, cl_float* tJJ, cl_float2* J1, cl_float2* J2, cl_int z_id, cl_int kRqsize) =
 ^(const cl_ndrange *ndrange, cl_float* tJJ, cl_float2* J1, cl_float2* J2, cl_int z_id, cl_int kRqsize) {
   int err = 0;
-  cl_kernel k = bmap.map[5].kernel;
+  cl_kernel k = bmap.map[6].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[5].kernel;
+    k = bmap.map[6].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel estimate_tJJ does not exist for device");
@@ -213,10 +249,10 @@ void (^estimate_tJJ_kernel)(const cl_ndrange *ndrange, cl_float* tJJ, cl_float2*
 void (^estimate_tJdF_kernel)(const cl_ndrange *ndrange, cl_float* tJdF, cl_float2* J, cl_float2* chi_data, cl_float2* chi_fit, cl_int z_id, cl_int kRqsize) =
 ^(const cl_ndrange *ndrange, cl_float* tJdF, cl_float2* J, cl_float2* chi_data, cl_float2* chi_fit, cl_int z_id, cl_int kRqsize) {
   int err = 0;
-  cl_kernel k = bmap.map[6].kernel;
+  cl_kernel k = bmap.map[7].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[6].kernel;
+    k = bmap.map[7].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel estimate_tJdF does not exist for device");
@@ -237,10 +273,10 @@ void (^estimate_tJdF_kernel)(const cl_ndrange *ndrange, cl_float* tJdF, cl_float
 void (^estimate_dF2_kernel)(const cl_ndrange *ndrange, cl_float* dF2, cl_float2* chi_data, cl_float2* chi_fit, cl_int kRqsize) =
 ^(const cl_ndrange *ndrange, cl_float* dF2, cl_float2* chi_data, cl_float2* chi_fit, cl_int kRqsize) {
   int err = 0;
-  cl_kernel k = bmap.map[7].kernel;
+  cl_kernel k = bmap.map[8].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[7].kernel;
+    k = bmap.map[8].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel estimate_dF2 does not exist for device");
@@ -259,10 +295,10 @@ void (^estimate_dF2_kernel)(const cl_ndrange *ndrange, cl_float* dF2, cl_float2*
 void (^estimate_Rfactor_kernel)(const cl_ndrange *ndrange, cl_float* Rfactor, cl_float2* chi_data, cl_float2* chi_fit, cl_int kRqsize) =
 ^(const cl_ndrange *ndrange, cl_float* Rfactor, cl_float2* chi_data, cl_float2* chi_fit, cl_int kRqsize) {
   int err = 0;
-  cl_kernel k = bmap.map[8].kernel;
+  cl_kernel k = bmap.map[9].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[8].kernel;
+    k = bmap.map[9].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel estimate_Rfactor does not exist for device");
@@ -281,10 +317,10 @@ void (^estimate_Rfactor_kernel)(const cl_ndrange *ndrange, cl_float* Rfactor, cl
 void (^estimate_error_kernel)(const cl_ndrange *ndrange, cl_float* tJdF, cl_float* p_error) =
 ^(const cl_ndrange *ndrange, cl_float* tJdF, cl_float* p_error) {
   int err = 0;
-  cl_kernel k = bmap.map[9].kernel;
+  cl_kernel k = bmap.map[10].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[9].kernel;
+    k = bmap.map[10].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel estimate_error does not exist for device");
@@ -301,10 +337,10 @@ void (^estimate_error_kernel)(const cl_ndrange *ndrange, cl_float* tJdF, cl_floa
 void (^chi2cmplxChi_imgStck_kernel)(const cl_ndrange *ndrange, cl_float* chi, cl_float2* chi_c, cl_int kn, cl_int koffset, cl_int kw) =
 ^(const cl_ndrange *ndrange, cl_float* chi, cl_float2* chi_c, cl_int kn, cl_int koffset, cl_int kw) {
   int err = 0;
-  cl_kernel k = bmap.map[10].kernel;
+  cl_kernel k = bmap.map[11].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[10].kernel;
+    k = bmap.map[11].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel chi2cmplxChi_imgStck does not exist for device");
@@ -324,10 +360,10 @@ void (^chi2cmplxChi_imgStck_kernel)(const cl_ndrange *ndrange, cl_float* chi, cl
 void (^chi2cmplxChi_chiStck_kernel)(const cl_ndrange *ndrange, cl_float* chi, cl_float2* chi_c, cl_int XY, cl_int kw, cl_int XY_size) =
 ^(const cl_ndrange *ndrange, cl_float* chi, cl_float2* chi_c, cl_int XY, cl_int kw, cl_int XY_size) {
   int err = 0;
-  cl_kernel k = bmap.map[11].kernel;
+  cl_kernel k = bmap.map[12].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[11].kernel;
+    k = bmap.map[12].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel chi2cmplxChi_chiStck does not exist for device");
@@ -347,10 +383,10 @@ void (^chi2cmplxChi_chiStck_kernel)(const cl_ndrange *ndrange, cl_float* chi, cl
 void (^CNweighten_kernel)(const cl_ndrange *ndrange, cl_float* CN, cl_float* edgeJ, cl_float iniCN) =
 ^(const cl_ndrange *ndrange, cl_float* CN, cl_float* edgeJ, cl_float iniCN) {
   int err = 0;
-  cl_kernel k = bmap.map[12].kernel;
+  cl_kernel k = bmap.map[13].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[12].kernel;
+    k = bmap.map[13].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel CNweighten does not exist for device");
@@ -368,10 +404,10 @@ void (^CNweighten_kernel)(const cl_ndrange *ndrange, cl_float* CN, cl_float* edg
 void (^outputBondDistance_kernel)(const cl_ndrange *ndrange, cl_float* dR, cl_float* R, cl_float Reff) =
 ^(const cl_ndrange *ndrange, cl_float* dR, cl_float* R, cl_float Reff) {
   int err = 0;
-  cl_kernel k = bmap.map[13].kernel;
+  cl_kernel k = bmap.map[14].kernel;
   if (!k) {
     initBlocks();
-    k = bmap.map[13].kernel;
+    k = bmap.map[14].kernel;
   }
   if (!k)
     gcl_log_fatal("kernel outputBondDistance does not exist for device");
@@ -399,28 +435,30 @@ static void initBlocks(void) {
           bmap.map[1].kernel = clCreateKernel(bmap.program, "redimension_feffShellPara", &err);
           assert(bmap.map[2].block_ptr == outputchi_kernel && "mismatch block");
           bmap.map[2].kernel = clCreateKernel(bmap.program, "outputchi", &err);
-          assert(bmap.map[3].block_ptr == Jacobian_k_new_kernel && "mismatch block");
-          bmap.map[3].kernel = clCreateKernel(bmap.program, "Jacobian_k_new", &err);
-          assert(bmap.map[4].block_ptr == Jacobian_k_kernel && "mismatch block");
-          bmap.map[4].kernel = clCreateKernel(bmap.program, "Jacobian_k", &err);
-          assert(bmap.map[5].block_ptr == estimate_tJJ_kernel && "mismatch block");
-          bmap.map[5].kernel = clCreateKernel(bmap.program, "estimate_tJJ", &err);
-          assert(bmap.map[6].block_ptr == estimate_tJdF_kernel && "mismatch block");
-          bmap.map[6].kernel = clCreateKernel(bmap.program, "estimate_tJdF", &err);
-          assert(bmap.map[7].block_ptr == estimate_dF2_kernel && "mismatch block");
-          bmap.map[7].kernel = clCreateKernel(bmap.program, "estimate_dF2", &err);
-          assert(bmap.map[8].block_ptr == estimate_Rfactor_kernel && "mismatch block");
-          bmap.map[8].kernel = clCreateKernel(bmap.program, "estimate_Rfactor", &err);
-          assert(bmap.map[9].block_ptr == estimate_error_kernel && "mismatch block");
-          bmap.map[9].kernel = clCreateKernel(bmap.program, "estimate_error", &err);
-          assert(bmap.map[10].block_ptr == chi2cmplxChi_imgStck_kernel && "mismatch block");
-          bmap.map[10].kernel = clCreateKernel(bmap.program, "chi2cmplxChi_imgStck", &err);
-          assert(bmap.map[11].block_ptr == chi2cmplxChi_chiStck_kernel && "mismatch block");
-          bmap.map[11].kernel = clCreateKernel(bmap.program, "chi2cmplxChi_chiStck", &err);
-          assert(bmap.map[12].block_ptr == CNweighten_kernel && "mismatch block");
-          bmap.map[12].kernel = clCreateKernel(bmap.program, "CNweighten", &err);
-          assert(bmap.map[13].block_ptr == outputBondDistance_kernel && "mismatch block");
-          bmap.map[13].kernel = clCreateKernel(bmap.program, "outputBondDistance", &err);
+          assert(bmap.map[3].block_ptr == outputchi_r_kernel && "mismatch block");
+          bmap.map[3].kernel = clCreateKernel(bmap.program, "outputchi_r", &err);
+          assert(bmap.map[4].block_ptr == Jacobian_k_new_kernel && "mismatch block");
+          bmap.map[4].kernel = clCreateKernel(bmap.program, "Jacobian_k_new", &err);
+          assert(bmap.map[5].block_ptr == Jacobian_k_kernel && "mismatch block");
+          bmap.map[5].kernel = clCreateKernel(bmap.program, "Jacobian_k", &err);
+          assert(bmap.map[6].block_ptr == estimate_tJJ_kernel && "mismatch block");
+          bmap.map[6].kernel = clCreateKernel(bmap.program, "estimate_tJJ", &err);
+          assert(bmap.map[7].block_ptr == estimate_tJdF_kernel && "mismatch block");
+          bmap.map[7].kernel = clCreateKernel(bmap.program, "estimate_tJdF", &err);
+          assert(bmap.map[8].block_ptr == estimate_dF2_kernel && "mismatch block");
+          bmap.map[8].kernel = clCreateKernel(bmap.program, "estimate_dF2", &err);
+          assert(bmap.map[9].block_ptr == estimate_Rfactor_kernel && "mismatch block");
+          bmap.map[9].kernel = clCreateKernel(bmap.program, "estimate_Rfactor", &err);
+          assert(bmap.map[10].block_ptr == estimate_error_kernel && "mismatch block");
+          bmap.map[10].kernel = clCreateKernel(bmap.program, "estimate_error", &err);
+          assert(bmap.map[11].block_ptr == chi2cmplxChi_imgStck_kernel && "mismatch block");
+          bmap.map[11].kernel = clCreateKernel(bmap.program, "chi2cmplxChi_imgStck", &err);
+          assert(bmap.map[12].block_ptr == chi2cmplxChi_chiStck_kernel && "mismatch block");
+          bmap.map[12].kernel = clCreateKernel(bmap.program, "chi2cmplxChi_chiStck", &err);
+          assert(bmap.map[13].block_ptr == CNweighten_kernel && "mismatch block");
+          bmap.map[13].kernel = clCreateKernel(bmap.program, "CNweighten", &err);
+          assert(bmap.map[14].block_ptr == outputBondDistance_kernel && "mismatch block");
+          bmap.map[14].kernel = clCreateKernel(bmap.program, "outputBondDistance", &err);
        }
      });
 }
@@ -431,16 +469,17 @@ static void RegisterMap(void) {
   bmap.map[0].block_ptr = hanningWindowFuncIMGarray_kernel;
   bmap.map[1].block_ptr = redimension_feffShellPara_kernel;
   bmap.map[2].block_ptr = outputchi_kernel;
-  bmap.map[3].block_ptr = Jacobian_k_new_kernel;
-  bmap.map[4].block_ptr = Jacobian_k_kernel;
-  bmap.map[5].block_ptr = estimate_tJJ_kernel;
-  bmap.map[6].block_ptr = estimate_tJdF_kernel;
-  bmap.map[7].block_ptr = estimate_dF2_kernel;
-  bmap.map[8].block_ptr = estimate_Rfactor_kernel;
-  bmap.map[9].block_ptr = estimate_error_kernel;
-  bmap.map[10].block_ptr = chi2cmplxChi_imgStck_kernel;
-  bmap.map[11].block_ptr = chi2cmplxChi_chiStck_kernel;
-  bmap.map[12].block_ptr = CNweighten_kernel;
-  bmap.map[13].block_ptr = outputBondDistance_kernel;
+  bmap.map[3].block_ptr = outputchi_r_kernel;
+  bmap.map[4].block_ptr = Jacobian_k_new_kernel;
+  bmap.map[5].block_ptr = Jacobian_k_kernel;
+  bmap.map[6].block_ptr = estimate_tJJ_kernel;
+  bmap.map[7].block_ptr = estimate_tJdF_kernel;
+  bmap.map[8].block_ptr = estimate_dF2_kernel;
+  bmap.map[9].block_ptr = estimate_Rfactor_kernel;
+  bmap.map[10].block_ptr = estimate_error_kernel;
+  bmap.map[11].block_ptr = chi2cmplxChi_imgStck_kernel;
+  bmap.map[12].block_ptr = chi2cmplxChi_chiStck_kernel;
+  bmap.map[13].block_ptr = CNweighten_kernel;
+  bmap.map[14].block_ptr = outputBondDistance_kernel;
 }
 

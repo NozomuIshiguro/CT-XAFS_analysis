@@ -10,6 +10,7 @@
 
 static int buffersize=512;
 
+
 string ifs_getline(ifstream *inp_ifs){
     
     char *buffer;

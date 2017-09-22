@@ -49,15 +49,6 @@ public:
 
 
 class shellObjects{
-    //raw image object from feffxxx.dat files
-    /*cl::Buffer k_raw;
-    cl::Image1D real_2phc_raw;
-    cl::Image1D mag_raw;
-    cl::Image1D phase_raw;
-    cl::Image1D redFactor_raw;
-    cl::Image1D lambda_raw;
-    cl::Image1D real_p_raw;*/
-    
     //redimentioned image object for fitting analysis
     cl::Buffer real_2phc;
     cl::Buffer mag;
@@ -79,6 +70,7 @@ class shellObjects{
     
     cl::Kernel kernel_feff;
     cl::Kernel kernel_chiout;
+    cl::Kernel kernel_chiout_r;
     cl::Kernel kernel_jacob_k;
     cl::Kernel kernel_CNw;
     cl::Kernel kernel_update;
@@ -99,6 +91,7 @@ public:
     shellObjects(cl::CommandQueue queue, cl::Program program, FEFF_shell shell,
                  int SizeX, int SizeY);
     int outputChiFit(cl::Buffer chi, cl::Buffer S02, int kw, float kstart, float kend);
+    int outputChiFit_r(cl::Buffer chi, cl::Buffer S02, int kw, float kstart, float kend);
     int outputJacobiank(cl::Buffer Jacob, cl::Buffer S02, int kw, int paramode,
                         float kstart, float kend, bool useRealPart);
     int inputIniCN(float iniCN, cl::Buffer edgeJ);
@@ -124,6 +117,7 @@ public:
 int readRawFile(string filepath_input,float *binImgf, int imageSizeM);
 int readRawFile_offset(string filepath_input,float *binImgf, int64_t offset, int64_t size);
 int outputRawFile_stream(string filename,float*data,size_t pnt_size);
+int outputRawFile_stream_batch(string filename,vector<float*> data, size_t pnt_size);
 
 vector<int> GPUmemoryControl(int imageSizeX, int imageSizeY,int ksize,int Rsize,int qsize,
                              int fittingMode, int num_fpara, int shellnum, cl::CommandQueue queue);
@@ -162,5 +156,8 @@ int createContrainMatrix(vector<string> contrain_eqs, vector<string> fparaName,
                          vector<vector<float>> *C_matrix, vector<float> *D_vector,int cotrainOffset);
 int correctBondDistanceContrain(vector<vector<float>> *C_matrix, vector<float> *D_vector,
                                 int fpnum, float Reff);
+int outputFit_r(cl::CommandQueue queue, cl::Program program,cl::Buffer Fit, cl::Buffer S02,
+                vector<shellObjects> shObj, float kstart, float kend,
+                int imageSizeX, int imageSizeY, int kw);
 
 #endif /* EXAFS_h */

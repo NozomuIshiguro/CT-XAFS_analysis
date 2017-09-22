@@ -1,4 +1,4 @@
-﻿//
+//
 //  EXAFS_extraction.cpp
 //  CT-XANES_analysis
 //
@@ -104,7 +104,8 @@ vector<int> extractionGPUmemoryControl(int imageSizeX, int imageSizeY,int ksize,
 }
 
 int extraction_output_thread(int AngleNo,string output_dir,
-                            float* chiData, float* bkgData, float* edgeJumpData, int imageSizeM, int numk){
+                            float* chiData, float* bkgData, float* edgeJumpData, int imageSizeM, int numk, bool paraout,
+                             vector<float*> preEdgePara, vector<float*> postEdgePara, vector<float*> splineData){
     
     ostringstream oss;
     string fileName_output= output_dir+ AnumTagString(AngleNo,"/chi0/i", ".raw");
@@ -116,11 +117,33 @@ int extraction_output_thread(int AngleNo,string output_dir,
     fileName_output= output_dir+ AnumTagString(AngleNo,"/edgeJ/i", ".raw");
     oss << "output file: " << fileName_output << endl;
     outputRawFile_stream(fileName_output,edgeJumpData,imageSizeM);
+    
+    if (paraout) {
+        fileName_output= output_dir+ AnumTagString(AngleNo,"/preEdge/i", ".raw");
+        oss << "output file: " << fileName_output << endl;
+        outputRawFile_stream_batch(fileName_output, preEdgePara, imageSizeM);
+        fileName_output= output_dir+ AnumTagString(AngleNo,"/postEdge/i", ".raw");
+        oss << "output file: " << fileName_output << endl;
+        outputRawFile_stream_batch(fileName_output, postEdgePara, imageSizeM);
+        fileName_output= output_dir+ AnumTagString(AngleNo,"/spline/i", ".raw");
+        oss << "output file: " << fileName_output << endl;
+        outputRawFile_stream_batch(fileName_output, splineData, imageSizeM);
+        
+        for (int i=0; i<preEdgePara.size(); i++) {
+            delete [] preEdgePara[i];
+        }
+        for (int i=0; i<postEdgePara.size(); i++) {
+            delete [] postEdgePara[i];
+        }
+    }
     cout << oss.str()<<endl;
-
+    
     delete [] chiData;
     delete [] bkgData;
     delete [] edgeJumpData;
+    for (int i=0; i<splineData.size(); i++) {
+        delete [] splineData[i];
+    }
     
     return 0;
 }
@@ -344,7 +367,8 @@ int fitting(cl::CommandQueue queue, cl::Program program,
 int PreEdgeRemoval(cl::CommandQueue queue, cl::Program program,
                    cl::Buffer mt_img, cl::Buffer energy, cl::Buffer bkg_img,
                    int imagesizeX, int imagesizeY, float E0, int startEn, int endEn,
-                   int fitmode, float lambda, int numTrial){
+                   int fitmode, float lambda, int numTrial,
+                   vector<float*> para_img, bool paraout, int paraoutoffset){
     
     
     cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
@@ -358,35 +382,39 @@ int PreEdgeRemoval(cl::CommandQueue queue, cl::Program program,
     vector<string> funcList;
     vector<char> freefixP;
     vector<float> iniP;
+    int numfreePara=0;
     switch (fitmode) {
         case 0: //line
-        funcList.push_back("line");
-        freefixP.push_back(49);
-        freefixP.push_back(49);
-        iniP.push_back(0.0f);
-        iniP.push_back(-0.001f);
-        break;
+            funcList.push_back("line");
+            freefixP.push_back(49);
+            freefixP.push_back(49);
+            iniP.push_back(0.0f);
+            iniP.push_back(-0.001f);
+            numfreePara=2;
+            break;
         
         case 1: //Victreen
-        funcList.push_back("Victoreen");
-        freefixP.push_back(49);
-        freefixP.push_back(49);
-        freefixP.push_back(49);
-        freefixP.push_back(48);
-        iniP.push_back(0.0f);
-        iniP.push_back(0.001f);
-        iniP.push_back(0.0001f);
-        iniP.push_back(E0);
+            funcList.push_back("Victoreen");
+            freefixP.push_back(49);
+            freefixP.push_back(49);
+            freefixP.push_back(49);
+            freefixP.push_back(48);
+            iniP.push_back(0.0f);
+            iniP.push_back(0.001f);
+            iniP.push_back(0.0001f);
+            iniP.push_back(E0);
+            numfreePara=3;
         break;
         
         case 2: //McMaster
-        funcList.push_back("McMaster");
-        freefixP.push_back(49);
-        freefixP.push_back(49);
-        freefixP.push_back(48);
-        iniP.push_back(0.0f);
-        iniP.push_back(0.0f);
-        iniP.push_back(E0);
+            funcList.push_back("McMaster");
+            freefixP.push_back(49);
+            freefixP.push_back(49);
+            freefixP.push_back(48);
+            iniP.push_back(0.0f);
+            iniP.push_back(0.0f);
+            iniP.push_back(E0);
+            numfreePara=2;
         break;
         
         default:
@@ -412,6 +440,12 @@ int PreEdgeRemoval(cl::CommandQueue queue, cl::Program program,
     queue.enqueueNDRangeKernel(kernel_bkg, NULL, global_item_size, local_item_size, NULL, NULL);
     queue.finish();
     
+    if (paraout) {
+        for (int i=0; i<numfreePara; i++) {
+            queue.enqueueReadBuffer(fp_img, CL_TRUE, sizeof(float)*imageSizeM*i, sizeof(float)*imageSizeM, &para_img[i][paraoutoffset]);
+        }
+    }
+    
     return 0;
 }
 
@@ -420,7 +454,8 @@ int PostEdgeEstimation(cl::CommandQueue queue, cl::Program program,
                        cl::Buffer mt_img, cl::Buffer energy,
                        cl::Buffer bkg_img, cl::Buffer edgeJ_img,
                        int imagesizeX, int imagesizeY, int startEn, int endEn,
-                       float lambda, int numTrial){
+                       float lambda, int numTrial,
+                       vector<float*> para_img, bool paraout, int paraoutoffset){
     
     cl::Context context = queue.getInfo<CL_QUEUE_CONTEXT>();
     string devicename = queue.getInfo<CL_QUEUE_DEVICE>().getInfo<CL_DEVICE_NAME>();
@@ -433,6 +468,7 @@ int PostEdgeEstimation(cl::CommandQueue queue, cl::Program program,
     vector<string> funcList;
     vector<char> freefixP;
     vector<float> iniP;
+    int numfreePara=4;
     funcList.push_back("3rdPolynomical");
     fiteq.setFittingEquation(funcList);
     freefixP.push_back(49);
@@ -461,6 +497,12 @@ int PostEdgeEstimation(cl::CommandQueue queue, cl::Program program,
     queue.enqueueNDRangeKernel(kernel_ej, NULL, global_item_size, local_item_size, NULL, NULL);
     queue.finish();
     
+    if (paraout) {
+        for (int i=0; i<numfreePara; i++) {
+            queue.enqueueReadBuffer(fp_img, CL_TRUE, sizeof(float)*imageSizeM*i, sizeof(float)*imageSizeM, &para_img[i][paraoutoffset]);
+        }
+    }
+    
     return 0;
 }
 
@@ -468,7 +510,8 @@ int PostEdgeEstimation(cl::CommandQueue queue, cl::Program program,
 int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
                      cl::Buffer mt_img, cl::Buffer energy, cl::Buffer w_factor, cl::Buffer chi_img,
                      int imagesizeX, int imagesizeY, int FFTimageSizeY, int num_energy,
-                     float kstart, float kend, float Rbkg, int kw, float lambda, int numTrial, bool kendClamp){
+                     float kstart, float kend, float Rbkg, int kw, float lambda, int numTrial,
+                     bool kendClamp, bool splineout){
     
     string errorzone = "0";
     try {
@@ -519,6 +562,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         cl::Buffer p_fix(context,CL_MEM_READ_WRITE,sizeof(cl_char)*N_ctrlP,0,NULL);
         cl::Buffer basis(context,CL_MEM_READ_WRITE,sizeof(cl_float)*(N_ctrlP+4)*ksize,0,NULL);
         cl::Buffer basis_dummy(context,CL_MEM_READ_WRITE,sizeof(cl_float)*(N_ctrlP+4)*ksize,0,NULL);
+        cl::Buffer spline_img;
         queue.enqueueWriteBuffer(p_fix, CL_TRUE, 0, sizeof(cl_char)*N_ctrlP, p_freefix);
         queue.enqueueFillBuffer(lambda_buff, (cl_float)lambda, 0, sizeof(float)*imageSizeM);
         queue.enqueueFillBuffer(nyu_buff, (cl_float)2.0f, 0, sizeof(float)*imageSizeM);
@@ -548,14 +592,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         kernel_redim.setArg(5, (cl_int)MAX_KRSIZE);
         queue.enqueueNDRangeKernel(kernel_redim, NULL, global_item_size, local_item_size1, NULL, NULL);
         queue.finish();
-        /*cl_float* chi_data;
-         chi_data = new cl_float[imageSizeM*MAX_KRSIZE];
-         queue.enqueueReadBuffer(chi_img, CL_TRUE, 0, sizeof(cl_float)*imageSizeM*MAX_KRSIZE, chi_data);
-         cout<<"chidata"<<endl;
-         for (int i=0; i<MAX_KRSIZE; i++) {
-         cout <<i*0.05f<<"\t"<<chi_data[i*imageSizeM]<<endl;
-         }
-         cout<<endl;*/
         
         
         //convert to complex chi
@@ -570,15 +606,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
             queue.enqueueNDRangeKernel(kernel_cmplx, global_item_offset3, global_item_size, local_item_size1, NULL, NULL);
             queue.finish();
         }
-        /*cl_float2* chi_data;
-         chi_data = new cl_float2[imageSizeM*ksize];
-         queue.enqueueReadBuffer(chiData, CL_TRUE, 0, sizeof(cl_float2)*imageSizeM*ksize, chi_data);
-         cout<<"chidata"<<endl;
-         for (int i=0; i<ksize; i++) {
-         cout <<i*0.05f<<"\t"<<chi_data[i*imageSizeM].y<<endl;
-         }
-         cout<<endl;*/
-        
         
         //initialize ctrlP
         cl::Kernel kernel_iniCtrlP(program,"initialCtrlP");
@@ -588,14 +615,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         kernel_iniCtrlP.setArg(3, (cl_int)ksize);
         queue.enqueueNDRangeKernel(kernel_iniCtrlP, NULL, global_item_size_ctrlP, local_item_size1, NULL, NULL);
         queue.finish();
-        /*float* ctrlP_data;
-         ctrlP_data = new float[N_ctrlP];
-         queue.enqueueReadBuffer(fp_img, CL_TRUE, 0, sizeof(cl_float)*N_ctrlP, ctrlP_data);
-         cout<<"ctrlP"<<endl;
-         for (int i=0; i<N_ctrlP; i++) {
-         cout <<i*knotPitch<<"\t"<<ctrlP_data[i]<<endl;
-         }
-         cout<<endl;*/
         
         //create B-spline basis0
         cl::Kernel kernel_basis0(program,"Bspline_basis_zero");
@@ -606,14 +625,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         kernel_basis0.setArg(4, (cl_int)4);
         queue.enqueueNDRangeKernel(kernel_basis0, global_item_offset2, global_item_size_basis, local_item_size2, NULL, NULL);
         queue.finish();
-        /*float* basisData;
-         basisData = new float[(N_ctrlP+4)*ksize];
-         queue.enqueueReadBuffer(basis, CL_TRUE, 0, sizeof(cl_float)*(N_ctrlP+4)*ksize, basisData);
-         cout<<"basis"<<endl;
-         for (int i=0; i<ksize; i++) {
-         cout <<(koffset+i)*0.05f<<"\t"<<basisData[13+i*(N_ctrlP+4)]<<endl;
-         }
-         cout<<endl;*/
         
         
         //update order of basis
@@ -631,16 +642,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
             queue.enqueueCopyBuffer(basis_dummy, basis, 0, 0, sizeof(cl_float)*(N_ctrlP+4)*ksize);
             queue.finish();
         }
-        /*float* basisData;
-         basisData = new float[(N_ctrlP+4)*ksize];
-         queue.enqueueReadBuffer(basis, CL_TRUE, 0, sizeof(cl_float)*(N_ctrlP+4)*ksize, basisData);
-         cout<<"basis"<<endl;
-         for (int i=0; i<ksize; i++) {
-         cout <<(koffset+i)*0.05f<<"\t"<<basisData[i*(N_ctrlP+4)]<<endl;
-         }
-         cout<<endl;*/
-        
-        
+
         
         //fitting loop
         //kernel settings
@@ -749,14 +751,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
                 pn++;
             }
         }
-        /*float* tJJ_data;
-         tJJ_data = new float[imageSizeM*N_ctrlP*(N_ctrlP+1)/2];
-         queue.enqueueReadBuffer(tJJ, CL_TRUE, 0, sizeof(float)*imageSizeM*N_ctrlP*(N_ctrlP+1)/2, tJJ_data);
-         cout<<"tJJ"<<endl;
-         for (int i=0; i<N_ctrlP*(N_ctrlP+1)/2; i++) {
-         cout <<"tJJ["<<i<<"]: "<<tJJ_data[i*imageSizeM]<<endl;
-         }
-         cout<<endl;*/
+
         
         kernel_kw.setArg(0, chiFit);
         kernel_kwindow.setArg(0, chiFit);
@@ -765,15 +760,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
             queue.enqueueFillBuffer(dF2_old, (cl_float)0.0f, 0, sizeof(cl_float)*imageSizeM);
             queue.enqueueFillBuffer(dF2_new, (cl_float)0.0f, 0, sizeof(cl_float)*imageSizeM);
             queue.enqueueFillBuffer(tJdF, (cl_float)0.0f, 0, sizeof(cl_float)*imageSizeM*N_ctrlP);
-            /*float* fp_data;
-             fp_data = new float[imageSizeM*N_ctrlP];
-             queue.enqueueReadBuffer(fp_img, CL_TRUE, 0, sizeof(float)*imageSizeM*N_ctrlP, fp_data);
-             cout<<"fp"<<endl;
-             for (int i=0; i<N_ctrlP; i++) {
-             cout <<"fp["<<i<<"]: "<<fp_data[i*imageSizeM]<<endl;
-             }
-             cout<<endl;*/
-            
             
             //chiFit
             //reset chiFit
@@ -806,14 +792,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
                     queue.finish();
                 }
             }
-            /*cout<<"tJdF"<<endl;
-             float* tJdF_data;
-             tJdF_data = new float[imageSizeM*N_ctrlP];
-             queue.enqueueReadBuffer(tJdF, CL_TRUE, 0, sizeof(float)*imageSizeM*N_ctrlP, tJdF_data);
-             for (int i=0; i<N_ctrlP; i++) {
-             cout <<"tJdF["<<i<<"]: "<<tJdF_data[i*imageSizeM]<<endl;
-             }
-             cout<<endl;*/
             
             
             //estimate dF2
@@ -825,13 +803,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
             //Levenberg-Marquardt
             queue.enqueueNDRangeKernel(kernel_LM,NULL,global_item_size,local_item_size1, NULL, NULL);
             queue.finish();
-            /*float* dp_data;
-             dp_data = new float[imageSizeM*N_ctrlP];
-             queue.enqueueReadBuffer(dp_img, CL_TRUE, 0, sizeof(float)*imageSizeM*N_ctrlP, dp_data);
-             cout<<"dp"<<endl;
-             for (int i=0; i<N_ctrlP; i++) {
-             cout <<"dp["<<i<<"]: "<<dp_data[i*imageSizeM]<<endl;
-             }*/
             
             
             //estimate dL
@@ -883,7 +854,6 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         
         //estimate final chiFit(spline removed chiData)
         //reset chiFit
-        //queue.enqueueFillBuffer(chiData, iniChi, 0, sizeof(cl_float2)*imageSizeM*ksize);
         queue.enqueueFillBuffer(chiFit, iniChi, 0, sizeof(cl_float2)*imageSizeM*ksize);
         queue.enqueueFillBuffer(FTchiFit, iniChi, 0, sizeof(cl_float2)*imageSizeM*Rsize);
         //estimate chiFit
@@ -896,13 +866,42 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         cl::Kernel kernel_c2real(program,"convert2realChi");
         kernel_c2real.setArg(0, chiFit);
         kernel_c2real.setArg(1, chi_img);
-        queue.enqueueNDRangeKernel(kernel_c2real,global_item_offset1,global_item_size_stack,local_item_size1,NULL, NULL);
+    queue.enqueueNDRangeKernel(kernel_c2real,global_item_offset1,global_item_size_stack,local_item_size1,NULL, NULL);
         queue.finish();
         
         //fill 0 before kstart and after kend
         queue.enqueueFillBuffer(chi_img, (cl_float)0.0f, 0, sizeof(cl_float)*imageSizeM*koffset);
         queue.enqueueFillBuffer(chi_img, (cl_float)0.0f, sizeof(cl_float)*imageSizeM*(koffset+ksize), sizeof(cl_float)*imageSizeM*(MAX_KRSIZE-koffset-ksize));
         queue.finish();
+        
+        //create spline bkg in mt_img
+        if (splineout) {
+            //create spline
+            spline_img = cl::Buffer(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM*MAX_KRSIZE,0,NULL);
+            cl::Kernel kernel_spline2(program,"Bspline");
+            kernel_spline2.setArg(0, chiFit);
+            kernel_spline2.setArg(1, basis);
+            kernel_spline2.setArg(2, fp_img);
+            kernel_spline2.setArg(3, (cl_int)N_ctrlP);
+            kernel_spline2.setArg(4, (cl_int)4);
+            kernel_spline2.setArg(5, (cl_int)4);
+            queue.enqueueNDRangeKernel(kernel_spline2,NULL,global_item_size_stack,local_item_size1, NULL, NULL);
+            queue.finish();
+            //convert final chiFit(spline) to spline_img
+            kernel_c2real.setArg(1, spline_img);
+            queue.enqueueNDRangeKernel(kernel_c2real,global_item_offset1,global_item_size_stack,local_item_size1,NULL, NULL);
+            queue.finish();
+            //redimension to mt_img
+            cl::Kernel kernel_redim2(program,"redimension_chi2mt");
+            kernel_redim2.setArg(0, mt_img);
+            kernel_redim2.setArg(1, spline_img);
+            kernel_redim2.setArg(2, energy);
+            kernel_redim2.setArg(3, (cl_int)num_energy);
+            kernel_redim2.setArg(4, (cl_int)koffset);
+            kernel_redim2.setArg(5, (cl_int)ksize);
+            queue.enqueueNDRangeKernel(kernel_redim2, NULL, global_item_size, local_item_size1, NULL, NULL);
+            queue.finish();
+        }
         
     }catch (const cl::Error ret) {
         cerr << "ERROR: " << ret.what() << "(" << ret.err() << ")"<< errorzone << endl;
@@ -947,6 +946,7 @@ int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
     const cl::NDRange local_item_size(min(imagesizeX,(int)maxWorkGroupSize),1,1);
     const cl::NDRange global_item_size(imagesizeX,processImageSizeY[0],1);
     const cl::NDRange global_item_size2(imagesizeX,processImageSizeY[0],MAX_KRSIZE);
+    const cl::NDRange global_item_size3(imagesizeX,processImageSizeY[0],numEnergy);
     
     cl::Buffer mt_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*processImageSizeM*numEnergy, 0, NULL);
     cl::Buffer bkg_img(context, CL_MEM_READ_WRITE, sizeof(cl_float)*processImageSizeM, 0, NULL);
@@ -961,6 +961,36 @@ int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
     chiData = new float[imageSizeM*MAX_KRSIZE];
     bkgData = new float[imageSizeM];
     edgeJData = new float[imageSizeM];
+    bool paraout = inp.getExtParaOutBool();
+    vector<float*> preEdgeParaData;
+    vector<float*> postEdgeParaData;
+    if (paraout) {
+        switch (bkgfitmode) {
+            case 0: //line
+                preEdgeParaData.push_back(new float[imageSizeM]);
+                preEdgeParaData.push_back(new float[imageSizeM]);
+                break;
+                
+            case 1: //Victreen
+                preEdgeParaData.push_back(new float[imageSizeM]);
+                preEdgeParaData.push_back(new float[imageSizeM]);
+                preEdgeParaData.push_back(new float[imageSizeM]);
+                break;
+                
+            case 2: //McMaster
+                preEdgeParaData.push_back(new float[imageSizeM]);
+                preEdgeParaData.push_back(new float[imageSizeM]);
+                break;
+            default:
+                break;
+        }
+        postEdgeParaData.push_back(new float[imageSizeM]);
+        postEdgeParaData.push_back(new float[imageSizeM]);
+        postEdgeParaData.push_back(new float[imageSizeM]);
+        postEdgeParaData.push_back(new float[imageSizeM]);
+    }
+    
+    
     for (int offset=0; offset<imageSizeM; offset+=processImageSizeM) {
 		//transfer mt data to GPU
         for (int en=0; en<numEnergy; en++) {
@@ -978,11 +1008,14 @@ int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
         float lambda = inp.getLambda_t_fit();
         int num_trial = inp.getNumTrial_fit();
         PreEdgeRemoval(queue, program[0], mt_img, energy, bkg_img, imagesizeX, processImageSizeY[0],
-                       E0, preEdgeStartEnNo, preEdgeEndEnNo, bkgfitmode, lambda, num_trial);
+                       E0, preEdgeStartEnNo, preEdgeEndEnNo, bkgfitmode, lambda, num_trial,
+                       preEdgeParaData,paraout,offset);
         
-        PostEdgeEstimation(queue, program[1], mt_img, energy, bkg_img, edgeJ_img, imagesizeX, processImageSizeY[0], postEdgeStartEnNo, postEdgeEndEnNo, lambda, num_trial);
+        PostEdgeEstimation(queue, program[1], mt_img, energy, bkg_img, edgeJ_img,
+                           imagesizeX, processImageSizeY[0], postEdgeStartEnNo, postEdgeEndEnNo,
+                           lambda, num_trial, postEdgeParaData,paraout,offset);
         
-        SplineBkgRemoval(queue, program[2], mt_img, energy, w_factor, chi_img, imagesizeX, processImageSizeY[0], processImageSizeY[1], numEnergy, kstart, kend, Rbkg, kw, lambda, num_trial, true);
+        SplineBkgRemoval(queue, program[2], mt_img, energy, w_factor, chi_img, imagesizeX, processImageSizeY[0], processImageSizeY[1], numEnergy, kstart, kend, Rbkg, kw, lambda, num_trial, true, paraout);
         
         
         //apply mask
@@ -997,6 +1030,11 @@ int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
         kernel_threshold.setArg(0, chi_img);
         queue.enqueueNDRangeKernel(kernel_threshold, NULL, global_item_size2, local_item_size, NULL, NULL);
         queue.finish();
+        if (paraout) {
+            kernel_threshold.setArg(0, mt_img);
+            queue.enqueueNDRangeKernel(kernel_threshold, NULL, global_item_size3, local_item_size, NULL, NULL);
+            queue.finish();
+        }
         
         
         //transfer chi, bkg, edgeJ data to memory
@@ -1006,16 +1044,26 @@ int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
         queue.enqueueReadBuffer(bkg_img, CL_FALSE, 0, sizeof(cl_float)*processImageSizeM, &bkgData[offset]);
         queue.enqueueReadBuffer(edgeJ_img, CL_FALSE, 0, sizeof(cl_float)*processImageSizeM, &edgeJData[offset]);
         queue.finish();
+        
+        if (paraout) {
+            //transfer mt data to GPU
+            for (int en=0; en<numEnergy; en++) {
+                queue.enqueueReadBuffer(mt_img, CL_FALSE, en*sizeof(cl_float)*processImageSizeM, sizeof(cl_float)*processImageSizeM, &mt_vec[en][offset]);
+            }
+            queue.finish();
+        }
     }
     
-	for (int en = 0; en<numEnergy; en++) {
+	/*for (int en = 0; en<numEnergy; en++) {
 		delete[] mt_vec[en];
-	}
+	}*/
 
     //output thread
     output_th_fit[thread_id].join();
     output_th_fit[thread_id]=thread(extraction_output_thread,AngleNo,output_dir,
-                                    move(chiData),move(bkgData), move(edgeJData),imageSizeM,koffset+ksize);
+                                    move(chiData),move(bkgData),move(edgeJData),
+                                    imageSizeM,koffset+ksize,paraout,
+                                    move(preEdgeParaData),move(postEdgeParaData),move(mt_vec));
     
     return 0;
 }
@@ -1038,7 +1086,7 @@ int extraction_data_input_thread(cl::CommandQueue queue, vector<cl::Program> pro
     const int imgSizeM = inp.getImageSizeM();
     for (int i=startEnergyNo; i<=endEnergyNo; i++) {
         mt_vec.push_back(new float[imgSizeM]);
-        filepath_input.push_back(input_dir + EnumTagString(i,"/",fileName_base) + AnumTagString(AngleNo,"",".raw"));
+        filepath_input.push_back(input_dir + EnumTagString(i+1,"/",fileName_base) + AnumTagString(AngleNo,"",".raw"));
     }
     
     
@@ -1107,6 +1155,14 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
     MKDIR(fileName_output.c_str());
     fileName_output = inp.getFittingOutputDir() + "/chi0";
     MKDIR(fileName_output.c_str());
+    if(inp.getExtParaOutBool()){
+        fileName_output = inp.getFittingOutputDir() + "/preEdge";
+        MKDIR(fileName_output.c_str());
+        fileName_output = inp.getFittingOutputDir() + "/postEdge";
+        MKDIR(fileName_output.c_str());
+        fileName_output = inp.getFittingOutputDir() + "/spline";
+        MKDIR(fileName_output.c_str());
+    }
     
     
     //energy file input
@@ -1134,7 +1190,7 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
         }catch(invalid_argument ret){ //ヘッダータグが存在する場合に入力エラーになる際への対応
             continue;
         }
-        cout<<i<<": "<<aa;
+        cout<<i+1<<": "<<aa;
         energy.push_back(aa-E0);
         cout<<endl;
         i++;
@@ -1170,8 +1226,15 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
     cout<< "spline start energy No.: "<<splineStartEnNo<<endl;
     cout<< "spline end energy No.: "<<splineEndEnNo<<endl;
     
-    int startEnergyNo = min(min(preEdgeStartEnNo,postEdgeStartEnNo),splineStartEnNo);
-    int endEnergyNo = max(max(preEdgeEndEnNo,postEdgeEndEnNo),splineEndEnNo);
+    int startEnergyNo=-1;
+    int endEnergyNo=-1;
+    if (inp.getExtParaOutBool()) {
+        startEnergyNo = 0;
+        endEnergyNo = (int)energy.size()-1;
+    }else{
+        startEnergyNo = min(min(preEdgeStartEnNo,postEdgeStartEnNo),splineStartEnNo);
+        endEnergyNo = max(max(preEdgeEndEnNo,postEdgeEndEnNo),splineEndEnNo);
+    }
     int num_energy=endEnergyNo-startEnergyNo+1;
     inp.setFittingEnergyNoRange(startEnergyNo, endEnergyNo);
     inp.setPreEdgeEnergyNoRange(preEdgeStartEnNo-startEnergyNo, preEdgeEndEnNo-startEnergyNo);

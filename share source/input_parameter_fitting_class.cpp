@@ -1,4 +1,4 @@
-﻿//
+//
 //  input_parameter_fitting_class.cpp
 //  CT-XANES_analysis
 //
@@ -124,6 +124,14 @@ vector<float> input_parameter_fitting::getParaLowerLimit(){
 
 vector<float> input_parameter_fitting::getParaAttenuator(){
     return para_attenuator;
+}
+
+bool input_parameter_fitting::getChiFitOutBool(){
+    return chifitout;
+}
+
+bool input_parameter_fitting::getExtParaOutBool(){
+    return extparaout;
 }
 
 bool input_parameter_fitting::getCSbool(){
@@ -445,6 +453,8 @@ input_parameter_fitting::input_parameter_fitting(){
     bkgFittingMode=1;
     
     num_contrain_eq=0;
+    chifitout=false;
+    extparaout=false;
 }
 
 vector<string> input_parameter_fitting::getContrainEqs(){
@@ -945,5 +955,17 @@ void input_parameter_fitting::inputFromFile_fitting(string str, ifstream *inp_if
         cout<<str<<endl;
         (*inp_ifs)>>num_trial_fit;
         cout<<"  "<<num_trial_fit<<endl;
+    }else if(str=="#Output EXAFS chi fit images"){
+        cout<<str<<endl;
+        int dummy;
+        (*inp_ifs)>>dummy;
+        chifitout = (dummy==1) ? true:false;
+        cout<<"  "<< boolalpha <<chifitout<<endl;
+    }else if(str=="#Output all EXAFS extraction parameter images"){
+        cout<<str<<endl;
+        int dummy;
+        (*inp_ifs)>>dummy;
+        extparaout = (dummy==1) ? true:false;
+        cout<<"  "<< boolalpha << extparaout<<endl;
     }
 }

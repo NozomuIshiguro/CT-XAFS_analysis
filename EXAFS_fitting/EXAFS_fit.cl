@@ -204,6 +204,58 @@ __kernel void outputchi(__global float2* chi, float Reff, __global float* S02,
 }
 
 
+__kernel void outputchi_r(__global float* chi, float Reff, __global float* S02,
+                           __global float* CN, __global float* dR,
+                          __global float* dE0, __global float* ss,
+                          __global float* E0imag, __global float* C3,__global float* C4,
+                          __global float* real2phcW, __global float* magW,
+                          __global float* phaseW, __global float* redFactorW,
+                          __global float* lambdaW, __global float* real_pW,
+                          int kw){
+    
+    const size_t global_x = get_global_id(0);
+    const size_t global_y = get_global_id(1);
+    const size_t global_z = get_global_id(2);
+    const size_t size_x = get_global_size(0);
+    const size_t size_y = get_global_size(1);
+    const size_t offset_z = get_global_offset(2);
+    const size_t IDxy = global_x + global_y*size_x;
+    const size_t IDxyz = IDxy + (global_z-offset_z)*size_x*size_y;
+    
+    float real2phc = real2phcW[global_z];
+    float mag = magW[global_z];
+    float phase = phaseW[global_z];
+    float redFactor = redFactorW[global_z];
+    float lambda = lambdaW[global_z];
+    float real_p = real_pW[global_z];
+    
+    float kval = K_PITCH*global_z;
+    
+    float2 chi_c=EXAFSshell(kval,Reff,S02[IDxy],CN[IDxy],dR[IDxy],dE0[IDxy],ss[IDxy],
+                            E0imag[IDxy],C3[IDxy],C4[IDxy],
+                            real2phc,mag,phase,redFactor,lambda,real_p);
+    
+    float wgt;
+    switch(kw){
+        case 0:
+            wgt=1.0f;
+            break;
+        case 1:
+            wgt=kval;
+            break;
+        case 2:
+            wgt=kval*kval;
+            break;
+        case 3:
+            wgt=kval*kval*kval;
+            break;
+    }
+    chi_c.x=0.0f;
+    
+    chi[IDxyz] += chi_c.y*wgt;
+}
+
+
 
 inline float2 Jacobian_k_S02(float kval,float Reff,
                              float S02,float CN,float dR,float dE0,float ss,
