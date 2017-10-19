@@ -14,6 +14,8 @@
 	<string>DerivedData</string>
 	<key>DerivedDataLocationStyle</key>
 	<string>WorkspaceRelativePath</string>
+	<key>EnabledFullIndexStoreVisibility</key>
+	<false/>
 	<key>HasAskedToTakeAutomaticSnapshotBeforeSignificantChanges</key>
 	<true/>
 	<key>IssueFilterStyle</key>
