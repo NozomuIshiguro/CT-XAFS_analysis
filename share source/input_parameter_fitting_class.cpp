@@ -10,6 +10,14 @@
 
 static int buffsize=512;
 
+bool input_parameter_fitting::getUseChiStdBool(){
+    return useChiStd;
+}
+
+string input_parameter_fitting::getChiStdFilePath(){
+    return filepath_chiStd;
+}
+
 int input_parameter_fitting::getPreEdgeFittingMode(){
     return bkgFittingMode;
 }
@@ -967,5 +975,16 @@ void input_parameter_fitting::inputFromFile_fitting(string str, ifstream *inp_if
         (*inp_ifs)>>dummy;
         extparaout = (dummy==1) ? true:false;
         cout<<"  "<< boolalpha << extparaout<<endl;
+    }else if(str=="#Use standard chi data for EXAFS extraction"){
+        cout<<str<<endl;
+        int dummy;
+        (*inp_ifs)>>dummy;
+        useChiStd = (dummy==1) ? true:false;
+        cout<<"  "<< boolalpha << useChiStd<<endl;
+    }else if(str=="#Standard chi data file path for EXAFS extraction"){
+        cout<<str<<endl;
+        str = ifs_getline(inp_ifs);
+        filepath_chiStd=str;
+        cout<<"  "<<filepath_chiStd<<endl;
     }
 }

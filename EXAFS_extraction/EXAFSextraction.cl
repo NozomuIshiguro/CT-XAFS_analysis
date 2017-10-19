@@ -198,6 +198,22 @@ __kernel void convert2realChi(__global float2* chi_cmplx_img, __global float* ch
 }
 
 
+__kernel void convert2cmplxChi(__global float2* chi_cmplx_img, __global float* chi_img){
+    const size_t global_x = get_global_id(0);
+    const size_t global_y = get_global_id(1);
+    const size_t global_z = get_global_id(2);
+    const size_t size_x = get_global_size(0);
+    const size_t size_y = get_global_size(1);
+    const size_t size_M = size_x*size_y;
+    const size_t offset_z = get_global_offset(2);
+    const size_t ID = global_x + global_y*size_x;
+    const size_t IDxyz1 = ID + global_z*size_M;
+    const size_t IDxyz2 = ID + (global_z-offset_z)*size_M;
+    
+    float chi = chi_img[IDxyz2];
+    chi_cmplx_img[IDxyz1] = (float2)(0.0f,chi);
+}
+
 
 //x-dimesion is knot zone space (0<=x<basisOffset are dummy zone)
 //y-dimension is k-space
@@ -431,3 +447,18 @@ __kernel void initialCtrlP(__global float2* chiData_img, __global float* ctrlP_i
     }
     
 }
+
+
+__kernel void subtract_chiStd(__global float2* chiFit_img, __constant float* chiStd,
+                              __global float* edgeJ, int koffset){
+    const size_t global_x = get_global_id(0);
+    const size_t global_y = get_global_id(1);
+    const size_t global_z = get_global_id(2);
+    const size_t size_x = get_global_size(0);
+    const size_t size_y = get_global_size(1);
+    const size_t IDxy = global_x + global_y*size_x;
+    const size_t ID = IDxy + global_z*size_x*size_y;
+    
+    chiFit_img[ID] -= chiStd[global_z+koffset]*edgeJ[IDxy];
+}
+

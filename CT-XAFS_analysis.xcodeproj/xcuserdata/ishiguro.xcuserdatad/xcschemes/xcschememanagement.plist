@@ -79,6 +79,11 @@
 			<key>orderHint</key>
 			<integer>14</integer>
 		</dict>
+		<key>imgReg_XANESfit.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>15</integer>
+		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>

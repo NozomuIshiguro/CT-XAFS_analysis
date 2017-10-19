@@ -1,4 +1,4 @@
-﻿//
+//
 //  EXAFS_extraction.hpp
 //  CT-XANES_analysis
 //
@@ -28,6 +28,6 @@ int PostEdgeEstimation(cl::CommandQueue queue, cl::Program program,
 int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
                      cl::Buffer mt_img, cl::Buffer energy, cl::Buffer w_factor, cl::Buffer chi_img,
                      int imagesizeX, int imagesizeY, int FFTimageSizeY, int num_energy,
-                     float kstart, float kend, float Rbkg, int kw, float lambda, int numTrial, bool kendClamp);
+                     float kstart, float kend, float Rbkg, int kw, float lambda, int numTrial, bool kendClamp, cl::Buffer chiStd);
 
 #endif /* EXAFS_extraction_hpp */

@@ -1,4 +1,4 @@
-//
+﻿//
 //  EXAFS_extraction.cpp
 //  CT-XANES_analysis
 //
@@ -511,7 +511,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
                      cl::Buffer mt_img, cl::Buffer energy, cl::Buffer w_factor, cl::Buffer chi_img,
                      int imagesizeX, int imagesizeY, int FFTimageSizeY, int num_energy,
                      float kstart, float kend, float Rbkg, int kw, float lambda, int numTrial,
-                     bool kendClamp, bool splineout){
+                     bool kendClamp, bool splineout, cl::Buffer chiStd, cl::Buffer edgeJ_img){
     
     string errorzone = "0";
     try {
@@ -539,7 +539,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         //CL objects
         cl_float2 iniChi={0.0f,0.0f};
         cl::Buffer chiData(context,CL_MEM_READ_WRITE,sizeof(cl_float2)*imageSizeM*ksize,0,NULL);
-        cl::Buffer FTchiStd(context,CL_MEM_READ_WRITE,sizeof(cl_float2)*imageSizeM*Rsize,0,NULL);
+        cl::Buffer FTchiZero(context,CL_MEM_READ_WRITE,sizeof(cl_float2)*imageSizeM*Rsize,0,NULL);
         cl::Buffer chiFit(context,CL_MEM_READ_WRITE,sizeof(cl_float2)*imageSizeM*ksize,0,NULL);
         cl::Buffer FTchiFit(context,CL_MEM_READ_WRITE,sizeof(cl_float2)*imageSizeM*Rsize,0,NULL);
         cl::Buffer dF2_old(context,CL_MEM_READ_WRITE,sizeof(cl_float)*imageSizeM,0,NULL);
@@ -566,7 +566,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         queue.enqueueWriteBuffer(p_fix, CL_TRUE, 0, sizeof(cl_char)*N_ctrlP, p_freefix);
         queue.enqueueFillBuffer(lambda_buff, (cl_float)lambda, 0, sizeof(float)*imageSizeM);
         queue.enqueueFillBuffer(nyu_buff, (cl_float)2.0f, 0, sizeof(float)*imageSizeM);
-        queue.enqueueFillBuffer(FTchiStd, (cl_float2)iniChi, 0, sizeof(cl_float2)*imageSizeM*Rsize);
+        queue.enqueueFillBuffer(FTchiZero, (cl_float2)iniChi, 0, sizeof(cl_float2)*imageSizeM*Rsize);
         
         
         //work itemsize settings
@@ -656,11 +656,11 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         kernel_tJJ.setArg(4, (cl_int)Rsize);
         cl::Kernel kernel_tJdF(program,"estimate_tJdF");
         kernel_tJdF.setArg(0, tJdF);
-        kernel_tJdF.setArg(2, FTchiStd);
+        kernel_tJdF.setArg(2, FTchiZero);
         kernel_tJdF.setArg(3, FTchiFit);
         kernel_tJdF.setArg(5, (cl_int)Rsize);
         cl::Kernel kernel_dF2(program,"estimate_dF2");
-        kernel_dF2.setArg(1, FTchiStd);
+        kernel_dF2.setArg(1, FTchiZero);
         kernel_dF2.setArg(2, FTchiFit);
         kernel_dF2.setArg(3, (cl_int)Rsize);
         cl::Kernel kernel_LM(program,"LevenbergMarquardt");
@@ -700,6 +700,11 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
         kernel_spline.setArg(4, (cl_int)N_ctrlP);
         kernel_spline.setArg(5, (cl_int)4);
         kernel_spline.setArg(6, (cl_int)4);
+        cl::Kernel kernel_subtract(program,"subtract_chiStd");
+        kernel_subtract.setArg(0, chiFit);
+        kernel_subtract.setArg(1, chiStd);
+        kernel_subtract.setArg(2, edgeJ_img);
+        kernel_subtract.setArg(3, (cl_int)koffset);
         cl::Kernel kernel_kw(program,"kweight");
         kernel_kw.setArg(0, J_dummy);
         kernel_kw.setArg(1, (cl_int)kw);
@@ -772,6 +777,9 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
             //kweight
             queue.enqueueNDRangeKernel(kernel_kw,global_item_offset1,global_item_size_stack, local_item_size1, NULL, NULL);
             queue.finish();
+            //subtract chiStd
+            queue.enqueueNDRangeKernel(kernel_subtract,NULL,global_item_size_stack,local_item_size1, NULL, NULL);
+            queue.finish();
             //weighting by window function
             queue.enqueueNDRangeKernel(kernel_kwindow,global_item_offset1,global_item_size_stack,local_item_size1, NULL, NULL);
             queue.finish();
@@ -826,6 +834,9 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
             queue.finish();
             //kweight
             queue.enqueueNDRangeKernel(kernel_kw,global_item_offset1,global_item_size_stack, local_item_size1, NULL, NULL);
+            queue.finish();
+            //subtract chiStd
+            queue.enqueueNDRangeKernel(kernel_subtract,NULL,global_item_size_stack,local_item_size1, NULL, NULL);
             queue.finish();
             //weighting by window function
             queue.enqueueNDRangeKernel(kernel_kwindow,global_item_offset1,global_item_size_stack,local_item_size1, NULL, NULL);
@@ -919,7 +930,7 @@ int SplineBkgRemoval(cl::CommandQueue queue, cl::Program program,
 int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
                      int AngleNo, int thread_id,input_parameter inp,
                      cl::Buffer energy, cl::Buffer w_factor, int numEnergy,vector<float*> mt_vec,
-                      vector<int> processImageSizeY){
+                      vector<int> processImageSizeY, cl::Buffer chiStd){
     
     
     int preEdgeStartEnNo  = inp.getPreEdgeStartEnergyNo();
@@ -1015,7 +1026,7 @@ int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
                            imagesizeX, processImageSizeY[0], postEdgeStartEnNo, postEdgeEndEnNo,
                            lambda, num_trial, postEdgeParaData,paraout,offset);
         
-        SplineBkgRemoval(queue, program[2], mt_img, energy, w_factor, chi_img, imagesizeX, processImageSizeY[0], processImageSizeY[1], numEnergy, kstart, kend, Rbkg, kw, lambda, num_trial, true, paraout);
+        SplineBkgRemoval(queue, program[2], mt_img, energy, w_factor, chi_img, imagesizeX, processImageSizeY[0], processImageSizeY[1], numEnergy, kstart, kend, Rbkg, kw, lambda, num_trial, true, paraout, chiStd, edgeJ_img);
         
         
         //apply mask
@@ -1073,7 +1084,7 @@ int extraction_thread(cl::CommandQueue queue, vector<cl::Program> program,
 int extraction_data_input_thread(cl::CommandQueue queue, vector<cl::Program> program,
                                  int AngleNo, int thread_id,input_parameter inp,
                                  cl::Buffer energy, cl::Buffer w_factor,
-                                 vector<int> processImageSizeY){
+                                 vector<int> processImageSizeY,cl::Buffer chiStd){
     
     int startEnergyNo =inp.getFittingStartEnergyNo();
     int endEnergyNo = inp.getFittingEndEnergyNo();
@@ -1101,7 +1112,8 @@ int extraction_data_input_thread(cl::CommandQueue queue, vector<cl::Program> pro
     fitting_th[thread_id].join();
     fitting_th[thread_id] = thread(extraction_thread,
                                    queue, program, AngleNo, thread_id, inp,
-                                   energy, w_factor, num_energy,move(mt_vec),processImageSizeY);
+                                   energy, w_factor, num_energy,move(mt_vec),processImageSizeY,
+                                   chiStd);
     
     return 0;
 }
@@ -1246,6 +1258,43 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
     int Rsize=(int)ceil((min(float(Rbkg + WIN_DR),(float)MAX_R))/RGRID)+1;
     
     
+    //chiStd input (optional)
+    bool useChiStd=inp.getUseChiStdBool();
+    vector<float> chiStd_vec;
+    if (useChiStd) {
+        //energy file input
+        ifstream chiStd_ifs(inp.getChiStdFilePath(),ios::in);
+        if (!chiStd_ifs.is_open()) {
+            cout <<"Standard chi0 file not found."<<endl;
+            cout <<  "Press 'Enter' to quit." << endl;
+            string dummy;
+            getline(cin,dummy);
+            exit(-1);
+        }
+        cout <<"chi std"<<endl;
+        int i=0;
+        do {
+            string str;
+            str = ifs_getline(&chiStd_ifs) ;
+            if (chiStd_ifs.eof()) break;
+            
+            istringstream iss(str);
+            string a,b;
+            iss >> a >> b;
+            float aa ,bb;
+            try {
+                aa = stof(a);
+                bb = stof(b);
+            }catch(invalid_argument ret){ //ヘッダータグが存在する場合に入力エラーになる際への対応
+                continue;
+            }
+            cout<<aa <<" "<< bb;
+            chiStd_vec.push_back(bb);
+            cout<<endl;
+            i++;
+        } while (!chiStd_ifs.eof());
+    }
+    
     
     //OpenCL Program
     vector<vector<cl::Program>> programs;
@@ -1342,9 +1391,10 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
     }
     
     
-    //energy_buffers create (per context)
+    //buffers create (per context)
     vector<cl::Buffer> energy_buffers;
     vector<cl::Buffer> w_factors;
+    vector<cl::Buffer> chiStds;
     for (int i=0; i<plat_dev_list.contextsize(); i++){
         //energy buffers
         energy_buffers.push_back(cl::Buffer(plat_dev_list.context(i), CL_MEM_READ_ONLY, sizeof(cl_float)*num_energy, 0, NULL));
@@ -1353,6 +1403,37 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
         //spinfactors
         w_factors.push_back(cl::Buffer(plat_dev_list.context(i),CL_MEM_READ_WRITE,sizeof(cl_float2)*FFT_SIZE/2, 0, NULL));
         createSpinFactor(w_factors[i], plat_dev_list.queue(i,0), programs[i][2]);
+        
+        chiStds.push_back(cl::Buffer(plat_dev_list.context(i),CL_MEM_READ_WRITE,sizeof(cl_float2)*MAX_KRSIZE,0,NULL));
+        if(useChiStd){
+            cl::Buffer chiStd_dummy(plat_dev_list.context(i),CL_MEM_READ_WRITE,sizeof(cl_float)*MAX_KRSIZE,0,NULL);
+            
+            //read chiStdData
+            plat_dev_list.queue(i,0).enqueueWriteBuffer(chiStd_dummy, CL_TRUE, 0, sizeof(float)*chiStd_vec.size(), &chiStd_vec[0]);
+            
+            //convert to complex chi
+            cl::Kernel kernel_cmplx(programs[i][2],"convert2cmplxChi");
+            kernel_cmplx.setArg(0, chiStds[i]);
+            kernel_cmplx.setArg(1, chiStd_dummy);
+            vector<size_t> maxWorkGroupSize = plat_dev_list.context(i).getInfo<CL_CONTEXT_DEVICES>()[0].getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
+            const cl::NDRange local_item_size(min((int)maxWorkGroupSize[0],MAX_KRSIZE),1,1);
+            const cl::NDRange global_item_size(MAX_KRSIZE,1,1);
+            plat_dev_list.queue(i,0).enqueueNDRangeKernel(kernel_cmplx, NULL, global_item_size,local_item_size);
+            plat_dev_list.queue(i,0).finish();
+            
+            //k-weight
+            cl::Kernel kernel_kw(programs[i][2],"kweight");
+            kernel_kw.setArg(0,chiStds[i]);
+            kernel_kw.setArg(1,(cl_int)inp.get_kw());
+            const cl::NDRange local_item_size2(1,1,1/*min((int)maxWorkGroupSize[2],MAX_KRSIZE)*/);
+            const cl::NDRange global_item_size2(1,1,MAX_KRSIZE);
+            plat_dev_list.queue(i,0).enqueueNDRangeKernel(kernel_kw, NULL, global_item_size2,local_item_size2);
+            plat_dev_list.queue(i,0).finish();
+            
+        }else{
+            cl_float2 ini={0.0f,0.0f};
+            plat_dev_list.queue(i,0).enqueueFillBuffer(chiStds[i],ini, 0, sizeof(cl_float2)*MAX_KRSIZE);
+        }
     }
     
     
@@ -1368,7 +1449,7 @@ int EXAFS_extraction_ocl(input_parameter inp, OCL_platform_device plat_dev_list)
                 input_th[i].join();
                 input_th[i] = thread(extraction_data_input_thread,
                                      plat_dev_list.queue(i,0), programs[i],
-                                     An, i, inp, energy_buffers[i], w_factors[i],processImageSizeYs[i]);
+                                     An, i, inp, energy_buffers[i], w_factors[i],processImageSizeYs[i],chiStds[i]);
                 An++;
                 if (An > endAngleNo) break;
             } else{

@@ -1,4 +1,4 @@
-﻿//
+//
 //  XANES_fitting.hpp
 //  XANES_fitting
 //
@@ -31,5 +31,7 @@ int outputRawFile_stream(string filename,float*data,size_t pnt_size);
 string kernel_preprocessor_nums(fitting_eq fiteq,input_parameter inp);
 int createContrainMatrix(vector<string> contrain_eqs, vector<string> fparaName,
                          vector<vector<float>> *C_matrix, vector<float> *D_vector,int cotrainOffset);
+int XANESGPUmemoryControl(int imageSizeX, int imageSizeY,
+                          int num_energy, fitting_eq fiteq, cl::CommandQueue queue);
 
 #endif

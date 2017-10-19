@@ -246,6 +246,8 @@ protected:
     
     bool chifitout;
     bool extparaout;
+    bool useChiStd;
+    string filepath_chiStd;
     
 public:
     input_parameter_fitting();
@@ -308,6 +310,8 @@ public:
     
     bool getChiFitOutBool();
     bool getExtParaOutBool();
+    bool getUseChiStdBool();
+    string getChiStdFilePath();
     
     vector<string> funcNameList;
     vector<string> LCFstd_paths;
